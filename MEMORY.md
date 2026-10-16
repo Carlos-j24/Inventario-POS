@@ -31,11 +31,11 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - `navigator.onLine` solo dice si hay red local: el estado "En línea" sale de `/api/health/` (fallo encontrado en Chrome con el servidor apagado).
 - En el service worker: nunca guardar respuestas con error como copia sin red, y borrar los `/assets` viejos en cada versión nueva (si no, la caché crece sin límite).
 - En Windows, un `fetch` a un puerto local apagado tarda unos 8 s en fallar: por eso `api.ts` tiene un límite de 10 s y lo trata como sin conexión.
-- `gh pr merge --auto` sin checks obligatorios en la rama fusiona AL INSTANTE, aunque el CI siga corriendo (pasó con el PR #8, 2026-10-16). Desde entonces main exige los cuatro checks y el repo tiene `allow_auto_merge`. Aun así, con el PR #9 GitHub no disparó la fusión al quedar todo en verde: revisar y fusionar a mano si pasa.
+- `gh pr merge --auto` sin checks obligatorios en la rama fusiona AL INSTANTE, aunque el CI siga corriendo (pasó con el PR #8, 2026-10-16). Desde entonces main exige los cuatro checks y el repo tiene `allow_auto_merge`. Con los PR #9 y #10 GitHub no disparó la fusión al quedar todo en verde (con el #11 sí): revisar y fusionar a mano si pasa.
 - Bases de desarrollo con ventas anteriores a la T5 no migran (las ventas exigen turno): borrar `db.sqlite3` y volver a migrar.
 
 ## Próximos pasos
-- Verificado en Chrome de escritorio (2026-10-16): sin conexión e instalación (botón "Instalar app" propio; Chrome acepta el ícono SVG). Falta Android; si pide PNG de 192 y 512 px, añadirlos.
+- Verificado (2026-10-16): Chrome de escritorio y Android (OPPO Reno13 F) abren sin conexión y se instalan con el ícono SVG. Cómo probar en un celular: docs/despliegue.md.
 - Este equipo no tiene Docker: el despliegue solo se ha probado en el CI. Primer despliegue real: servidor con dominio y HTTPS.
 - Spec 002 por definir con el equipo (ideas: pedidos del rol Ventas que cobra caja, devoluciones y usuarios en la PWA, facturación electrónica DIAN, reportes).
 - Pantallas que faltan en la PWA: devoluciones/anulaciones (supervisor) y administración de usuarios (hoy por el admin de Django).

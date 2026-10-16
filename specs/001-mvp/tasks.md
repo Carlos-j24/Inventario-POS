@@ -17,7 +17,7 @@
   - Lo "PWA" (instalable, service worker, sin conexión) queda para la T9.
 - [x] **T9** Modo sin conexión: catálogo en IndexedDB, cola de ventas, sincronización y bandeja `needs_review`. (Historia 5)
   - Service worker y manifest escritos a mano (sin dependencias). Ver "Modo sin conexión" en docs/arquitectura.md.
-  - Verificado en Chrome 155 (2026-10-16): con Django apagado la app abre desde el service worker, vende a la cola y se sincroniza sola al volver el servidor (V-000007, una sola vez). La app se instala con el botón "Instalar app".
+  - Verificado en Chrome 155 (2026-10-16): con Django apagado la app abre desde el service worker, vende a la cola y se sincroniza sola al volver el servidor (V-000007, una sola vez). La app se instala con el botón "Instalar app". También verificado en Android (OPPO Reno13 F): instala y abre sin conexión.
 - [x] **T10** CI con GitHub Actions (pytest) y despliegue con Docker + PostgreSQL.
   - Un contenedor (gunicorn + WhiteNoise sirviendo el frontend) + PostgreSQL. El CI construye la imagen y ejecuta `scripts/smoke-test.sh`. Guía en docs/despliegue.md.
   - [x] CI: `.github/workflows/tests.yml` corre migraciones y pytest en Python 3.12 y 3.14 en cada PR.
