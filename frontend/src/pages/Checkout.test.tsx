@@ -133,3 +133,32 @@ describe("Checkout sin conexión", () => {
     expect(props.onQueued).not.toHaveBeenCalled();
   });
 });
+
+describe("Checkout de un pedido (spec 002)", () => {
+  const order = {
+    id: 9, code: 4193, business_date: "2026-10-16", status: "PENDING" as const, salesperson: "andres",
+    total: "56000.00", created_at: "", sale_number: null, lines: [],
+  };
+  const orderLines = [{ key: "o", product: hammer, unit: "und", quantity: 1, order: { lineId: 12, max: 2, priceCents: 2700000 } }];
+
+  it("envía order y order_lines, no líneas sueltas", async () => {
+    const fetch = mockFetch({ id: 1, number: "V-000010", total: "27000.00", payments: [] });
+    const props = setup({ order, lines: orderLines, totalCents: 2700000 });
+    await payExact();
+    const body = JSON.parse(fetch.mock.calls[0][1].body);
+    expect(body.order).toBe(9);
+    expect(body.order_lines).toEqual([{ order_line: 12, quantity: "1" }]);
+    expect(body.lines).toBeUndefined();
+    expect(body.payments).toEqual([{ method: "CASH", amount: "27000.00", reference: "" }]);
+    expect(props.onPaid).toHaveBeenCalled();
+  });
+
+  it("sin red no va a la cola: los pedidos se cobran con conexión", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    const props = setup({ order, lines: orderLines, totalCents: 2700000 });
+    await payExact();
+    expect(await screen.findByRole("alert")).toHaveTextContent("los pedidos se cobran con red");
+    expect(props.queue).not.toHaveBeenCalled();
+    expect(props.onQueued).not.toHaveBeenCalled();
+  });
+});
