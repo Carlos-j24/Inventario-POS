@@ -12,5 +12,6 @@
   - `components/SaleActions.tsx`: anular con motivo (o la razón por la que no se puede); devolver por línea sin pasar de lo que queda, con medio y caja abierta (por defecto la de la venta). En la bandeja, "Ver venta" despliega el mismo detalle. Probado en Chrome: V-000007 anulada y 1 martillo devuelto de la V-000008; el esperado del turno bajó de $258.500 a $196.000.
 - [x] **T5** Pantalla Usuarios: lista, alta, roles, activar/desactivar y contraseña nueva. (Historia 5)
   - Permiso `users.manage`. Errores del servidor (último administrador, clave débil) a la vista; el campo de contraseña no se borra si se rechaza. Probado en Chrome: alta de maria.caja (Caja, clave temporal), roles, desactivar y reactivar; el administrador no puede desactivarse.
-- [ ] **T6** Roles y permisos en lenguaje claro (todos editables). "Cambiar mi contraseña" para todos y pantalla de cambio obligatorio. (Historias 6 y 7)
+- [x] **T6** Roles y permisos en lenguaje claro (todos editables). "Cambiar mi contraseña" para todos y pantalla de cambio obligatorio. (Historias 6 y 7)
+  - Pantalla Roles (`users.manage`) con permisos agrupados por tema. "Cambiar mi contraseña" desde el nombre en la cabecera. Con clave temporal la app solo muestra "Hola, …" y el cambio. Probado en Chrome: maria.caja entró con su clave temporal, la API le respondía 403, cambió la clave y apareció la app con Caja, Pedidos y Existencias.
 - [ ] **T7** Prueba de punta a punta en el navegador: alta de un cajero nuevo que vende, y una devolución hecha por el supervisor que se refleja en el arqueo.

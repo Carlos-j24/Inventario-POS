@@ -11,6 +11,8 @@ interface AuthState {
   offlineSession: boolean;
   login: (username: string, password: string) => Promise<void>;
   logout: () => Promise<void>;
+  /** Cambia la contraseña propia; con ella se quita la marca de contraseña temporal (spec 003). */
+  changePassword: (current: string, next: string) => Promise<void>;
   can: (permission: string) => boolean;
 }
 
@@ -61,10 +63,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     saveMe(null);
   }, []);
 
+  const changePassword = useCallback(async (current: string, next: string) => {
+    const me = await api<Me>("/api/auth/password/", {
+      method: "POST",
+      body: { current_password: current, new_password: next },
+    });
+    setUser(me);
+    saveMe(me);
+  }, []);
+
   const can = useCallback((permission: string) => !!user?.permissions.includes(permission), [user]);
 
   return (
-    <AuthContext.Provider value={{ user, loading, offlineSession, login, logout, can }}>
+    <AuthContext.Provider value={{ user, loading, offlineSession, login, logout, changePassword, can }}>
       {children}
     </AuthContext.Provider>
   );

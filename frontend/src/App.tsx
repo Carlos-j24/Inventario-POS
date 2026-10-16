@@ -2,11 +2,13 @@ import { useState, type ComponentType } from "react";
 
 import { useAuth } from "./auth";
 import { promptInstall, useCanInstall } from "./install";
+import ChangePassword from "./pages/ChangePassword";
 import Login from "./pages/Login";
 import Orders from "./pages/Orders";
 import Pos from "./pages/Pos";
 import Receipts from "./pages/Receipts";
 import Review from "./pages/Review";
+import Roles from "./pages/Roles";
 import Sales from "./pages/Sales";
 import Stock from "./pages/Stock";
 import Users from "./pages/Users";
@@ -21,6 +23,7 @@ const PAGES: { id: string; label: string; permission: string | string[]; Compone
   { id: "sales", label: "Ventas", permission: ["sales.void", "reports.view"], Component: Sales },
   { id: "review", label: "Revisión", permission: "reports.view", Component: Review },
   { id: "users", label: "Usuarios", permission: "users.manage", Component: Users },
+  { id: "roles", label: "Roles", permission: "users.manage", Component: Roles },
 ];
 
 export default function App() {
@@ -29,9 +32,11 @@ export default function App() {
 
   if (loading) return <p className="center muted">Cargando…</p>;
   if (!user) return <Login />;
+  // Contraseña temporal: hasta cambiarla no hay nada más (la API tampoco lo permite).
+  if (user.must_change_password) return <ChangePassword forced />;
 
   const pages = PAGES.filter((p) => [p.permission].flat().some(can));
-  const page = pages.find((p) => p.id === current) ?? pages[0];
+  const page = current === "password" ? null : pages.find((p) => p.id === current) ?? pages[0];
 
   return (
     <div className="app">
@@ -50,14 +55,16 @@ export default function App() {
         </nav>
         <SyncStatus />
         <InstallButton />
-        <span className="user">
+        <button className="link user" onClick={() => setCurrent("password")} title="Cambiar mi contraseña">
           {user.first_name || user.username} · {user.roles.join(", ") || "sin rol"}
-        </span>
+        </button>
         <LogoutButton onLogout={logout} />
       </header>
       <SyncMessage />
       <main className="content">
-        {page ? (
+        {current === "password" ? (
+          <ChangePassword />
+        ) : page ? (
           <page.Component />
         ) : (
           <p className="center muted">Tu usuario no tiene pantallas asignadas. Pide un rol al administrador.</p>
