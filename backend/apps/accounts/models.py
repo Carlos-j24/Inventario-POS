@@ -29,6 +29,9 @@ class Role(models.Model):
 
 class User(AbstractUser):
     roles = models.ManyToManyField(Role, related_name="users", blank=True)
+    # Contraseña temporal (spec 003): la puso un administrador y el usuario debe cambiarla
+    # antes de usar la app. Mientras esté marcada, la API solo permite cambiarla y salir.
+    must_change_password = models.BooleanField(default=False)
 
     def permission_codes(self):
         if not self.is_active:

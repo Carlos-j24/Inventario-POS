@@ -103,7 +103,8 @@ REST_FRAMEWORK = {
         "rest_framework.authentication.SessionAuthentication",
     ],
     "DEFAULT_PERMISSION_CLASSES": [
-        "rest_framework.permissions.IsAuthenticated",
+        # Sesión iniciada y sin contraseña temporal pendiente (spec 003).
+        "apps.accounts.drf.IsAuthenticatedAndReady",
     ],
     "DEFAULT_THROTTLE_RATES": {
         "login": os.environ.get("LOGIN_RATE", "5/min"),

@@ -41,7 +41,7 @@ Inventario y punto de venta para ferreterías: entradas a bodega, ventas que des
 - **El arqueo de un turno cerrado nunca cambia.** Por eso una venta solo se anula mientras su turno siga abierto; después se hace una devolución (`sales/returns.py`), que reembolsa desde el turno abierto actual.
 - En devoluciones parciales, la última parte de una línea reembolsa el resto exacto del total, para no perder ni sobrar centavos.
 - En la venta, `seller` es quien **cobró** (cajero) y `salesperson` quien **vendió** (quien armó el pedido; el cajero si fue directa). Los pedidos (spec 002) no mueven inventario y vencen al cambiar la fecha de negocio (`business_date`, hora de Bogotá).
-- Autenticación por sesión en cookie + CSRF (`/api/auth/`), no JWT. Los usuarios no se borran, se desactivan. Siempre debe quedar al menos un usuario activo con `users.manage` (`accounts/services.py`).
+- Autenticación por sesión en cookie + CSRF (`/api/auth/`), no JWT. Un usuario con contraseña temporal (`must_change_password`) solo puede usar `me`, `password` y `logout`: cualquier vista nueva queda bloqueada sola si usa `require()`, `require_any()` o el permiso por defecto. Los usuarios no se borran, se desactivan. Siempre debe quedar al menos un usuario activo con `users.manage` (`accounts/services.py`).
 
 ## Forma de trabajar
 - Lee `docs/constitution.md`, `MEMORY.md` y la spec activa antes de tocar código.

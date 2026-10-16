@@ -24,7 +24,7 @@ class MeSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "username", "first_name", "last_name", "roles", "permissions"]
+        fields = ["id", "username", "first_name", "last_name", "roles", "permissions", "must_change_password"]
 
     def get_permissions(self, obj):
         return sorted(obj.permission_codes())
@@ -59,8 +59,11 @@ class UserSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ["id", "username", "first_name", "last_name", "email", "is_active", "roles", "password", "last_login"]
-        read_only_fields = ["last_login"]
+        fields = [
+            "id", "username", "first_name", "last_name", "email", "is_active", "roles", "password",
+            "must_change_password", "last_login",
+        ]
+        read_only_fields = ["last_login", "must_change_password"]
 
     def validate(self, data):
         if self.instance is None and not data.get("password"):
@@ -82,7 +85,8 @@ class UserSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         roles = validated_data.pop("roles", [])
-        user = User.objects.create_user(**validated_data)
+        # La contraseña que pone el administrador es temporal (spec 003, decisión 3).
+        user = User.objects.create_user(**validated_data, must_change_password=True)
         user.roles.set(roles)
         return user
 
@@ -91,5 +95,21 @@ class UserSerializer(serializers.ModelSerializer):
         user = super().update(instance, validated_data)
         if password:
             user.set_password(password)
-            user.save(update_fields=["password"])
+            # Si el administrador se la pone a otro, es temporal; si se la cambia a sí mismo, no.
+            user.must_change_password = user.pk != self.context["request"].user.pk
+            user.save(update_fields=["password", "must_change_password"])
         return user
+
+
+class PasswordChangeSerializer(serializers.Serializer):
+    current_password = serializers.CharField(trim_whitespace=False)
+    new_password = serializers.CharField(trim_whitespace=False)
+
+    def validate(self, data):
+        user = self.context["request"].user
+        if not user.check_password(data["current_password"]):
+            raise serializers.ValidationError({"current_password": "La contraseña actual no es correcta."})
+        if data["new_password"] == data["current_password"]:
+            raise serializers.ValidationError({"new_password": "La nueva contraseña debe ser distinta de la actual."})
+        _django_errors(validate_password, data["new_password"], user)
+        return data

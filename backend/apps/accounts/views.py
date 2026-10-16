@@ -1,4 +1,4 @@
-from django.contrib.auth import authenticate, login, logout
+from django.contrib.auth import authenticate, login, logout, update_session_auth_hash
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_protect, ensure_csrf_cookie
 from rest_framework import generics, mixins, status, viewsets
@@ -8,9 +8,11 @@ from rest_framework.response import Response
 from rest_framework.throttling import ScopedRateThrottle
 from rest_framework.views import APIView
 
-from .drf import require
+from .drf import AllowWhilePasswordChange, require
 from .models import Permission, Role, User
-from .serializers import LoginSerializer, MeSerializer, PermissionSerializer, RoleSerializer, UserSerializer
+from .serializers import (
+    LoginSerializer, MeSerializer, PasswordChangeSerializer, PermissionSerializer, RoleSerializer, UserSerializer,
+)
 
 
 @method_decorator(ensure_csrf_cookie, name="dispatch")
@@ -42,14 +44,38 @@ class LoginView(APIView):
 
 
 class LogoutView(APIView):
+    permission_classes = [AllowWhilePasswordChange]
+
     def post(self, request):
         logout(request)
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+class PasswordChangeView(APIView):
+    """Cambiar la contraseña propia. Pide la actual y quita la marca de contraseña temporal.
+
+    Comparte el límite de intentos del inicio de sesión: adivinar la actual sería otro ataque de fuerza bruta.
+    """
+
+    permission_classes = [AllowWhilePasswordChange]
+    throttle_classes = [ScopedRateThrottle]
+    throttle_scope = "login"
+
+    def post(self, request):
+        data = PasswordChangeSerializer(data=request.data, context={"request": request})
+        data.is_valid(raise_exception=True)
+        user = request.user
+        user.set_password(data.validated_data["new_password"])
+        user.must_change_password = False
+        user.save(update_fields=["password", "must_change_password"])
+        update_session_auth_hash(request, user)  # la sesión actual sigue abierta
+        return Response(MeSerializer(user).data)
+
+
 class MeView(generics.RetrieveAPIView):
     """Usuario actual con sus roles y permisos: la PWA los usa para mostrar u ocultar opciones."""
 
+    permission_classes = [AllowWhilePasswordChange]
     serializer_class = MeSerializer
 
     def get_object(self):
