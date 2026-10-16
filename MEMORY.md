@@ -1,12 +1,11 @@
 # MEMORY.md — Inventario-POS
 Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aporte.
 
-## Estado actual
-- Spec 001, T1–T7 (2026-10-15/16): backend completo. Roles y permisos, catálogo con presentaciones, kardex, ventas con IVA incluido, caja con pago mixto y arqueo, anulaciones y devoluciones, sesión en cookie y API de usuarios. 92 tests de pytest.
-- T8 (2026-10-16): frontend React + Vite + TS con Caja, Entradas y Existencias, probado de punta a punta en el navegador.
-- T9 (2026-10-16): modo sin conexión (cola de ventas en IndexedDB, sincronización idempotente), service worker y manifest, y bandeja de revisión. Probado apagando los servidores: la venta quedó en cola y llegó una sola vez. 97 tests de pytest y 25 de Vitest.
-- T10 (2026-10-16): Docker (gunicorn + WhiteNoise, un contenedor) + PostgreSQL. Guía en docs/despliegue.md. **Spec 001 (MVP) completa.**
-- Repositorio público Carlos-j24/Inventario-POS. El CI corre pytest (3.12 y 3.14), el frontend (tipos, Vitest, build) y la imagen de Docker con PostgreSQL (`scripts/smoke-test.sh`) en cada PR.
+## Estado actual (2026-10-16)
+- **Spec 001 (MVP)** completa: backend (roles, catálogo, kardex, ventas con IVA incluido, caja con pago mixto y arqueo, devoluciones, sesión en cookie), frontend React con modo sin conexión e instalable, y despliegue Docker + PostgreSQL.
+- **Spec 002 (pedidos vendedor → caja)** completa: el vendedor arma el pedido con un código de 4 dígitos y la caja lo cobra; la venta guarda quién vendió y quién cobró.
+- **Spec 003 (supervisor y administrador)** completa: pantallas Ventas (buscar, anular, devolver), Usuarios, Roles, cambiar mi contraseña y contraseña temporal con cambio obligatorio (la API bloquea hasta cambiarla).
+- Repositorio público Carlos-j24/Inventario-POS. main exige 5 checks: pytest 3.12 y 3.14, pytest-postgres, frontend y docker (`scripts/smoke-test.sh`).
 
 ## Decisiones (y por qué)
 - AGENTS.md es la fuente única de reglas; CLAUDE.md solo lo importa → mismas reglas para Claude Code y OpenCode.
@@ -31,13 +30,11 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - `navigator.onLine` solo dice si hay red local: el estado "En línea" sale de `/api/health/` (fallo encontrado en Chrome con el servidor apagado).
 - En el service worker: nunca guardar respuestas con error como copia sin red, y borrar los `/assets` viejos en cada versión nueva (si no, la caché crece sin límite).
 - En Windows, un `fetch` a un puerto local apagado tarda unos 8 s en fallar: por eso `api.ts` tiene un límite de 10 s y lo trata como sin conexión.
-- `gh pr merge --auto` sin checks obligatorios en la rama fusiona AL INSTANTE, aunque el CI siga corriendo (pasó con el PR #8, 2026-10-16). Desde entonces main exige los cuatro checks y el repo tiene `allow_auto_merge`. Con los PR #9 y #10 GitHub no disparó la fusión al quedar todo en verde (con el #11 sí): revisar y fusionar a mano si pasa.
+- `gh pr merge --auto` sin checks obligatorios fusiona AL INSTANTE (pasó con el PR #8). Ahora main exige los checks, pero GitHub a veces no dispara la fusión al quedar todo en verde (PR #9, #10, #27): revisar y fusionar a mano.
 - Los tests de concurrencia (dos cajas a la vez) no corren en SQLite: el job `pytest-postgres` del CI corre la suite contra PostgreSQL.
 - Bases de desarrollo con ventas anteriores a la T5 no migran (las ventas exigen turno): borrar `db.sqlite3` y volver a migrar.
 
 ## Próximos pasos
-- Verificado (2026-10-16): Chrome de escritorio y Android (OPPO Reno13 F) abren sin conexión y se instalan con el ícono SVG. Cómo probar en un celular: docs/despliegue.md.
-- Este equipo no tiene Docker: el despliegue solo se ha probado en el CI. Primer despliegue real: servidor con dominio y HTTPS.
-- Spec 002 (pedidos vendedor → caja) **completada** (2026-10-16): precio del pedido, vence al final del día, código de 4 dígitos, stock solo avisa. Probada en Chrome de punta a punta (pedido 4193 → V-000008). Siguientes, por prioridad del equipo: pantallas de supervisor/admin, reportes, facturación DIAN.
-- Pantallas que faltan en la PWA: devoluciones/anulaciones (supervisor) y administración de usuarios (hoy por el admin de Django).
-- Admin: etiquetas en español (`verbose_name`) y booleanos de solo lectura que muestran el texto de ayuda en vez de Sí/No.
+- Siguientes specs, por prioridad del equipo: **reportes** (ventas por día y vendedor, más vendidos, inventario valorizado, arqueos) y **facturación electrónica DIAN** (proveedor tecnológico y numeración por caja).
+- Primer despliegue real: servidor con dominio y HTTPS (este equipo no tiene Docker; el despliegue solo se prueba en el CI). Cómo probar en un celular: docs/despliegue.md.
+- Admin de Django: etiquetas en español (`verbose_name`) y booleanos de solo lectura que muestran el texto de ayuda en vez de Sí/No.
