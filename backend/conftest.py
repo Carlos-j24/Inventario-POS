@@ -3,6 +3,8 @@ from decimal import Decimal
 import pytest
 
 from apps.accounts.models import Role, User
+from apps.cash.models import CashRegister
+from apps.cash.services import open_shift
 from apps.catalog.models import Category, Product, ProductUnit, Unit
 from apps.inventory.models import Warehouse
 
@@ -20,6 +22,16 @@ def make_user(db):
 @pytest.fixture
 def warehouse(db):
     return Warehouse.objects.create(code="PRAL", name="Bodega principal")
+
+
+@pytest.fixture
+def register(warehouse):
+    return CashRegister.objects.create(code="CAJA1", name="Caja 1", warehouse=warehouse)
+
+
+@pytest.fixture
+def shift(register, make_user):
+    return open_shift(register=register, user=make_user("apertura", "Caja"), opening_float=Decimal("100000"))
 
 
 @pytest.fixture
