@@ -154,3 +154,8 @@ tr.negative td { background: var(--danger-bg); }
 .sales-page { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
 @media (max-width: 860px) { .sales-page { grid-template-columns: 1fr; } }
 .sales-list td:nth-child(1), .sales-list td:nth-child(2), .sales-list td:nth-child(3) { white-space: nowrap; }
+.sale-actions { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+.action-form { display: flex; flex-direction: column; gap: 8px; }
+.action-form h3 { margin: 0; }
+button.danger-btn { background: var(--danger); color: #fff; border-color: var(--danger); font-weight: 600; }
+.nested { background: var(--bg); }

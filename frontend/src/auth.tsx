@@ -75,3 +75,8 @@ export function useAuth(): AuthState {
   if (!ctx) throw new Error("useAuth fuera de AuthProvider");
   return ctx;
 }
+
+/** can() para mostrar u ocultar acciones. Sin sesión cargada (o fuera del proveedor), nada está permitido. */
+export function useCan(): (permission: string) => boolean {
+  return useContext(AuthContext)?.can ?? (() => false);
+}
