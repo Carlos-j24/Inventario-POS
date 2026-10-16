@@ -5,6 +5,12 @@ from apps.catalog.models import MONEY, QTY, Product, Unit
 from .models import StockLevel, StockMovement, Warehouse
 
 
+class WarehouseSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Warehouse
+        fields = ["id", "code", "name"]
+
+
 class ReceiptSerializer(serializers.Serializer):
     product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.filter(is_active=True))
     warehouse = serializers.PrimaryKeyRelatedField(queryset=Warehouse.objects.filter(is_active=True))

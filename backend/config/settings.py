@@ -99,6 +99,10 @@ SESSION_COOKIE_AGE = int(os.environ.get("SESSION_COOKIE_AGE", 12 * 60 * 60))
 SESSION_COOKIE_SAMESITE = "Lax"
 CSRF_COOKIE_SAMESITE = "Lax"
 SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = not DEBUG
+# En producción la PWA y la API comparten dominio y no hace falta. En desarrollo la PWA corre
+# en el servidor de Vite (puerto 5173), que reenvía /api a Django.
+_dev_origins = "http://localhost:5173,http://127.0.0.1:5173" if DEBUG else ""
+CSRF_TRUSTED_ORIGINS = [o for o in os.environ.get("CSRF_TRUSTED_ORIGINS", _dev_origins).split(",") if o]
 
 LANGUAGE_CODE = "es-co"
 TIME_ZONE = "America/Bogota"

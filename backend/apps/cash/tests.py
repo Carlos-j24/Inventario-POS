@@ -151,3 +151,12 @@ def test_warehouse_staff_cannot_open_shift(register, make_user):
         "/api/cash/shifts/", {"register": register.pk, "opening_float": "0"}, format="json"
     )
     assert res.status_code == 403
+
+
+def test_registers_list_shows_open_shift(register, cashier, shift, make_user):
+    res = api(cashier).get("/api/cash/registers/")
+    assert res.status_code == 200
+    assert res.data == [{"id": register.pk, "code": "CAJA1", "name": "Caja 1", "warehouse": "PRAL", "open_shift": shift.pk}]
+    close_shift(shift=shift, user=cashier, counted_cash=D("100000"))
+    assert api(cashier).get("/api/cash/registers/").data[0]["open_shift"] is None
+    assert api(make_user("aux", "Auxiliar de bodega")).get("/api/cash/registers/").status_code == 403

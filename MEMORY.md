@@ -2,13 +2,10 @@
 Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aporte.
 
 ## Estado actual
-- 2026-10-15: esqueleto del backend (spec 001, tareas T1 a T3). Usuarios, roles y permisos; catálogo con unidades y presentaciones; inventario con kardex, entradas por API y existencias. 21 tests en verde.
-- 2026-10-15: T4 ventas: venta + líneas + salida de stock en una transacción, IVA incluido separado por línea, idempotente. 36 tests en verde.
-- 2026-10-15: repositorio público Carlos-j24/Inventario-POS. CI (GitHub Actions) con pytest en Python 3.12 y 3.14 en cada PR: no fusionar con el CI en rojo.
-- 2026-10-16: T5 caja: turnos por caja física, pago mixto con vueltas, arqueo al cierre. Las ventas ahora exigen turno y pagos. 55 tests en verde.
-- 2026-10-16: T6 anulaciones (venta completa, turno abierto) y devoluciones parciales con reembolso. 71 tests en verde.
-- 2026-10-16: T7 autenticación (sesión en cookie + CSRF, login con límite de intentos) y API de usuarios y roles. 90 tests en verde.
-- Falta: frontend PWA y sincronización sin conexión (ver `specs/001-mvp/tasks.md`).
+- Spec 001, T1–T7 (2026-10-15/16): backend completo. Roles y permisos, catálogo con presentaciones, kardex, ventas con IVA incluido, caja con pago mixto y arqueo, anulaciones y devoluciones, sesión en cookie y API de usuarios. 92 tests de pytest.
+- T8 (2026-10-16): frontend React + Vite + TS con Caja, Entradas y Existencias, probado de punta a punta en el navegador. 14 tests de Vitest.
+- Repositorio público Carlos-j24/Inventario-POS. El CI corre pytest (3.12 y 3.14) y el frontend (tipos, Vitest, build) en cada PR.
+- Falta: T9 (PWA instalable y sin conexión) y T10 (despliegue con Docker + PostgreSQL).
 
 ## Decisiones (y por qué)
 - AGENTS.md es la fuente única de reglas; CLAUDE.md solo lo importa → mismas reglas para Claude Code y OpenCode.
@@ -25,8 +22,11 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - Tests con pytest-django: `manage.py test` no los encuentra (DevForge Init lo propone por defecto al detectar Django).
 - Al meter fallos a propósito: quitar la consulta previa de `client_uuid` no rompe nada, porque la restricción única de la base de datos ya protege contra duplicados.
 - Un test de redondeo con precios "redondos" (3.200) no prueba nada: el centavo perdido solo aparece con precios con centavos (3.199,99).
+- El servidor de Vite (5173) es otro origen para Django: sin `CSRF_TRUSTED_ORIGINS` el login falla con 403 "Origin checking failed". Solo pasa en desarrollo.
+- Vitest sin `globals`: Testing Library no limpia el DOM entre tests; hace falta `afterEach(cleanup)` en `test-setup.ts`.
 - Bases de desarrollo con ventas anteriores a la T5 no migran (las ventas exigen turno): borrar `db.sqlite3` y volver a migrar.
 
 ## Próximos pasos
-- T8: frontend PWA (React + Vite) servido desde el mismo dominio que la API: inicio de sesión, POS, entradas a bodega, existencias.
+- T9: PWA instalable (manifest y service worker), catálogo en IndexedDB y cola de ventas sin conexión, más la bandeja de `needs_review`.
+- Pantallas que faltan en la PWA: devoluciones/anulaciones (supervisor) y administración de usuarios (hoy por el admin de Django).
 - Admin: etiquetas en español (`verbose_name`) y booleanos de solo lectura que muestran el texto de ayuda en vez de Sí/No.
