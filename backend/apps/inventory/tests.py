@@ -158,3 +158,9 @@ def test_kardex_lists_movements_in_order(make_user, warehouse, hammer):
 
 def test_catalog_requires_login(cable):
     assert APIClient().get("/api/catalog/products/").status_code == 403
+
+
+def test_warehouses_are_listed_for_inventory_staff(make_user, warehouse):
+    res = api(make_user("aux", "Auxiliar de bodega")).get("/api/inventory/warehouses/")
+    assert res.data == [{"id": warehouse.pk, "code": "PRAL", "name": "Bodega principal"}]
+    assert api(make_user("cajero", "Caja")).get("/api/inventory/warehouses/").status_code == 403

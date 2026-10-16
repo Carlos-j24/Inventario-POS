@@ -6,6 +6,19 @@ from .models import CashRegister, Shift
 from .services import shift_summary
 
 
+class CashRegisterSerializer(serializers.ModelSerializer):
+    warehouse = serializers.SlugRelatedField(slug_field="code", read_only=True)
+    open_shift = serializers.SerializerMethodField()
+
+    class Meta:
+        model = CashRegister
+        fields = ["id", "code", "name", "warehouse", "open_shift"]
+
+    def get_open_shift(self, obj):
+        shift = obj.shifts.filter(status=Shift.Status.OPEN).first()
+        return shift.pk if shift else None
+
+
 class OpenShiftSerializer(serializers.Serializer):
     register = serializers.PrimaryKeyRelatedField(queryset=CashRegister.objects.all())
     opening_float = serializers.DecimalField(**MONEY)

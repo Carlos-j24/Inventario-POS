@@ -6,9 +6,17 @@ from rest_framework.views import APIView
 
 from apps.accounts.drf import require
 
-from .models import StockLevel, StockMovement
-from .serializers import ReceiptSerializer, StockLevelSerializer, StockMovementSerializer
+from .models import StockLevel, StockMovement, Warehouse
+from .serializers import (
+    ReceiptSerializer, StockLevelSerializer, StockMovementSerializer, WarehouseSerializer,
+)
 from .services import record_movement
+
+
+class WarehouseListView(generics.ListAPIView):
+    permission_classes = [require("inventory.view")]
+    serializer_class = WarehouseSerializer
+    queryset = Warehouse.objects.filter(is_active=True)
 
 
 class ReceiptView(APIView):

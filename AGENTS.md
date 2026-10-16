@@ -4,19 +4,24 @@ Inventario y punto de venta para ferreterías: entradas a bodega, ventas que des
 ## Stack y estructura
 - Backend: Python 3.12+, Django + Django REST Framework, PostgreSQL en producción (SQLite en desarrollo y tests), en `backend/`.
 - `backend/apps/accounts` usuarios, roles y permisos · `apps/catalog` productos y unidades · `apps/inventory` bodegas, kardex y existencias · `apps/sales` ventas · `apps/cash` cajas, turnos y pagos.
-- Frontend (pendiente): React + Vite como PWA, en `frontend/`.
+- Frontend: React + Vite + TypeScript en `frontend/`. `src/api.ts` cliente y tipos · `src/cart.ts` lógica del carrito y cobro (sin React) · `src/pages/` pantallas.
 - `docs/` arquitectura y constitución · `specs/NNN-nombre/` specs.
 
-## Comandos (desde `backend/`)
+## Comandos del backend (desde `backend/`)
 - Entorno: `python -m venv .venv` y `.venv\Scripts\pip install -r requirements-dev.txt`.
 - Tests: `.venv\Scripts\python -m pytest` (pytest-django; **no** `manage.py test`, que no ve los tests de pytest).
 - Migraciones: `.venv\Scripts\python manage.py makemigrations` y `migrate`. Servidor: `manage.py runserver`.
 - PostgreSQL: variables `DB_ENGINE=postgres`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`.
 
+## Comandos del frontend (desde `frontend/`)
+- `npm install`, `npm run dev` (puerto 5173, reenvía `/api` a Django en el 8000), `npm test` (Vitest), `npm run typecheck`, `npm run build`.
+
 ## Convenciones
 - Código e identificadores en inglés; mensajes al usuario, docs y commits en español.
 - La lógica de negocio va en `services.py`, no en vistas ni serializers.
 - Permisos de la API con `require("codigo.permiso")` de `apps/accounts/drf.py`, nunca por nombre de rol.
+- En el frontend, el dinero va en centavos enteros (`money.ts`), nunca en `float` de pesos. El backend recalcula y es la fuente de verdad.
+- Cada intento de cobro o de entrada genera su `client_uuid` una sola vez: un reintento reutiliza el mismo.
 
 ## Reglas de dominio / trampas
 - **El stock solo se mueve con `inventory.services.record_movement`.** Nunca escribir `StockLevel.quantity` a mano.

@@ -7,8 +7,8 @@ from rest_framework.views import APIView
 
 from apps.accounts.drf import require
 
-from .models import Shift
-from .serializers import CloseShiftSerializer, OpenShiftSerializer, ShiftSerializer
+from .models import CashRegister, Shift
+from .serializers import CashRegisterSerializer, CloseShiftSerializer, OpenShiftSerializer, ShiftSerializer
 from .services import close_shift, open_shift
 
 
@@ -17,6 +17,14 @@ def _call(fn, **kwargs):
         return fn(**kwargs)
     except DjangoValidationError as exc:
         raise ValidationError(exc.messages)
+
+
+class CashRegisterListView(generics.ListAPIView):
+    """Cajas activas y el turno abierto de cada una: el POS lo usa para elegir caja al iniciar."""
+
+    permission_classes = [require("cash.operate")]
+    serializer_class = CashRegisterSerializer
+    queryset = CashRegister.objects.filter(is_active=True).select_related("warehouse")
 
 
 class ShiftOpenView(APIView):
