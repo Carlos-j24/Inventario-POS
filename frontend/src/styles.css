@@ -141,3 +141,16 @@ tr.negative td { background: var(--danger-bg); }
 .order-loader { margin: 8px 0 12px; }
 .order-loader input { width: 170px; font-size: 1.1rem; letter-spacing: 0.1em; }
 .order-banner { display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--warn-bg); padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; }
+.filters { margin-bottom: 8px; }
+.filters input[aria-label="Buscar por número"] { width: 170px; }
+.check { flex-direction: row; align-items: center; gap: 6px; margin: 0; color: var(--text); }
+.sales-list tbody tr { cursor: pointer; }
+.sales-list tr.selected td { background: var(--bg); }
+.sales-list tr.voided td { color: var(--muted); text-decoration: line-through; }
+.sales-list tr.voided td:last-child { text-decoration: none; }
+.badges { gap: 4px; flex-wrap: wrap; }
+.badge { border: 1px solid var(--line); color: var(--muted); }
+.sale-detail h3 { font-size: 1rem; margin: 16px 0 6px; }
+.sales-page { grid-template-columns: minmax(0, 3fr) minmax(0, 2fr); }
+@media (max-width: 860px) { .sales-page { grid-template-columns: 1fr; } }
+.sales-list td:nth-child(1), .sales-list td:nth-child(2), .sales-list td:nth-child(3) { white-space: nowrap; }

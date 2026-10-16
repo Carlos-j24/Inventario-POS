@@ -169,3 +169,55 @@ export interface Order {
   lines: OrderLine[];
   warnings?: StockWarning[];
 }
+
+// --- Supervisor (spec 003) ------------------------------------------------------
+
+export interface SaleListItem {
+  id: number;
+  number: string;
+  occurred_at: string;
+  register: string;
+  seller: string;
+  salesperson: string;
+  order_code: number | null;
+  total: string;
+  status: "COMPLETED" | "VOIDED";
+  offline: boolean;
+  needs_review: boolean;
+}
+
+export interface SaleDetailLine {
+  id: number;
+  product: string; // SKU
+  name: string;
+  unit: string;
+  quantity: string;
+  returned_quantity: string;
+  unit_price: string;
+  catalog_price: string;
+  total: string;
+}
+
+export interface SaleReturn {
+  id: number;
+  number: string;
+  reason: string;
+  total: string;
+  refund_method: PaymentMethod;
+  user: string;
+  created_at: string;
+}
+
+export interface SaleDetail extends Omit<SaleListItem, "register"> {
+  register: string;
+  shift_open: boolean;
+  subtotal: string;
+  tax: string;
+  void_reason: string;
+  voided_at: string | null;
+  reviewed_at: string | null;
+  review_note: string;
+  lines: SaleDetailLine[];
+  payments: { method: PaymentMethod; amount: string; received: string; change: string; reference: string }[];
+  returns: SaleReturn[];
+}
