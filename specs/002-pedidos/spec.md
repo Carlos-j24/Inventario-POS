@@ -1,6 +1,6 @@
 # Spec 002 — Pedidos: el vendedor arma, la caja cobra
 
-> Estado: **decisiones cerradas por el equipo (2026-10-16)**; pendiente aprobar el PR para empezar a programar.
+> Estado: ✅ **completada (2026-10-16)**. Tareas en tasks.md (T1–T7, PRs #14–#20).
 
 ## Problema
 En una ferretería el vendedor atiende en el mostrador: asesora, busca el producto, mide el cable y corta el tubo. Quien cobra es la caja. Hoy el rol **Ventas** no puede registrar nada que termine en venta, porque vender exige cobrar (`cash.operate`, decidido en la T5). El vendedor no tiene cómo pasarle a la caja lo que el cliente se lleva, y su trabajo no queda registrado.
