@@ -3,7 +3,7 @@ Inventario y punto de venta para ferreterías: entradas a bodega, ventas que des
 
 ## Stack y estructura
 - Backend: Python 3.12+, Django + Django REST Framework, PostgreSQL en producción (SQLite en desarrollo y tests), en `backend/`.
-- `backend/apps/accounts` usuarios, roles y permisos · `apps/catalog` productos y unidades · `apps/inventory` bodegas, kardex y existencias.
+- `backend/apps/accounts` usuarios, roles y permisos · `apps/catalog` productos y unidades · `apps/inventory` bodegas, kardex y existencias · `apps/sales` ventas.
 - Frontend (pendiente): React + Vite como PWA, en `frontend/`.
 - `docs/` arquitectura y constitución · `specs/NNN-nombre/` specs.
 
@@ -26,6 +26,8 @@ Inventario y punto de venta para ferreterías: entradas a bodega, ventas que des
 - Una venta sin conexión puede dejar stock negativo; se acepta y se marca `needs_review` para que bodega lo revise.
 - Los permisos son fijos en código (se añaden con una migración de datos); los roles son datos que edita el administrador.
 - Dinero y cantidades siempre con `Decimal`, nunca `float`.
+- Los precios de venta **incluyen IVA** (precio al público). El IVA se separa por línea y se redondea al centavo.
+- Venta en línea: precio del catálogo y sin stock negativo. Venta sin conexión: se respeta el precio cobrado y se acepta negativo, marcando `needs_review`.
 
 ## Forma de trabajar
 - Lee `docs/constitution.md`, `MEMORY.md` y la spec activa antes de tocar código.
