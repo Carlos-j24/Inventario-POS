@@ -6,7 +6,8 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - 2026-10-15: T4 ventas: venta + líneas + salida de stock en una transacción, IVA incluido separado por línea, idempotente. 36 tests en verde.
 - 2026-10-15: repositorio público Carlos-j24/Inventario-POS. CI (GitHub Actions) con pytest en Python 3.12 y 3.14 en cada PR: no fusionar con el CI en rojo.
 - 2026-10-16: T5 caja: turnos por caja física, pago mixto con vueltas, arqueo al cierre. Las ventas ahora exigen turno y pagos. 55 tests en verde.
-- Falta: anulaciones, autenticación, frontend PWA y sincronización sin conexión (ver `specs/001-mvp/tasks.md`).
+- 2026-10-16: T6 anulaciones (venta completa, turno abierto) y devoluciones parciales con reembolso. 71 tests en verde.
+- Falta: autenticación, frontend PWA y sincronización sin conexión (ver `specs/001-mvp/tasks.md`).
 
 ## Decisiones (y por qué)
 - AGENTS.md es la fuente única de reglas; CLAUDE.md solo lo importa → mismas reglas para Claude Code y OpenCode.
@@ -21,9 +22,9 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 ## Aprendizajes y errores a evitar
 - Tests con pytest-django: `manage.py test` no los encuentra (DevForge Init lo propone por defecto al detectar Django).
 - Al meter fallos a propósito: quitar la consulta previa de `client_uuid` no rompe nada, porque la restricción única de la base de datos ya protege contra duplicados.
+- Un test de redondeo con precios "redondos" (3.200) no prueba nada: el centavo perdido solo aparece con precios con centavos (3.199,99).
 - Bases de desarrollo con ventas anteriores a la T5 no migran (las ventas exigen turno): borrar `db.sqlite3` y volver a migrar.
 
 ## Próximos pasos
-- T6: anulación y devolución (`sales.void`), que debe devolver el stock y sacar el pago del arqueo.
+- T7: autenticación para la PWA (sesión con cookie o JWT) y API de usuarios y roles para el administrador.
 - Admin: etiquetas en español (`verbose_name`) y booleanos de solo lectura que muestran el texto de ayuda en vez de Sí/No.
-- Elegir autenticación para la PWA (sesión con cookie o JWT) antes de empezar el frontend.

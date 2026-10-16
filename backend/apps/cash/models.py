@@ -77,3 +77,18 @@ class Payment(models.Model):
 
     def __str__(self):
         return f"{self.get_method_display()} {self.amount}"
+
+
+class Refund(models.Model):
+    """Dinero devuelto al cliente por una devolución. En efectivo sale del cajón del turno."""
+
+    sale_return = models.OneToOneField("sales.SaleReturn", on_delete=models.PROTECT, related_name="refund")
+    shift = models.ForeignKey(Shift, on_delete=models.PROTECT, related_name="refunds")
+    method = models.CharField(max_length=10, choices=Payment.Method.choices)
+    amount = models.DecimalField(**MONEY)
+
+    class Meta:
+        verbose_name = "reembolso"
+
+    def __str__(self):
+        return f"Reembolso {self.get_method_display()} {self.amount}"

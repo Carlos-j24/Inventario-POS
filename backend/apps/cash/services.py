@@ -58,16 +58,20 @@ def apply_payments(*, sale, shift, payments):
 
 
 def shift_summary(shift):
-    """Totales del turno por medio de pago, contando solo ventas no anuladas."""
+    """Totales del turno por medio de pago: cobros de ventas no anuladas menos reembolsos."""
     payments = shift.payments.filter(sale__status="COMPLETED")
     by_method = {m: Decimal(0) for m in Method.values}
     for row in payments.values("method").annotate(total=Sum("amount")):
         by_method[row["method"]] = row["total"]
+    refunds = {m: Decimal(0) for m in Method.values}
+    for row in shift.refunds.values("method").annotate(total=Sum("amount")):
+        refunds[row["method"]] = row["total"]
     sales = payments.values("sale").distinct().aggregate(n=Count("sale"))["n"]
     return {
         "sales": sales,
         "by_method": by_method,
-        "expected_cash": shift.opening_float + by_method[Method.CASH],
+        "refunds": refunds,
+        "expected_cash": shift.opening_float + by_method[Method.CASH] - refunds[Method.CASH],
     }
 
 

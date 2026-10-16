@@ -1,4 +1,5 @@
 from django.core.exceptions import ValidationError as DjangoValidationError
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
 from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
@@ -7,7 +8,10 @@ from rest_framework.views import APIView
 from apps.accounts.drf import require
 
 from .models import Sale
-from .serializers import SaleInputSerializer, SaleSerializer
+from .returns import create_return, void_sale
+from .serializers import (
+    ReturnInputSerializer, SaleInputSerializer, SaleReturnSerializer, SaleSerializer, VoidSerializer,
+)
 from .services import create_sale
 
 
@@ -29,6 +33,41 @@ class SaleCreateView(APIView):
             raise ValidationError(exc.messages)
         return Response(
             SaleSerializer(sale).data,
+            status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
+        )
+
+
+class SaleVoidView(APIView):
+    """Anula una venta completa mientras su turno siga abierto."""
+
+    permission_classes = [require("sales.void")]
+
+    def post(self, request, pk):
+        data = VoidSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        try:
+            sale = void_sale(sale=get_object_or_404(Sale, pk=pk), user=request.user, **data.validated_data)
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.messages)
+        return Response(SaleSerializer(sale).data)
+
+
+class SaleReturnView(APIView):
+    """Devolución total o parcial con reembolso desde un turno abierto. Idempotente por client_uuid."""
+
+    permission_classes = [require("sales.void")]
+
+    def post(self, request, pk):
+        data = ReturnInputSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        try:
+            sale_return, created = create_return(
+                sale=get_object_or_404(Sale, pk=pk), user=request.user, **data.validated_data
+            )
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.messages)
+        return Response(
+            SaleReturnSerializer(sale_return).data,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
 
