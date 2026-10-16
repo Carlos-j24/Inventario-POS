@@ -1,6 +1,7 @@
 import { useState } from "react";
 
 import { useAuth } from "./auth";
+import { promptInstall, useCanInstall } from "./install";
 import Login from "./pages/Login";
 import Pos from "./pages/Pos";
 import Receipts from "./pages/Receipts";
@@ -42,6 +43,7 @@ export default function App() {
           ))}
         </nav>
         <SyncStatus />
+        <InstallButton />
         <span className="user">
           {user.first_name || user.username} · {user.roles.join(", ") || "sin rol"}
         </span>
@@ -91,6 +93,16 @@ function SyncMessage() {
         </p>
       ))}
     </div>
+  );
+}
+
+function InstallButton() {
+  const canInstall = useCanInstall();
+  if (!canInstall) return null;
+  return (
+    <button className="link" onClick={() => promptInstall()} title="Instalar en este equipo para abrirla como una aplicación">
+      Instalar app
+    </button>
   );
 }
 

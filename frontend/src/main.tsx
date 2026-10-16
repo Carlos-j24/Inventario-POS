@@ -3,6 +3,7 @@ import { createRoot } from "react-dom/client";
 
 import App from "./App";
 import { AuthProvider } from "./auth";
+import "./install"; // escucha "beforeinstallprompt" desde el arranque
 import { SyncProvider } from "./sync";
 import "./styles.css";
 
