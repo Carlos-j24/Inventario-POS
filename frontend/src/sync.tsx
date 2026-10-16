@@ -3,10 +3,20 @@ import { createContext, useCallback, useContext, useEffect, useRef, useState, ty
 import { api } from "./api";
 import { useAuth } from "./auth";
 import { outboxDb } from "./idb";
-import { syncOutbox, type OutboxStore, type QueuedSale } from "./offline";
+import { isUnreachable, syncOutbox, type OutboxStore, type QueuedSale } from "./offline";
 
 const RETRY_MS = 30_000;
 const store = outboxDb as OutboxStore;
+
+/** El servidor y su base de datos contestan. Un 503 de /api/health/ también cuenta como caído. */
+async function serverReachable(): Promise<boolean> {
+  try {
+    await api("/api/health/");
+    return true;
+  } catch (err) {
+    return !isUnreachable(err);
+  }
+}
 
 interface SyncState {
   online: boolean;
@@ -41,8 +51,14 @@ export function SyncProvider({ children }: { children: ReactNode }) {
     running.current = true;
     setSyncing(true);
     try {
+      // navigator.onLine solo dice si hay red local; lo que importa es si el servidor contesta.
+      if (!(await serverReachable())) {
+        setOnline(false);
+        return;
+      }
+      setOnline(true);
       const r = await syncOutbox(store, user.username, (body) => api("/api/sales/", { method: "POST", body }));
-      setOnline(r.stopped !== "offline");
+      if (r.stopped === "offline") setOnline(false);
       setMessage(
         r.stopped === "auth"
           ? "La sesión venció: sal y vuelve a entrar para enviar las ventas pendientes."
@@ -52,6 +68,8 @@ export function SyncProvider({ children }: { children: ReactNode }) {
               ? `${r.sent} venta(s) sin conexión enviada(s).`
               : null,
       );
+    } catch (err) {
+      console.error("Sincronización:", err); // p. ej. navegador sin IndexedDB
     } finally {
       running.current = false;
       setSyncing(false);
