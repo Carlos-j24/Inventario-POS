@@ -1,3 +1,5 @@
+from decimal import Decimal
+
 from rest_framework import serializers
 
 from apps.cash.models import Payment, Shift
@@ -200,3 +202,51 @@ class OrderSerializer(serializers.ModelSerializer):
 
     def get_sale_number(self, obj):
         return obj.sale.number if obj.sale_id else None
+
+
+# --- Supervisor (spec 003) ------------------------------------------------------
+
+class SaleListSerializer(serializers.ModelSerializer):
+    """Fila de la lista de ventas: lo justo para encontrar la venta."""
+
+    register = serializers.CharField(source="shift.register.code", read_only=True)
+    seller = serializers.SlugRelatedField(slug_field="username", read_only=True)
+    salesperson = serializers.SlugRelatedField(slug_field="username", read_only=True)
+    order_code = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Sale
+        fields = [
+            "id", "number", "occurred_at", "register", "seller", "salesperson", "order_code",
+            "total", "status", "offline", "needs_review",
+        ]
+
+    def get_order_code(self, obj):
+        order = getattr(obj, "order", None)
+        return order.code if order else None
+
+
+class SaleDetailLineSerializer(SaleLineSerializer):
+    name = serializers.CharField(source="product.name", read_only=True)
+    returned_quantity = serializers.SerializerMethodField()
+
+    class Meta(SaleLineSerializer.Meta):
+        fields = SaleLineSerializer.Meta.fields + ["name", "returned_quantity"]
+
+    def get_returned_quantity(self, obj):
+        # Usa el prefetch de return_lines: sin consultas extra por línea.
+        return str(sum((r.quantity for r in obj.return_lines.all()), Decimal(0)))
+
+
+class SaleDetailSerializer(SaleSerializer):
+    register = serializers.CharField(source="shift.register.code", read_only=True)
+    shift_open = serializers.SerializerMethodField()
+    lines = SaleDetailLineSerializer(many=True, read_only=True)
+    returns = SaleReturnSerializer(many=True, read_only=True)
+
+    class Meta(SaleSerializer.Meta):
+        fields = SaleSerializer.Meta.fields + ["register", "shift_open", "returns", "reviewed_at", "review_note"]
+
+    def get_shift_open(self, obj):
+        """Anular solo se puede con el turno de la venta abierto: la pantalla lo usa para ofrecer devolución."""
+        return obj.shift.status == "OPEN"
