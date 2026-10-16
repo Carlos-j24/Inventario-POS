@@ -3,7 +3,7 @@ from rest_framework import serializers
 from apps.cash.models import Payment, Shift
 from apps.catalog.models import MONEY, QTY, Product, Unit
 
-from .models import Sale, SaleLine, SaleReturn, SaleReturnLine
+from .models import Order, OrderLine, Sale, SaleLine, SaleReturn, SaleReturnLine
 
 
 class SaleLineInputSerializer(serializers.Serializer):
@@ -21,18 +21,39 @@ class PaymentInputSerializer(serializers.Serializer):
     reference = serializers.CharField(max_length=60, required=False, allow_blank=True)
 
 
+class OrderLineChargeSerializer(serializers.Serializer):
+    order_line = serializers.PrimaryKeyRelatedField(queryset=OrderLine.objects.all())
+    quantity = serializers.DecimalField(**QTY)
+
+
 class SaleInputSerializer(serializers.Serializer):
+    """Venta directa (lines) o cobro de un pedido (order y, si no se cobra completo, order_lines)."""
+
     client_uuid = serializers.UUIDField()
     shift = serializers.PrimaryKeyRelatedField(queryset=Shift.objects.all())
     offline = serializers.BooleanField(default=False)
     occurred_at = serializers.DateTimeField(required=False, allow_null=True)
-    lines = SaleLineInputSerializer(many=True, allow_empty=False)
+    lines = SaleLineInputSerializer(many=True, required=False)
+    order = serializers.PrimaryKeyRelatedField(queryset=Order.objects.all(), required=False, allow_null=True)
+    order_lines = OrderLineChargeSerializer(many=True, required=False, allow_null=True)
     payments = PaymentInputSerializer(many=True, allow_empty=False)
 
     def validate(self, data):
-        if data["offline"]:
+        order = data.get("order")
+        if order is None:
+            if not data.get("lines"):
+                raise serializers.ValidationError("La venta necesita líneas o un pedido.")
+            if data.get("order_lines"):
+                raise serializers.ValidationError("order_lines solo va con un pedido.")
+        elif data.get("lines"):
+            raise serializers.ValidationError("Al cobrar un pedido las líneas salen del pedido: usa order_lines.")
+        if data["offline"] and order is None:
             if any(line.get("unit_price") is None for line in data["lines"]):
                 raise serializers.ValidationError("Una venta sin conexión debe traer el precio cobrado en cada línea.")
+        # Para el servicio: con pedido, lines son las líneas del pedido a cobrar (None = completo).
+        order_lines = data.pop("order_lines", None)
+        if order is not None:
+            data["lines"] = order_lines
         return data
 
 
@@ -57,16 +78,22 @@ class PaymentSerializer(serializers.ModelSerializer):
 class SaleSerializer(serializers.ModelSerializer):
     warehouse = serializers.SlugRelatedField(slug_field="code", read_only=True)
     seller = serializers.SlugRelatedField(slug_field="username", read_only=True)
+    salesperson = serializers.SlugRelatedField(slug_field="username", read_only=True)
+    order_code = serializers.SerializerMethodField()
     lines = SaleLineSerializer(many=True, read_only=True)
     payments = PaymentSerializer(many=True, read_only=True)
 
     class Meta:
         model = Sale
         fields = [
-            "id", "number", "client_uuid", "status", "shift", "warehouse", "seller", "offline",
-            "needs_review", "subtotal", "tax", "total", "occurred_at", "created_at",
+            "id", "number", "client_uuid", "status", "shift", "warehouse", "seller", "salesperson",
+            "order_code", "offline", "needs_review", "subtotal", "tax", "total", "occurred_at", "created_at",
             "void_reason", "voided_at", "lines", "payments",
         ]
+
+    def get_order_code(self, obj):
+        order = getattr(obj, "order", None)
+        return order.code if order else None
 
 
 class ReviewItemSerializer(SaleSerializer):
@@ -127,3 +154,49 @@ class SaleReturnSerializer(serializers.ModelSerializer):
             "id", "number", "client_uuid", "sale", "shift", "user", "reason",
             "total", "refund_method", "created_at", "lines",
         ]
+
+
+# --- Pedidos (spec 002) -------------------------------------------------------
+
+class OrderLineInputSerializer(serializers.Serializer):
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.filter(is_active=True))
+    quantity = serializers.DecimalField(**QTY)
+    unit = serializers.SlugRelatedField(
+        slug_field="code", queryset=Unit.objects.all(), required=False, allow_null=True
+    )
+
+
+class OrderInputSerializer(serializers.Serializer):
+    client_uuid = serializers.UUIDField()
+    lines = OrderLineInputSerializer(many=True, allow_empty=False)
+
+
+class OrderLineSerializer(serializers.ModelSerializer):
+    product = serializers.PrimaryKeyRelatedField(read_only=True)
+    sku = serializers.CharField(source="product.sku", read_only=True)
+    name = serializers.CharField(source="product.name", read_only=True)
+    unit = serializers.SlugRelatedField(slug_field="code", read_only=True)
+
+    class Meta:
+        model = OrderLine
+        fields = ["id", "product", "sku", "name", "unit", "quantity", "unit_price", "total"]
+
+
+class OrderSerializer(serializers.ModelSerializer):
+    status = serializers.SerializerMethodField()
+    salesperson = serializers.SlugRelatedField(slug_field="username", read_only=True)
+    sale_number = serializers.SerializerMethodField()
+    lines = OrderLineSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = Order
+        fields = [
+            "id", "code", "business_date", "client_uuid", "status", "salesperson", "total",
+            "created_at", "sale_number", "lines",
+        ]
+
+    def get_status(self, obj):
+        return obj.effective_status()  # un pendiente de ayer se muestra vencido
+
+    def get_sale_number(self, obj):
+        return obj.sale.number if obj.sale_id else None

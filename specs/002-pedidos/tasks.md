@@ -8,7 +8,9 @@
   - `apps/sales/orders.py`. Código aleatorio (no se adivina el siguiente) con reintento si choca. Avisos de stock sin bloquear. Comando diario `manage.py expire_orders`.
 - [x] **T3** Cobro de pedido: `create_sale` acepta un pedido; las líneas cobradas son un subconjunto del pedido; se cobra una sola vez, con bloqueo. (Historia 3)
   - `create_sale(order=…)`: precio del pedido (si difiere del catálogo, `needs_review`), vendedor del pedido como `salesperson`, solo con conexión. El pedido queda PAGADO en la misma transacción. El test de dos cajas a la vez corre en el job `pytest-postgres` del CI.
-- [ ] **T4** API: crear, listar, cancelar, buscar por código y cobrar. Permisos `sales.create`, `cash.operate` y `sales.void`. (Historias 1 a 4)
+- [x] **T4** API: crear, listar, cancelar, buscar por código y cobrar. Permisos `sales.create`, `cash.operate` y `sales.void`. (Historias 1 a 4)
+  - `POST /api/orders/` (crea; devuelve código y avisos de stock) · `GET /api/orders/` (pendientes de hoy: el vendedor los suyos, la caja todos; `?mine=1`) · `GET /api/orders/code/<código>/` (caja) · `POST /api/orders/<id>/cancel/`.
+  - Cobro: `POST /api/sales/` con `order` y, si no se cobra completo, `order_lines`. La venta devuelve `salesperson` y `order_code`.
 - [ ] **T5** Pantalla "Pedidos" del vendedor: buscar, carrito, crear, código grande, mis pendientes y cancelar. (Historias 1 y 2)
 - [ ] **T6** En Caja: campo "Código de pedido", lista de pendientes, carga del pedido en el carrito y cobro. (Historias 3 y 4)
 - [ ] **T7** Mostrar vendedor y cajero en la venta (admin y API). Prueba de punta a punta en el navegador con dos usuarios. (Historia 5)
