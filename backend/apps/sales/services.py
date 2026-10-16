@@ -1,10 +1,12 @@
-"""Registro de ventas: la venta, sus líneas y la salida de inventario van en una sola transacción."""
+"""Registro de ventas: la venta, sus líneas, la salida de inventario y los pagos van en una sola transacción."""
 from decimal import ROUND_HALF_UP, Decimal
 
 from django.core.exceptions import ValidationError
 from django.db import IntegrityError, transaction
 from django.utils import timezone
 
+from apps.cash.models import Shift
+from apps.cash.services import apply_payments
 from apps.catalog.models import ProductUnit
 from apps.inventory.models import StockMovement
 from apps.inventory.services import record_movement
@@ -35,13 +37,14 @@ def split_tax(total, rate):
     return subtotal, total - subtotal
 
 
-def create_sale(*, user, warehouse, lines, client_uuid, offline=False, occurred_at=None):
-    """Registra una venta y devuelve (venta, creada).
+def create_sale(*, user, shift, lines, payments, client_uuid, offline=False, occurred_at=None):
+    """Registra y cobra una venta en el turno de una caja. Devuelve (venta, creada).
 
     lines: dicts con product, quantity y opcionalmente unit y unit_price.
-    En línea se cobra el precio del catálogo y no se vende sin stock.
-    Sin conexión se respeta el precio que cobró el POS y se acepta stock negativo;
-    si algo de eso pasa, la venta queda marcada para revisión.
+    payments: dicts con method y amount (ver cash.services.apply_payments).
+    En línea se cobra el precio del catálogo, no se vende sin stock y el turno debe estar abierto.
+    Sin conexión se respeta el precio que cobró el POS, se acepta stock negativo y un turno
+    ya cerrado; si algo de eso pasa, la venta queda marcada para revisión.
     """
     existing = Sale.objects.filter(client_uuid=client_uuid).first()
     if existing:
@@ -49,7 +52,8 @@ def create_sale(*, user, warehouse, lines, client_uuid, offline=False, occurred_
     if not lines:
         raise ValidationError("La venta no tiene líneas.")
     try:
-        return _create(user, warehouse, lines, client_uuid, offline, occurred_at or timezone.now()), True
+        sale = _create(user, shift, lines, payments, client_uuid, offline, occurred_at or timezone.now())
+        return sale, True
     except IntegrityError:
         # Dos envíos simultáneos de la misma venta: el otro ganó.
         existing = Sale.objects.filter(client_uuid=client_uuid).first()
@@ -58,13 +62,19 @@ def create_sale(*, user, warehouse, lines, client_uuid, offline=False, occurred_
         return existing, False
 
 
-def _create(user, warehouse, lines, client_uuid, offline, occurred_at):
+def _create(user, shift, lines, payments, client_uuid, offline, occurred_at):
     with transaction.atomic():
+        # Bloquear el turno evita que se cierre a mitad de una venta.
+        shift = Shift.objects.select_for_update().select_related("register").get(pk=shift.pk)
+        late = shift.status != Shift.Status.OPEN
+        if late and not offline:
+            raise ValidationError("El turno está cerrado: abre un turno nuevo para vender.")
+        warehouse = shift.register.warehouse
         sale = Sale.objects.create(
-            client_uuid=client_uuid, warehouse=warehouse, seller=user, offline=offline,
+            client_uuid=client_uuid, shift=shift, warehouse=warehouse, seller=user, offline=offline,
             subtotal=0, tax=0, total=0, occurred_at=occurred_at,
         )
-        review = False
+        review = late
         for line in lines:
             product = line["product"]
             unit = line.get("unit") or product.base_unit
@@ -94,5 +104,6 @@ def _create(user, warehouse, lines, client_uuid, offline, occurred_at):
             sale.total += total
         sale.needs_review = review
         sale.save(update_fields=["subtotal", "tax", "total", "needs_review"])
+        apply_payments(sale=sale, shift=shift, payments=payments)
         StockMovement.objects.filter(sale_line__sale=sale).update(reference=f"Venta {sale.number}")
     return sale

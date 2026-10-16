@@ -12,9 +12,13 @@ from .services import create_sale
 
 
 class SaleCreateView(APIView):
-    """Registra una venta. Reenviar el mismo client_uuid devuelve la venta ya creada (200)."""
+    """Registra y cobra una venta en un turno de caja.
 
-    permission_classes = [require("sales.create")]
+    Reenviar el mismo client_uuid devuelve la venta ya creada (200). Como incluye el cobro,
+    exige cash.operate; el vendedor sin caja tendrá su flujo de pedidos más adelante.
+    """
+
+    permission_classes = [require("cash.operate")]
 
     def post(self, request):
         data = SaleInputSerializer(data=request.data)
@@ -33,5 +37,5 @@ class SaleDetailView(generics.RetrieveAPIView):
     permission_classes = [require("sales.create")]
     serializer_class = SaleSerializer
     queryset = Sale.objects.select_related("warehouse", "seller").prefetch_related(
-        "lines__product", "lines__unit"
+        "lines__product", "lines__unit", "payments"
     )

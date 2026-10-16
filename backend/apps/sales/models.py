@@ -13,11 +13,13 @@ class Sale(models.Model):
     # UUID que genera el POS: reenviar la misma venta no la duplica.
     client_uuid = models.UUIDField(unique=True)
     status = models.CharField(max_length=10, choices=Status.choices, default=Status.COMPLETED)
+    shift = models.ForeignKey("cash.Shift", on_delete=models.PROTECT, related_name="sales")
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name="sales")
     seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sales")
     offline = models.BooleanField(default=False, help_text="Se hizo sin conexión y llegó al sincronizar.")
     needs_review = models.BooleanField(
-        default=False, help_text="Dejó stock negativo o cobró un precio distinto al del catálogo."
+        default=False,
+        help_text="Dejó stock negativo, cobró un precio distinto al del catálogo o llegó con el turno cerrado.",
     )
     subtotal = models.DecimalField(**MONEY)
     tax = models.DecimalField(**MONEY)
