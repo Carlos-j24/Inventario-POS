@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
 import { api, type PaymentMethod, type Register, type SaleDetail, type SaleListItem } from "../api";
+import { useCan } from "../auth";
+import SaleActions from "../components/SaleActions";
 import { formatMoney, formatQty, toCents } from "../money";
 
 const METHOD_LABEL: Record<PaymentMethod, string> = { CASH: "Efectivo", CARD: "Tarjeta", TRANSFER: "Transferencia" };
@@ -36,6 +38,7 @@ export default function Sales() {
   const [sales, setSales] = useState<SaleListItem[] | null>(null);
   const [selected, setSelected] = useState<number | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const can = useCan();
 
   const load = useCallback(async (query: string) => {
     setError(null);
@@ -123,7 +126,15 @@ export default function Sales() {
         )}
       </section>
       <aside className="card">
-        {selected ? <SaleDetailView id={selected} /> : <p className="muted">Elige una venta para ver su detalle.</p>}
+        {selected ? (
+          <SaleDetailView
+            id={selected}
+            canAct={can("sales.void")}
+            onChanged={() => load(salesQuery({ number, date, register, status, review }))}
+          />
+        ) : (
+          <p className="muted">Elige una venta para ver su detalle.</p>
+        )}
       </aside>
     </div>
   );
@@ -140,15 +151,22 @@ function SaleBadges({ sale }: { sale: Pick<SaleListItem, "status" | "needs_revie
   );
 }
 
-export function SaleDetailView({ id }: { id: number }) {
+export function SaleDetailView({ id, canAct = false, onChanged }: {
+  id: number;
+  /** Mostrar anular y devolver (permiso sales.void). */
+  canAct?: boolean;
+  /** Tras anular o devolver: para refrescar la lista de quien la muestra. */
+  onChanged?: () => void;
+}) {
   const [sale, setSale] = useState<SaleDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [version, setVersion] = useState(0);
 
   useEffect(() => {
     setSale(null);
     setError(null);
     api<SaleDetail>(`/api/sales/${id}/`).then(setSale).catch((e) => setError(e.message));
-  }, [id]);
+  }, [id, version]);
 
   if (error) return <p className="error">{error}</p>;
   if (!sale) return <p className="muted">Cargando…</p>;
@@ -225,6 +243,9 @@ export function SaleDetailView({ id }: { id: number }) {
             ))}
           </ul>
         </>
+      )}
+      {canAct && (
+        <SaleActions key={`${sale.id}-${version}`} sale={sale} onDone={() => { setVersion((v) => v + 1); onChanged?.(); }} />
       )}
       {sale.needs_review && (
         <p className="muted small">

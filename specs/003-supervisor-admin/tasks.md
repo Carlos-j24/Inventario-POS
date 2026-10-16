@@ -8,7 +8,8 @@
   - El bloqueo vive en `require()`/`require_any()` y en el permiso por defecto (`IsAuthenticatedAndReady`); solo `me`, `password` y `logout` lo permiten (`AllowWhilePasswordChange`). Cambiar la contraseña mantiene la sesión y comparte el límite de intentos del login.
 - [x] **T3** Pantalla Ventas: buscar, listar y ver el detalle. (Historia 1)
   - Visible con `sales.void` o `reports.view` (la navegación ahora acepta varios permisos por pantalla). Probado en Chrome como sofia.super: lista de hoy, búsqueda "v4" de una venta de ayer y detalle con vendedor, cajero, pedido, IVA, pagos y devoluciones.
-- [ ] **T4** Anular y devolver desde el detalle (con elección de la caja abierta para el reembolso). Enlace desde la bandeja de revisión. (Historias 2, 3 y 4)
+- [x] **T4** Anular y devolver desde el detalle (con elección de la caja abierta para el reembolso). Enlace desde la bandeja de revisión. (Historias 2, 3 y 4)
+  - `components/SaleActions.tsx`: anular con motivo (o la razón por la que no se puede); devolver por línea sin pasar de lo que queda, con medio y caja abierta (por defecto la de la venta). En la bandeja, "Ver venta" despliega el mismo detalle. Probado en Chrome: V-000007 anulada y 1 martillo devuelto de la V-000008; el esperado del turno bajó de $258.500 a $196.000.
 - [ ] **T5** Pantalla Usuarios: lista, alta, roles, activar/desactivar y contraseña nueva. (Historia 5)
 - [ ] **T6** Roles y permisos en lenguaje claro (todos editables). "Cambiar mi contraseña" para todos y pantalla de cambio obligatorio. (Historias 6 y 7)
 - [ ] **T7** Prueba de punta a punta en el navegador: alta de un cajero nuevo que vende, y una devolución hecha por el supervisor que se refleja en el arqueo.

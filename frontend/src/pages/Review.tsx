@@ -1,7 +1,9 @@
 import { useEffect, useState } from "react";
 
 import { api } from "../api";
+import { useCan } from "../auth";
 import { formatMoney, formatQty, toCents } from "../money";
+import { SaleDetailView } from "./Sales";
 
 interface ReviewItem {
   id: number;
@@ -19,6 +21,8 @@ export default function Review() {
   const [items, setItems] = useState<ReviewItem[] | null>(null);
   const [notes, setNotes] = useState<Record<number, string>>({});
   const [error, setError] = useState<string | null>(null);
+  const [open, setOpen] = useState<number | null>(null);
+  const can = useCan();
 
   const load = () => api<ReviewItem[]>("/api/sales/review/").then(setItems).catch((e) => setError(e.message));
 
@@ -75,7 +79,15 @@ export default function Review() {
               aria-label={`Nota para ${s.number}`}
             />
             <button className="primary" onClick={() => markReviewed(s.id)}>Marcar revisada</button>
+            <button className="link" onClick={() => setOpen(open === s.id ? null : s.id)}>
+              {open === s.id ? "Ocultar venta" : "Ver venta"}
+            </button>
           </div>
+          {open === s.id && (
+            <div className="card nested">
+              <SaleDetailView id={s.id} canAct={can("sales.void")} onChanged={load} />
+            </div>
+          )}
         </article>
       ))}
     </section>
