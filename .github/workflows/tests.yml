@@ -49,3 +49,14 @@ jobs:
         run: npx vitest run
       - name: Build
         run: npx vite build
+
+  docker:
+    # Construye la imagen de producción y la prueba con PostgreSQL real (scripts/smoke-test.sh).
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prueba de humo con Docker y PostgreSQL
+        run: bash scripts/smoke-test.sh
+      - name: Apagar
+        if: always()
+        run: docker compose down -v

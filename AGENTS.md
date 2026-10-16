@@ -5,7 +5,8 @@ Inventario y punto de venta para ferreterías: entradas a bodega, ventas que des
 - Backend: Python 3.12+, Django + Django REST Framework, PostgreSQL en producción (SQLite en desarrollo y tests), en `backend/`.
 - `backend/apps/accounts` usuarios, roles y permisos · `apps/catalog` productos y unidades · `apps/inventory` bodegas, kardex y existencias · `apps/sales` ventas · `apps/cash` cajas, turnos y pagos.
 - Frontend: React + Vite + TypeScript en `frontend/`. `src/api.ts` cliente y tipos · `src/cart.ts` lógica del carrito y cobro (sin React) · `src/pages/` pantallas.
-- `docs/` arquitectura y constitución · `specs/NNN-nombre/` specs.
+- `docs/` arquitectura, constitución y despliegue · `specs/NNN-nombre/` specs.
+- Producción: `Dockerfile` multi-etapa (compila el frontend y lo sirve Django con WhiteNoise; gunicorn) + `docker-compose.yml` con PostgreSQL. Prueba de humo: `scripts/smoke-test.sh` (el CI la ejecuta).
 
 ## Comandos del backend (desde `backend/`)
 - Entorno: `python -m venv .venv` y `.venv\Scripts\pip install -r requirements-dev.txt`.
@@ -50,4 +51,5 @@ Inventario y punto de venta para ferreterías: entradas a bodega, ventas que des
 - ✅ Siempre: tests en verde antes de dar algo por hecho; actualizar `MEMORY.md`.
 - ✅ El CI (`.github/workflows/tests.yml`) corre en cada PR: no fusionar con el CI en rojo.
 - ⚠️ Pregunta antes: dependencias nuevas, cambios en el modelo de permisos o en el contrato de la API de sincronización.
-- 🚫 Nunca: guardar claves o tokens en el repo; borrar o editar movimientos de inventario existentes.
+- ⚠️ Toda variable de entorno nueva va en `.env.example` y en la tabla de `docs/despliegue.md`.
+- 🚫 Nunca: guardar claves o tokens en el repo (`.env` está ignorado); borrar o editar movimientos de inventario existentes.

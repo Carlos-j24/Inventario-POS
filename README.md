@@ -31,7 +31,16 @@ Abre http://localhost:5173. Vite reenvía `/api` a Django, así que el navegador
 
 Pantallas según los permisos del usuario: **Caja** (`cash.operate`), **Entradas** (`inventory.receive`) y **Existencias** (`inventory.view`).
 
+## Producción
+
+Docker con PostgreSQL y un solo contenedor que sirve la app y la API: ver [docs/despliegue.md](docs/despliegue.md).
+
+```bash
+cp .env.example .env
+docker compose up -d --build
+```
+
 ## Documentación
-- [Arquitectura](docs/arquitectura.md) · [Constitución](docs/constitution.md)
+- [Arquitectura](docs/arquitectura.md) · [Constitución](docs/constitution.md) · [Despliegue](docs/despliegue.md)
 - [Spec 001 — MVP](specs/001-mvp/spec.md) y sus [tareas](specs/001-mvp/tasks.md)
 - Reglas para agentes de IA: [AGENTS.md](AGENTS.md)
