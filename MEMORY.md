@@ -1,0 +1,21 @@
+# MEMORY.md — Inventario-POS
+Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aporte.
+
+## Estado actual
+- 2026-10-15: esqueleto del backend (spec 001, tareas T1 a T3). Usuarios, roles y permisos; catálogo con unidades y presentaciones; inventario con kardex, entradas por API y existencias. 21 tests en verde.
+- Falta: ventas, caja, frontend PWA y sincronización sin conexión (ver `specs/001-mvp/tasks.md`).
+
+## Decisiones (y por qué)
+- AGENTS.md es la fuente única de reglas; CLAUDE.md solo lo importa → mismas reglas para Claude Code y OpenCode.
+- Primer cliente: ferretería → unidades con conversión (rollo/metro) y venta fraccionada desde el MVP. Lotes y vencimientos quedan para cuando llegue una droguería.
+- Stock como libro de movimientos + saldo cacheado y bloqueado (`select_for_update`) → kardex auditable y sin carreras entre cajas.
+- Modo sin conexión: el POS genera UUID por documento y se sincroniza con reintentos idempotentes; puede dejar stock negativo (`needs_review`) antes que bloquear una venta.
+- Roles editables y permisos fijos por código → el admin crea roles nuevos sin tocar el código.
+
+## Aprendizajes y errores a evitar
+- Tests con pytest-django: `manage.py test` no los encuentra (DevForge Init lo propone por defecto al detectar Django).
+- Al meter fallos a propósito: quitar la consulta previa de `client_uuid` no rompe nada, porque la restricción única de la base de datos ya protege contra duplicados.
+
+## Próximos pasos
+- T4 en adelante de `specs/001-mvp/tasks.md`: ventas en el backend (venta + líneas + pagos en una transacción).
+- Elegir autenticación para la PWA (sesión con cookie o JWT) antes de empezar el frontend.
