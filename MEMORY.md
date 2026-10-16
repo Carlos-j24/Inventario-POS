@@ -32,11 +32,12 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - En el service worker: nunca guardar respuestas con error como copia sin red, y borrar los `/assets` viejos en cada versión nueva (si no, la caché crece sin límite).
 - En Windows, un `fetch` a un puerto local apagado tarda unos 8 s en fallar: por eso `api.ts` tiene un límite de 10 s y lo trata como sin conexión.
 - `gh pr merge --auto` sin checks obligatorios en la rama fusiona AL INSTANTE, aunque el CI siga corriendo (pasó con el PR #8, 2026-10-16). Desde entonces main exige los cuatro checks y el repo tiene `allow_auto_merge`. Con los PR #9 y #10 GitHub no disparó la fusión al quedar todo en verde (con el #11 sí): revisar y fusionar a mano si pasa.
+- Los tests de concurrencia (dos cajas a la vez) no corren en SQLite: el job `pytest-postgres` del CI corre la suite contra PostgreSQL.
 - Bases de desarrollo con ventas anteriores a la T5 no migran (las ventas exigen turno): borrar `db.sqlite3` y volver a migrar.
 
 ## Próximos pasos
 - Verificado (2026-10-16): Chrome de escritorio y Android (OPPO Reno13 F) abren sin conexión y se instalan con el ícono SVG. Cómo probar en un celular: docs/despliegue.md.
 - Este equipo no tiene Docker: el despliegue solo se ha probado en el CI. Primer despliegue real: servidor con dominio y HTTPS.
-- Spec 002 (pedidos vendedor → caja) escrita y con decisiones cerradas (2026-10-16): precio del pedido, vence al final del día, código de 4 dígitos, stock solo avisa. Aprobada; T1 (modelos y `Sale.salesperson`) hecha. Después, en orden de prioridad del equipo: pantallas de supervisor/admin, reportes, facturación DIAN.
+- Spec 002 (pedidos vendedor → caja) escrita y con decisiones cerradas (2026-10-16): precio del pedido, vence al final del día, código de 4 dígitos, stock solo avisa. Aprobada; T1–T3 hechas (modelos, servicios, cobro en caja). Después, en orden de prioridad del equipo: pantallas de supervisor/admin, reportes, facturación DIAN.
 - Pantallas que faltan en la PWA: devoluciones/anulaciones (supervisor) y administración de usuarios (hoy por el admin de Django).
 - Admin: etiquetas en español (`verbose_name`) y booleanos de solo lectura que muestran el texto de ayuda en vez de Sí/No.
