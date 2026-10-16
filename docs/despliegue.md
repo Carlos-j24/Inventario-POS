@@ -62,6 +62,13 @@ docker compose up -d --build
 
 Los navegadores reciben la versión nueva del frontend al recargar: `index.html` y `sw.js` no se guardan en caché por mucho tiempo, y los archivos de `/assets` llevan hash en el nombre.
 
+## Tareas programadas
+Vencer los pedidos que nadie cobró (spec 002). La app ya los trata como vencidos al día siguiente; esto deja el estado guardado al día para listados y reportes. Una vez al día, por ejemplo a las 00:05 con cron en el servidor:
+
+```bash
+docker compose exec -T app python manage.py expire_orders
+```
+
 ## Copias de seguridad
 La base de datos vive en el volumen `pgdata`. Copia diaria recomendada:
 
