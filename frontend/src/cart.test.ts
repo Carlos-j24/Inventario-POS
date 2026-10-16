@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Product } from "./api";
 import {
-  addToCart, cartTotalCents, checkPayments, findByCode, lineTotalCents, quantityError, searchProducts, unitPriceCents,
+  addToCart, cartTotalCents, linePriceCents, orderToCart, checkPayments, findByCode, lineTotalCents, quantityError, searchProducts, unitPriceCents,
   type CartLine,
 } from "./cart";
 
@@ -98,5 +98,32 @@ describe("addToCart", () => {
     lines = addToCart(lines, cable, "m");
     lines = addToCart(lines, cable, "rollo");
     expect(lines.map((l) => [l.unit, l.quantity])).toEqual([["m", 2], ["rollo", 1]]);
+  });
+});
+
+describe("líneas de un pedido (spec 002)", () => {
+  const order = {
+    id: 9, code: 4193, business_date: "2026-10-16", status: "PENDING" as const, salesperson: "andres",
+    total: "96000.00", created_at: "", sale_number: null,
+    lines: [
+      { id: 11, product: 1, sku: "CAB-12", name: "Cable", unit: "m", quantity: "12.500", unit_price: "3200.00", total: "40000.00" },
+      { id: 12, product: 2, sku: "MAR-16", name: "Martillo", unit: "und", quantity: "2.000", unit_price: "27000.00", total: "54000.00" },
+    ],
+  };
+
+  it("usa el precio acordado del pedido aunque el catálogo diga otro", () => {
+    const lines = orderToCart(order, [cable, hammer]);
+    expect(lines.map((l) => [l.unit, l.quantity, linePriceCents(l)])).toEqual([["m", 12.5, 320000], ["und", 2, 2700000]]);
+    expect(cartTotalCents(lines)).toBe(9400000); // 40.000 + 2 × 27.000, no 28.000 del catálogo
+  });
+
+  it("no deja cobrar más de lo pedido pero sí menos", () => {
+    const [, hammers] = orderToCart(order, [cable, hammer]);
+    expect(quantityError({ ...hammers, quantity: 3 })).toMatch(/Se pidieron 2/);
+    expect(quantityError({ ...hammers, quantity: 1 })).toBeNull();
+  });
+
+  it("avisa si un producto del pedido no está en el catálogo de la caja", () => {
+    expect(() => orderToCart(order, [cable])).toThrow(/MAR-16/);
   });
 });

@@ -1,6 +1,6 @@
 // Lógica del carrito del POS, sin React para poder probarla aparte.
 // El backend recalcula y es la fuente de verdad; esto es lo que ve el cajero mientras cobra.
-import type { PaymentMethod, Product } from "./api";
+import type { Order, PaymentMethod, Product } from "./api";
 import { toCents } from "./money";
 
 export interface CartLine {
@@ -8,6 +8,8 @@ export interface CartLine {
   product: Product;
   unit: string; // código de la unidad vendida (base o presentación)
   quantity: number;
+  /** Línea que viene de un pedido (spec 002): precio acordado y tope de lo pedido; la unidad no cambia. */
+  order?: { lineId: number; max: number; priceCents: number };
 }
 
 export function unitFactor(product: Product, unit: string): number {
@@ -22,8 +24,13 @@ export function unitPriceCents(product: Product, unit: string): number {
   return Math.round(toCents(product.sale_price) * unitFactor(product, unit));
 }
 
+/** Precio de la línea: el acordado en el pedido o, si no viene de uno, el del catálogo. */
+export function linePriceCents(line: CartLine): number {
+  return line.order ? line.order.priceCents : unitPriceCents(line.product, line.unit);
+}
+
 export function lineTotalCents(line: CartLine): number {
-  return Math.round(unitPriceCents(line.product, line.unit) * line.quantity);
+  return Math.round(linePriceCents(line) * line.quantity);
 }
 
 export function cartTotalCents(lines: CartLine[]): number {
@@ -33,6 +40,7 @@ export function cartTotalCents(lines: CartLine[]): number {
 /** Una cantidad es válida si es positiva y, si el producto no se fracciona, entera en unidad base. */
 export function quantityError(line: CartLine): string | null {
   if (!(line.quantity > 0)) return "La cantidad debe ser mayor que cero.";
+  if (line.order && line.quantity > line.order.max) return `Se pidieron ${line.order.max}: no se puede cobrar más.`;
   const base = line.quantity * unitFactor(line.product, line.unit);
   if (!line.product.allows_fractions && Math.abs(base - Math.round(base)) > 1e-9) {
     return `${line.product.name} no se vende fraccionado.`;
@@ -94,4 +102,22 @@ export function addToCart(lines: CartLine[], product: Product, unit = product.ba
   const same = lines.find((l) => l.product.id === product.id && l.unit === unit);
   if (same) return lines.map((l) => (l === same ? { ...l, quantity: l.quantity + 1 } : l));
   return [...lines, { key: crypto.randomUUID(), product, unit, quantity: 1 }];
+}
+
+/**
+ * Convierte un pedido en líneas de carrito con su precio acordado y su tope.
+ * Necesita el catálogo para saber si cada producto se fracciona y sus presentaciones.
+ */
+export function orderToCart(order: Order, products: Product[]): CartLine[] {
+  return order.lines.map((ol) => {
+    const product = products.find((p) => p.id === ol.product);
+    if (!product) throw new Error(`${ol.sku} no está en el catálogo de esta caja: actualiza la página.`);
+    return {
+      key: `order-${ol.id}`,
+      product,
+      unit: ol.unit,
+      quantity: Number(ol.quantity),
+      order: { lineId: ol.id, max: Number(ol.quantity), priceCents: toCents(ol.unit_price) },
+    };
+  });
 }

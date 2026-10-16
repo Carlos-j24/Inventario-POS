@@ -1,10 +1,11 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
-import { api, type PaymentMethod, type Product, type Register, type Sale, type Shift } from "../api";
+import { api, type Order, type PaymentMethod, type Product, type Register, type Sale, type Shift } from "../api";
 import { useAuth } from "../auth";
 import { fetchWithCache } from "../cache";
-import { addToCart, cartTotalCents, checkPayments, quantityError, unitPriceCents, type CartLine } from "../cart";
+import { addToCart, cartTotalCents, checkPayments, linePriceCents, orderToCart, quantityError, type CartLine } from "../cart";
 import CartTable from "../components/CartTable";
+import OrderLoader from "../components/OrderLoader";
 import ProductSearch from "../components/ProductSearch";
 import { centsToApi, formatMoney, toCents } from "../money";
 import { isUnreachable, toOfflineBody, type QueuedSale } from "../offline";
@@ -113,6 +114,7 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
   const [lastSale, setLastSale] = useState<Sale | null>(null);
   const [lastQueued, setLastQueued] = useState<QueuedSale | null>(null);
   const [catalogDate, setCatalogDate] = useState<string | null>(null);
+  const [order, setOrder] = useState<Order | null>(null); // pedido que se está cobrando (spec 002)
   const searchRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
   const { online, pending, enqueue } = useSync();
@@ -127,6 +129,24 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
   const total = cartTotalCents(lines);
   const lineErrors = lines.map(quantityError);
   const canCharge = lines.length > 0 && lineErrors.every((e) => e === null);
+
+  function loadOrder(o: Order) {
+    try {
+      setLines(orderToCart(o, products));
+      setOrder(o);
+      setNotice(null);
+      setLastSale(null);
+      setLastQueued(null);
+    } catch (err) {
+      setNotice((err as Error).message);
+    }
+  }
+
+  function dropOrder() {
+    setOrder(null);
+    setLines([]);
+    searchRef.current?.focus();
+  }
 
   function add(product: Product, unit: string) {
     setLines((ls) => addToCart(ls, product, unit));
@@ -159,7 +179,20 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
             ventas se guardan en este equipo y se envían al volver la red.
           </p>
         )}
-        <ProductSearch products={products} onPick={add} inputRef={searchRef} />
+        {order ? (
+          <div className="order-banner" role="status">
+            <span>
+              Cobrando el pedido <strong className="code-chip">{order.code}</strong> de {order.salesperson}. Puedes
+              bajar cantidades o quitar lo que el cliente no lleve.
+            </span>
+            <button className="link" onClick={dropOrder}>Quitar pedido</button>
+          </div>
+        ) : (
+          <>
+            <ProductSearch products={products} onPick={add} inputRef={searchRef} />
+            {lines.length === 0 && <OrderLoader onLoad={loadOrder} />}
+          </>
+        )}
         {notice && <p className="error">{notice}</p>}
         <CartTable lines={lines} onChange={setLines} emptyText="Escanea o busca un producto para empezar." />
       </section>
@@ -203,10 +236,12 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
           totalCents={total}
           username={user.username}
           queue={enqueue}
+          order={order}
           onCancel={() => setCheckout(false)}
           onPaid={(sale) => {
             setCheckout(false);
             setLines([]);
+            setOrder(null);
             setLastSale(sale);
             searchRef.current?.focus();
           }}
@@ -228,11 +263,13 @@ const METHODS: { method: PaymentMethod; label: string }[] = [
   { method: "TRANSFER", label: "Transferencia" },
 ];
 
-export function Checkout({ shiftId, lines, totalCents, username, queue, onCancel, onPaid, onQueued }: {
+export function Checkout({ shiftId, lines, totalCents, username, queue, order = null, onCancel, onPaid, onQueued }: {
   shiftId: number;
   lines: CartLine[];
   totalCents: number;
   username: string;
+  /** Si se cobra un pedido: va order + order_lines en vez de líneas sueltas, y sin red no va a la cola. */
+  order?: Order | null;
   /** Guarda la venta en la cola local cuando el servidor no responde. */
   queue: (item: QueuedSale) => Promise<void>;
   onCancel: () => void;
@@ -254,10 +291,13 @@ export function Checkout({ shiftId, lines, totalCents, username, queue, onCancel
     if (check.error) return;
     setBusy(true);
     setError(null);
+    const items = order
+      ? { order: order.id, order_lines: lines.map((l) => ({ order_line: l.order!.lineId, quantity: String(l.quantity) })) }
+      : { lines: lines.map((l) => ({ product: l.product.id, unit: l.unit, quantity: String(l.quantity) })) };
     const body = {
       client_uuid: clientUuid,
       shift: shiftId,
-      lines: lines.map((l) => ({ product: l.product.id, unit: l.unit, quantity: String(l.quantity) })),
+      ...items,
       payments: check.payments.map((p) => ({
         method: p.method,
         amount: centsToApi(p.amountCents),
@@ -271,6 +311,11 @@ export function Checkout({ shiftId, lines, totalCents, username, queue, onCancel
         setError((err as Error).message);
         return;
       }
+      if (order) {
+        // El pedido vive en el servidor: sin red no se puede marcar como cobrado.
+        setError("Sin conexión: los pedidos se cobran con red. Intenta de nuevo; el cobro no se duplica.");
+        return;
+      }
       // Sin servidor: la venta se guarda con el mismo client_uuid. Si el primer envío sí llegó,
       // el servidor la reconoce al sincronizar y no la duplica.
       const item: QueuedSale = {
@@ -278,7 +323,7 @@ export function Checkout({ shiftId, lines, totalCents, username, queue, onCancel
         username,
         createdAt: new Date().toISOString(),
         totalCents,
-        body: toOfflineBody(body, lines.map((l) => unitPriceCents(l.product, l.unit))),
+        body: toOfflineBody(body, lines.map(linePriceCents)),
         status: "pending",
       };
       try {

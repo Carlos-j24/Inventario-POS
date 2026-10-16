@@ -138,3 +138,6 @@ tr.negative td { background: var(--danger-bg); }
 .my-orders h3 { font-size: 1rem; margin: 0 0 8px; }
 .my-orders li { padding: 4px 0; }
 .code-chip { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; font-variant-numeric: tabular-nums; }
+.order-loader { margin: 8px 0 12px; }
+.order-loader input { width: 170px; font-size: 1.1rem; letter-spacing: 0.1em; }
+.order-banner { display: flex; justify-content: space-between; align-items: center; gap: 12px; background: var(--warn-bg); padding: 10px 12px; border-radius: 8px; margin-bottom: 8px; }

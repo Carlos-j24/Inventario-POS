@@ -13,5 +13,6 @@
   - Cobro: `POST /api/sales/` con `order` y, si no se cobra completo, `order_lines`. La venta devuelve `salesperson` y `order_code`.
 - [x] **T5** Pantalla "Pedidos" del vendedor: buscar, carrito, crear, código grande, mis pendientes y cancelar. (Historias 1 y 2)
   - Buscador y tabla del carrito extraídos a `components/` y compartidos con la caja. Probado en Chrome como andres.ventas (pedido 4193 creado, 7341 cancelado).
-- [ ] **T6** En Caja: campo "Código de pedido", lista de pendientes, carga del pedido en el carrito y cobro. (Historias 3 y 4)
+- [x] **T6** En Caja: campo "Código de pedido", lista de pendientes, carga del pedido en el carrito y cobro. (Historias 3 y 4)
+  - Las líneas del pedido llevan su precio acordado y su tope; la unidad no cambia. Sin red, un pedido no va a la cola. Probado en Chrome: el pedido 4193 de andres.ventas lo cobró laura.caja (V-000008, 1 de 2 martillos).
 - [ ] **T7** Mostrar vendedor y cajero en la venta (admin y API). Prueba de punta a punta en el navegador con dos usuarios. (Historia 5)

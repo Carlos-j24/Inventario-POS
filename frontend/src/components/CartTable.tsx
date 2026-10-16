@@ -1,4 +1,4 @@
-import { lineTotalCents, quantityError, unitPriceCents, type CartLine } from "../cart";
+import { linePriceCents, lineTotalCents, quantityError, type CartLine } from "../cart";
 import { formatMoney, formatQty } from "../money";
 
 /** Tabla editable del carrito (cantidad, unidad, quitar), compartida por la caja y los pedidos. */
@@ -31,16 +31,22 @@ export default function CartTable({ lines, onChange, emptyText }: {
                   onChange={(e) => update(l.key, { quantity: Number(e.target.value) })}
                   aria-label={`Cantidad de ${l.product.name}`}
                 />
+                {l.order && <div className="muted small">de {formatQty(l.order.max)} pedidos</div>}
               </td>
               <td>
-                <select value={l.unit} onChange={(e) => update(l.key, { unit: e.target.value })} aria-label={`Unidad de ${l.product.name}`}>
+                <select
+                  value={l.unit}
+                  onChange={(e) => update(l.key, { unit: e.target.value })}
+                  aria-label={`Unidad de ${l.product.name}`}
+                  disabled={!!l.order} // en un pedido la unidad es la pedida
+                >
                   <option value={l.product.base_unit}>{l.product.base_unit}</option>
                   {l.product.units.map((u) => (
                     <option key={u.unit} value={u.unit}>{u.unit} ({formatQty(u.factor)} {l.product.base_unit})</option>
                   ))}
                 </select>
               </td>
-              <td className="num">{formatMoney(unitPriceCents(l.product, l.unit))}</td>
+              <td className="num">{formatMoney(linePriceCents(l))}</td>
               <td className="num">{formatMoney(lineTotalCents(l))}</td>
               <td>
                 <button className="link" onClick={() => onChange(lines.filter((x) => x.key !== l.key))} aria-label={`Quitar ${l.product.name}`}>
