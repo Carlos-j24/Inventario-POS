@@ -1,8 +1,19 @@
 import pytest
 
 from apps.accounts.models import Permission, Role
+from apps.accounts.services import managers_left
 
 pytestmark = pytest.mark.django_db
+
+
+def test_managers_left_simulates_changes(make_user):
+    admin = make_user("admin", "Administrador")
+    make_user("laura", "Caja")
+    assert managers_left() == 1
+    assert managers_left(user=admin, active=False) == 0
+    assert managers_left(user=admin, roles=[Role.objects.get(name="Caja")]) == 0
+    admin_role = Role.objects.get(name="Administrador")
+    assert managers_left(role=admin_role, permissions=Permission.objects.exclude(code="users.manage")) == 0
 
 
 def test_default_roles_are_seeded():

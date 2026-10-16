@@ -10,7 +10,8 @@
   - Vender exige `cash.operate` (vender y cobrar es un solo paso). El rol Ventas necesitará un flujo de pedidos que caja cobre: tarea pendiente.
 - [x] **T6** Anulación y devolución con permiso `sales.void`. (Historia 7)
   - Anular = venta completa y solo con su turno abierto. Después del cierre se usa una devolución, que reembolsa desde el turno abierto actual.
-- [ ] **T7** Autenticación para la PWA y API de usuarios y roles para el administrador. (Historia 1)
+- [x] **T7** Autenticación para la PWA y API de usuarios y roles para el administrador. (Historia 1)
+  - Sesión de Django en cookie HttpOnly + CSRF (sin dependencias nuevas). La PWA y la API deben servirse desde el mismo dominio.
 - [ ] **T8** Frontend PWA: inicio de sesión, POS, entradas a bodega, existencias. (Historias 3, 4 y 8)
 - [ ] **T9** Modo sin conexión: catálogo en IndexedDB, cola de ventas, sincronización y bandeja `needs_review`. (Historia 5)
 - [ ] **T10** CI con GitHub Actions (pytest) y despliegue con Docker + PostgreSQL.

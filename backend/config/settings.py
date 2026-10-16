@@ -88,7 +88,17 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    "DEFAULT_THROTTLE_RATES": {
+        "login": os.environ.get("LOGIN_RATE", "5/min"),
+    },
 }
+
+# Sesión en cookie HttpOnly: la PWA y la API se sirven desde el mismo dominio.
+# Dura un turno largo; sin conexión la caja sigue vendiendo y, al volver, se inicia sesión de nuevo.
+SESSION_COOKIE_AGE = int(os.environ.get("SESSION_COOKIE_AGE", 12 * 60 * 60))
+SESSION_COOKIE_SAMESITE = "Lax"
+CSRF_COOKIE_SAMESITE = "Lax"
+SESSION_COOKIE_SECURE = CSRF_COOKIE_SECURE = not DEBUG
 
 LANGUAGE_CODE = "es-co"
 TIME_ZONE = "America/Bogota"

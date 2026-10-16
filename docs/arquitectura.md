@@ -35,6 +35,10 @@
 5. Sin conexión **no** se permiten anulaciones, ajustes ni cambios de precio: necesitan el servidor.
 6. Numeración: cada caja tiene su propio prefijo y consecutivo local, para no chocar con las demás.
 
+## Autenticación
+- Sesión de Django en cookie `HttpOnly` (12 h, configurable con `SESSION_COOKIE_AGE`) + token CSRF. Se eligió frente a JWT porque no añade dependencias y JavaScript no puede leer la cookie (menos riesgo ante XSS).
+- Flujo de la PWA: `GET /api/auth/csrf/` → `POST /api/auth/login/` (con cabecera `X-CSRFToken`) → `GET /api/auth/me/` con roles y permisos para mostrar u ocultar opciones. El login admite 5 intentos por minuto (`LOGIN_RATE`).
+- La PWA y la API se sirven desde el **mismo dominio**. Sin conexión no hay llamadas; al volver, si la sesión venció, el cajero inicia sesión de nuevo y la cola se reenvía sin duplicados.
+
 ## Pendiente de decidir
-- Autenticación de la PWA (sesión con cookie o JWT con renovación) y cuánto tiempo puede trabajar una caja sin volver a iniciar sesión.
 - Facturación electrónica DIAN: a través de un proveedor tecnológico autorizado. Una venta sin conexión se emite al sincronizar (o con contingencia).
