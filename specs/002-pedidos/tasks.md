@@ -1,8 +1,9 @@
 # Tareas — Spec 002
 
-> Decisiones cerradas (ver spec.md). Se programan cuando se apruebe el PR de la spec.
+> Spec aprobada por el equipo (PR #13, 2026-10-16). Decisiones en spec.md.
 
-- [ ] **T1** Modelo `Order` + `OrderLine` (estado, código diario, vendedor, vencimiento) y `Sale.salesperson`. Migraciones. (Historias 1 y 5)
+- [x] **T1** Modelo `Order` + `OrderLine` (estado, código diario, vendedor, vencimiento) y `Sale.salesperson`. Migraciones. (Historias 1 y 5)
+  - El código es único por día y de 4 dígitos (restricciones en la base de datos). Un pedido pagado tiene su venta y viceversa. La fecha de negocio es la de Bogotá. Las ventas anteriores quedan con el cajero como vendedor.
 - [ ] **T2** Servicios: crear, cancelar y vencer pedidos, y generar el código sin choques entre pedidos del mismo día. (Historias 1 y 2)
 - [ ] **T3** Cobro de pedido: `create_sale` acepta un pedido; las líneas cobradas son un subconjunto del pedido; se cobra una sola vez, con bloqueo. (Historia 3)
 - [ ] **T4** API: crear, listar, cancelar, buscar por código y cobrar. Permisos `sales.create`, `cash.operate` y `sales.void`. (Historias 1 a 4)

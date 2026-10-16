@@ -71,7 +71,8 @@ def _create(user, shift, lines, payments, client_uuid, offline, occurred_at):
             raise ValidationError("El turno está cerrado: abre un turno nuevo para vender.")
         warehouse = shift.register.warehouse
         sale = Sale.objects.create(
-            client_uuid=client_uuid, shift=shift, warehouse=warehouse, seller=user, offline=offline,
+            client_uuid=client_uuid, shift=shift, warehouse=warehouse, seller=user, salesperson=user,
+            offline=offline,
             subtotal=0, tax=0, total=0, occurred_at=occurred_at,
         )
         review = late
