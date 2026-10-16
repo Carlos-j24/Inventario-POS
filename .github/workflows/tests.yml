@@ -29,6 +29,41 @@ jobs:
       - name: Tests
         run: python -m pytest
 
+  pytest-postgres:
+    # La misma suite contra PostgreSQL, la base de producción: bloqueos (select_for_update),
+    # restricciones y el test de dos cajas cobrando el mismo pedido a la vez, que SQLite no puede correr.
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: inventario
+          POSTGRES_USER: inventario
+          POSTGRES_PASSWORD: solo-para-ci
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U inventario" --health-interval 5s --health-timeout 5s --health-retries 10
+    env:
+      DB_ENGINE: postgres
+      DB_NAME: inventario
+      DB_USER: inventario
+      DB_PASSWORD: solo-para-ci
+      DB_HOST: localhost
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: backend/requirements*.txt
+      - name: Instalar dependencias
+        run: pip install -r requirements-dev.txt
+      - name: Tests con PostgreSQL
+        run: python -m pytest -rs
+
   frontend:
     runs-on: ubuntu-latest
     defaults:
