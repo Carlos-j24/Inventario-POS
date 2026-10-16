@@ -3,9 +3,9 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 
 ## Estado actual
 - 2026-10-15: esqueleto del backend (spec 001, tareas T1 a T3). Usuarios, roles y permisos; catálogo con unidades y presentaciones; inventario con kardex, entradas por API y existencias. 21 tests en verde.
-- 2026-10-15: T4 ventas (rama `feat/t4-ventas`): venta + líneas + salida de stock en una transacción, IVA incluido separado por línea, idempotente. 36 tests en verde.
+- 2026-10-15: T4 ventas: venta + líneas + salida de stock en una transacción, IVA incluido separado por línea, idempotente. 36 tests en verde.
+- 2026-10-15: repositorio público Carlos-j24/Inventario-POS. CI (GitHub Actions) con pytest en Python 3.12 y 3.14 en cada PR: no fusionar con el CI en rojo.
 - Falta: caja, anulaciones, autenticación, frontend PWA y sincronización sin conexión (ver `specs/001-mvp/tasks.md`).
-- Sin remoto en GitHub todavía: decidir con el equipo si el repositorio será público o privado.
 
 ## Decisiones (y por qué)
 - AGENTS.md es la fuente única de reglas; CLAUDE.md solo lo importa → mismas reglas para Claude Code y OpenCode.

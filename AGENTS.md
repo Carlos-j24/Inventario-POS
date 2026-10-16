@@ -36,5 +36,6 @@ Inventario y punto de venta para ferreterías: entradas a bodega, ventas que des
 
 ## Límites
 - ✅ Siempre: tests en verde antes de dar algo por hecho; actualizar `MEMORY.md`.
+- ✅ El CI (`.github/workflows/tests.yml`) corre en cada PR: no fusionar con el CI en rojo.
 - ⚠️ Pregunta antes: dependencias nuevas, cambios en el modelo de permisos o en el contrato de la API de sincronización.
 - 🚫 Nunca: guardar claves o tokens en el repo; borrar o editar movimientos de inventario existentes.

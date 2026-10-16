@@ -11,3 +11,4 @@
 - [ ] **T8** Frontend PWA: inicio de sesión, POS, entradas a bodega, existencias. (Historias 3, 4 y 8)
 - [ ] **T9** Modo sin conexión: catálogo en IndexedDB, cola de ventas, sincronización y bandeja `needs_review`. (Historia 5)
 - [ ] **T10** CI con GitHub Actions (pytest) y despliegue con Docker + PostgreSQL.
+  - [x] CI: `.github/workflows/tests.yml` corre migraciones y pytest en Python 3.12 y 3.14 en cada PR.
