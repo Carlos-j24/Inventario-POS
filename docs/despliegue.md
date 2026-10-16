@@ -93,3 +93,20 @@ gunzip -c respaldo-AAAA-MM-DD.sql.gz | docker compose exec -T db psql -U inventa
 | `GUNICORN_WORKERS` | Procesos de gunicorn | `3` |
 | `SESSION_COOKIE_AGE` | Duración de la sesión en segundos | `43200` (12 h) |
 | `LOGIN_RATE` | Intentos de inicio de sesión | `5/min` |
+
+## Probar en un celular (desarrollo)
+El modo sin conexión y la instalación exigen HTTPS (o `localhost`). En producción lo da el dominio con HTTPS; para probar contra el equipo de desarrollo:
+
+**Por Wi-Fi** (probado con un OPPO Reno13 F, 2026-10-16):
+1. El celular y el computador en la misma red. Averigua la IP del computador (`ipconfig`).
+2. Arranca Django abierto a la red, **solo durante la prueba**:
+   ```powershell
+   $env:DJANGO_ALLOWED_HOSTS = "<IP>"; $env:CSRF_TRUSTED_ORIGINS = "http://<IP>:8000"
+   .venv\Scripts\python manage.py runserver 0.0.0.0:8000
+   ```
+   Windows puede pedir permiso en el firewall para Python.
+3. En Chrome del celular: `chrome://flags` → "Insecure origins treated as secure" → `http://<IP>:8000` → Enabled → Relaunch.
+4. Abre `http://<IP>:8000`, instala la app y prueba en modo avión.
+5. Al terminar, vuelve a arrancar Django solo en `localhost` y desactiva la opción de Chrome.
+
+**Por cable USB** (reenvío de puertos de `chrome://inspect`): el celular ve la app como `localhost` y no hace falta la opción de Chrome. Requiere depuración USB, y no todos los celulares aparecen en `chrome://inspect` (con el OPPO no funcionó).
