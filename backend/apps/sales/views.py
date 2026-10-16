@@ -8,9 +8,10 @@ from rest_framework.views import APIView
 from apps.accounts.drf import require
 
 from .models import Sale
-from .returns import create_return, void_sale
+from .returns import create_return, mark_reviewed, void_sale
 from .serializers import (
-    ReturnInputSerializer, SaleInputSerializer, SaleReturnSerializer, SaleSerializer, VoidSerializer,
+    ReturnInputSerializer, ReviewItemSerializer, ReviewSerializer, SaleInputSerializer, SaleReturnSerializer,
+    SaleSerializer, VoidSerializer,
 )
 from .services import create_sale
 
@@ -70,6 +71,35 @@ class SaleReturnView(APIView):
             SaleReturnSerializer(sale_return).data,
             status=status.HTTP_201_CREATED if created else status.HTTP_200_OK,
         )
+
+
+class ReviewListView(generics.ListAPIView):
+    """Bandeja de ventas marcadas para revisión que nadie ha atendido todavía."""
+
+    permission_classes = [require("reports.view")]
+    serializer_class = ReviewItemSerializer
+    pagination_class = None
+
+    def get_queryset(self):
+        return (
+            Sale.objects.filter(needs_review=True, reviewed_at__isnull=True)
+            .select_related("warehouse", "seller", "shift")
+            .prefetch_related("lines__product", "lines__unit", "lines__movement", "payments")
+            .order_by("created_at")
+        )
+
+
+class ReviewView(APIView):
+    permission_classes = [require("reports.view")]
+
+    def post(self, request, pk):
+        data = ReviewSerializer(data=request.data)
+        data.is_valid(raise_exception=True)
+        try:
+            sale = mark_reviewed(sale=get_object_or_404(Sale, pk=pk), user=request.user, **data.validated_data)
+        except DjangoValidationError as exc:
+            raise ValidationError(exc.messages)
+        return Response(SaleSerializer(sale).data)
 
 
 class SaleDetailView(generics.RetrieveAPIView):

@@ -1,10 +1,14 @@
 from django.urls import path
 
-from .views import SaleCreateView, SaleDetailView, SaleReturnView, SaleVoidView
+from .views import (
+    ReviewListView, ReviewView, SaleCreateView, SaleDetailView, SaleReturnView, SaleVoidView,
+)
 
 urlpatterns = [
     path("", SaleCreateView.as_view(), name="sale-create"),
+    path("review/", ReviewListView.as_view(), name="sale-review-list"),
     path("<int:pk>/", SaleDetailView.as_view(), name="sale-detail"),
     path("<int:pk>/void/", SaleVoidView.as_view(), name="sale-void"),
     path("<int:pk>/returns/", SaleReturnView.as_view(), name="sale-return"),
+    path("<int:pk>/review/", ReviewView.as_view(), name="sale-review"),
 ]

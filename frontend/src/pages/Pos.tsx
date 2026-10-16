@@ -1,11 +1,15 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
 
 import { api, type PaymentMethod, type Product, type Register, type Sale, type Shift } from "../api";
+import { useAuth } from "../auth";
+import { fetchWithCache } from "../cache";
 import {
   cartTotalCents, checkPayments, findByCode, lineTotalCents, quantityError, searchProducts, unitPriceCents,
   type CartLine,
 } from "../cart";
 import { centsToApi, formatMoney, formatQty, toCents } from "../money";
+import { isUnreachable, toOfflineBody, type QueuedSale } from "../offline";
+import { useSync } from "../sync";
 
 const REGISTER_KEY = "pos.register";
 
@@ -33,8 +37,8 @@ export default function Pos() {
   const [error, setError] = useState<string | null>(null);
 
   const reload = () =>
-    api<Register[]>("/api/cash/registers/")
-      .then(setRegisters)
+    fetchWithCache<Register[]>("/api/cash/registers/")
+      .then((r) => setRegisters(r.data))
       .catch((e) => setError(e.message));
 
   useEffect(() => {
@@ -109,10 +113,16 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
   const [checkout, setCheckout] = useState(false);
   const [closing, setClosing] = useState(false);
   const [lastSale, setLastSale] = useState<Sale | null>(null);
+  const [lastQueued, setLastQueued] = useState<QueuedSale | null>(null);
+  const [catalogDate, setCatalogDate] = useState<string | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
+  const { user } = useAuth();
+  const { online, pending, enqueue } = useSync();
 
   useEffect(() => {
-    api<Product[]>("/api/catalog/products/").then(setProducts).catch((e) => setNotice(e.message));
+    fetchWithCache<Product[]>("/api/catalog/products/")
+      .then((r) => { setProducts(r.data); setCatalogDate(r.staleSince); })
+      .catch((e) => setNotice(e.message));
   }, []);
 
   const results = useMemo(() => searchProducts(products, query), [products, query]);
@@ -129,6 +139,7 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
     setQuery("");
     setNotice(null);
     setLastSale(null);
+    setLastQueued(null);
     searchRef.current?.focus();
   }
 
@@ -147,13 +158,28 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
 
   if (closing) return <CloseShift shiftId={shiftId} onCancel={() => setClosing(false)} onClosed={onShiftClosed} />;
 
+  // Cerrar exige el servidor y todas las ventas enviadas: si no, el arqueo quedaría incompleto.
+  const closeBlocked = !online
+    ? "Sin conexión: el turno se cierra cuando vuelva la red."
+    : pending.length
+      ? "Hay ventas sin enviar: espera a que se sincronicen."
+      : null;
+
   return (
     <div className="pos">
       <section className="card">
         <div className="row spread">
           <h2>{register.name}</h2>
-          <button onClick={() => setClosing(true)}>Cerrar turno</button>
+          <button onClick={() => setClosing(true)} disabled={!!closeBlocked} title={closeBlocked ?? undefined}>
+            Cerrar turno
+          </button>
         </div>
+        {catalogDate && (
+          <p className="warn-note">
+            Sin conexión: precios de la copia del {new Date(catalogDate).toLocaleString("es-CO")}. Las ventas se
+            guardan en este equipo y se envían al volver la red.
+          </p>
+        )}
         <form onSubmit={onSearchSubmit}>
           <input
             ref={searchRef}
@@ -238,18 +264,40 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
             ))}
           </div>
         )}
+        {lastQueued && (
+          pending.some((p) => p.client_uuid === lastQueued.client_uuid) ? (
+            <div className="done queued" role="status">
+              <strong>Venta guardada sin conexión</strong>
+              <span>Total {formatMoney(lastQueued.totalCents)}</span>
+              <span className="muted small">Se enviará sola al volver la red.</span>
+            </div>
+          ) : (
+            <div className="done" role="status">
+              <strong>Venta sin conexión enviada</strong>
+              <span>Total {formatMoney(lastQueued.totalCents)}</span>
+            </div>
+          )
+        )}
       </aside>
 
-      {checkout && (
+      {checkout && user && (
         <Checkout
           shiftId={shiftId}
           lines={lines}
           totalCents={total}
+          username={user.username}
+          queue={enqueue}
           onCancel={() => setCheckout(false)}
           onPaid={(sale) => {
             setCheckout(false);
             setLines([]);
             setLastSale(sale);
+            searchRef.current?.focus();
+          }}
+          onQueued={(item) => {
+            setCheckout(false);
+            setLines([]);
+            setLastQueued(item);
             searchRef.current?.focus();
           }}
         />
@@ -264,12 +312,16 @@ const METHODS: { method: PaymentMethod; label: string }[] = [
   { method: "TRANSFER", label: "Transferencia" },
 ];
 
-export function Checkout({ shiftId, lines, totalCents, onCancel, onPaid }: {
+export function Checkout({ shiftId, lines, totalCents, username, queue, onCancel, onPaid, onQueued }: {
   shiftId: number;
   lines: CartLine[];
   totalCents: number;
+  username: string;
+  /** Guarda la venta en la cola local cuando el servidor no responde. */
+  queue: (item: QueuedSale) => Promise<void>;
   onCancel: () => void;
   onPaid: (sale: Sale) => void;
+  onQueued: (item: QueuedSale) => void;
 }) {
   const [amounts, setAmounts] = useState<Record<PaymentMethod, string>>({ CASH: "", CARD: "", TRANSFER: "" });
   const [refs, setRefs] = useState<Record<PaymentMethod, string>>({ CASH: "", CARD: "", TRANSFER: "" });
@@ -286,23 +338,39 @@ export function Checkout({ shiftId, lines, totalCents, onCancel, onPaid }: {
     if (check.error) return;
     setBusy(true);
     setError(null);
+    const body = {
+      client_uuid: clientUuid,
+      shift: shiftId,
+      lines: lines.map((l) => ({ product: l.product.id, unit: l.unit, quantity: String(l.quantity) })),
+      payments: check.payments.map((p) => ({
+        method: p.method,
+        amount: centsToApi(p.amountCents),
+        reference: refs[p.method],
+      })),
+    };
     try {
-      const sale = await api<Sale>("/api/sales/", {
-        method: "POST",
-        body: {
-          client_uuid: clientUuid,
-          shift: shiftId,
-          lines: lines.map((l) => ({ product: l.product.id, unit: l.unit, quantity: String(l.quantity) })),
-          payments: check.payments.map((p) => ({
-            method: p.method,
-            amount: centsToApi(p.amountCents),
-            reference: refs[p.method],
-          })),
-        },
-      });
-      onPaid(sale);
+      onPaid(await api<Sale>("/api/sales/", { method: "POST", body }));
     } catch (err) {
-      setError((err as Error).message);
+      if (!isUnreachable(err)) {
+        setError((err as Error).message);
+        return;
+      }
+      // Sin servidor: la venta se guarda con el mismo client_uuid. Si el primer envío sí llegó,
+      // el servidor la reconoce al sincronizar y no la duplica.
+      const item: QueuedSale = {
+        client_uuid: clientUuid,
+        username,
+        createdAt: new Date().toISOString(),
+        totalCents,
+        body: toOfflineBody(body, lines.map((l) => unitPriceCents(l.product, l.unit))),
+        status: "pending",
+      };
+      try {
+        await queue(item);
+        onQueued(item);
+      } catch {
+        setError("Sin conexión y no se pudo guardar la venta en este equipo. No entregues la mercancía.");
+      }
     } finally {
       setBusy(false);
     }

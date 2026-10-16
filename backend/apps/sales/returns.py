@@ -3,6 +3,7 @@
 - Anular: deshace la venta completa. Solo mientras su turno siga abierto, porque el arqueo
   de un turno cerrado ya no puede cambiar.
 - Devolver: total o parcial, en cualquier momento; el dinero sale del turno abierto.
+- Revisar: dejar constancia de quién atendió una venta marcada (needs_review).
 """
 from decimal import Decimal
 
@@ -121,3 +122,18 @@ def _create_return(sale, user, shift, lines, refund_method, reason, client_uuid)
             reference=f"Devolución {sale_return.number} de {sale.number}"
         )
     return sale_return
+
+
+def mark_reviewed(*, sale, user, note=""):
+    """Marca como atendida una venta que quedó para revisión. La marca needs_review se conserva."""
+    with transaction.atomic():
+        sale = Sale.objects.select_for_update().get(pk=sale.pk)
+        if not sale.needs_review:
+            raise ValidationError(f"La venta {sale.number} no está marcada para revisión.")
+        if sale.reviewed_at:
+            raise ValidationError(f"La venta {sale.number} ya fue revisada.")
+        sale.reviewed_by = user
+        sale.reviewed_at = timezone.now()
+        sale.review_note = note
+        sale.save(update_fields=["reviewed_by", "reviewed_at", "review_note"])
+    return sale
