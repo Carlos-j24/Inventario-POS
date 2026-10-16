@@ -3,9 +3,10 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 
 ## Estado actual
 - Spec 001, T1–T7 (2026-10-15/16): backend completo. Roles y permisos, catálogo con presentaciones, kardex, ventas con IVA incluido, caja con pago mixto y arqueo, anulaciones y devoluciones, sesión en cookie y API de usuarios. 92 tests de pytest.
-- T8 (2026-10-16): frontend React + Vite + TS con Caja, Entradas y Existencias, probado de punta a punta en el navegador. 14 tests de Vitest.
+- T8 (2026-10-16): frontend React + Vite + TS con Caja, Entradas y Existencias, probado de punta a punta en el navegador.
+- T9 (2026-10-16): modo sin conexión (cola de ventas en IndexedDB, sincronización idempotente), service worker y manifest, y bandeja de revisión. Probado apagando los servidores: la venta quedó en cola y llegó una sola vez. 97 tests de pytest y 25 de Vitest.
 - Repositorio público Carlos-j24/Inventario-POS. El CI corre pytest (3.12 y 3.14) y el frontend (tipos, Vitest, build) en cada PR.
-- Falta: T9 (PWA instalable y sin conexión) y T10 (despliegue con Docker + PostgreSQL).
+- Falta: T10 (despliegue con Docker + PostgreSQL, Django sirviendo el build en el mismo dominio).
 
 ## Decisiones (y por qué)
 - AGENTS.md es la fuente única de reglas; CLAUDE.md solo lo importa → mismas reglas para Claude Code y OpenCode.
@@ -24,9 +25,12 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - Un test de redondeo con precios "redondos" (3.200) no prueba nada: el centavo perdido solo aparece con precios con centavos (3.199,99).
 - El servidor de Vite (5173) es otro origen para Django: sin `CSRF_TRUSTED_ORIGINS` el login falla con 403 "Origin checking failed". Solo pasa en desarrollo.
 - Vitest sin `globals`: Testing Library no limpia el DOM entre tests; hace falta `afterEach(cleanup)` en `test-setup.ts`.
+- El panel del navegador de Claude (Electron) no registra service workers ("unknown error when fetching the script"): el SW se prueba en Chrome o Edge.
+- En Windows, un `fetch` a un puerto local apagado tarda unos 8 s en fallar: por eso `api.ts` tiene un límite de 10 s y lo trata como sin conexión.
 - Bases de desarrollo con ventas anteriores a la T5 no migran (las ventas exigen turno): borrar `db.sqlite3` y volver a migrar.
 
 ## Próximos pasos
-- T9: PWA instalable (manifest y service worker), catálogo en IndexedDB y cola de ventas sin conexión, más la bandeja de `needs_review`.
+- Verificar en Chrome o Edge que la app se instala y abre sin red (service worker). El manifest solo trae un ícono SVG: si algún navegador pide PNG de 192 y 512 px, añadirlos.
+- T10: Docker + PostgreSQL, y que Django (o nginx) sirva el build de `frontend/dist` en el mismo dominio que `/api`.
 - Pantallas que faltan en la PWA: devoluciones/anulaciones (supervisor) y administración de usuarios (hoy por el admin de Django).
 - Admin: etiquetas en español (`verbose_name`) y booleanos de solo lectura que muestran el texto de ayuda en vez de Sí/No.

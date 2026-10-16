@@ -31,6 +31,12 @@ class Sale(models.Model):
     )
     voided_at = models.DateTimeField(null=True, blank=True)
     void_reason = models.CharField(max_length=200, blank=True)
+    # Revisión de ventas marcadas (needs_review): la marca se conserva, esto dice quién la atendió.
+    reviewed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+", null=True, blank=True
+    )
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+    review_note = models.CharField(max_length=200, blank=True)
 
     class Meta:
         ordering = ["-created_at"]

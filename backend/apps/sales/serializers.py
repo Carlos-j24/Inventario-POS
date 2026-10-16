@@ -69,6 +69,29 @@ class SaleSerializer(serializers.ModelSerializer):
         ]
 
 
+class ReviewItemSerializer(SaleSerializer):
+    """Venta pendiente de revisión, con las razones a la vista para quien la atiende."""
+
+    reasons = serializers.SerializerMethodField()
+
+    class Meta(SaleSerializer.Meta):
+        fields = SaleSerializer.Meta.fields + ["reasons"]
+
+    def get_reasons(self, obj):
+        reasons = []
+        if any(line.unit_price != line.catalog_price for line in obj.lines.all()):
+            reasons.append("Precio distinto al del catálogo")
+        if any(line.movement.balance_after < 0 for line in obj.lines.all()):
+            reasons.append("Dejó stock negativo")
+        if obj.shift.closed_at and obj.created_at > obj.shift.closed_at:
+            reasons.append("Llegó con el turno cerrado")
+        return reasons
+
+
+class ReviewSerializer(serializers.Serializer):
+    note = serializers.CharField(max_length=200, required=False, allow_blank=True)
+
+
 class VoidSerializer(serializers.Serializer):
     reason = serializers.CharField(max_length=200)
 

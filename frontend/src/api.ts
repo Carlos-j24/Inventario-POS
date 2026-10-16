@@ -29,6 +29,9 @@ export function errorMessage(body: unknown): string {
   return String(body);
 }
 
+/** Una red lenta no debe dejar la caja colgada: pasado este tiempo se trata como "sin conexión". */
+export const TIMEOUT_MS = 10_000;
+
 export async function api<T>(path: string, options: { method?: string; body?: unknown } = {}): Promise<T> {
   const method = options.method ?? "GET";
   const headers: Record<string, string> = { Accept: "application/json" };
@@ -40,6 +43,7 @@ export async function api<T>(path: string, options: { method?: string; body?: un
     headers,
     credentials: "same-origin",
     body: options.body === undefined ? undefined : JSON.stringify(options.body),
+    signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (res.status === 204) return undefined as T;
   const data = await res.json().catch(() => null);

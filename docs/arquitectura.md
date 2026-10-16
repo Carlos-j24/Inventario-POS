@@ -27,13 +27,16 @@
 - `Role`: conjunto editable de permisos. Por defecto: Administrador, Supervisor, Jefe de bodega, Auxiliar de bodega, Ventas, Caja.
 - `User.roles`: un usuario puede tener varios roles y sus permisos se suman.
 
-## Modo sin conexión
-1. Al abrir el turno, el POS descarga el catálogo, los precios y el stock aproximado a IndexedDB.
-2. Cada venta se crea en el navegador con un UUID y se guarda en una cola local.
-3. Un proceso en segundo plano envía la cola cuando hay red. El servidor aplica cada documento una sola vez (`client_uuid` único): reenviar es seguro.
-4. Las ventas sincronizadas usan `allow_negative=True`. Si el stock queda negativo, el movimiento se marca `needs_review` y aparece en la bandeja del jefe de bodega.
-5. Sin conexión **no** se permiten anulaciones, ajustes ni cambios de precio: necesitan el servidor.
-6. Numeración: cada caja tiene su propio prefijo y consecutivo local, para no chocar con las demás.
+## Modo sin conexión (T9)
+1. **La app abre sin red.** Un service worker propio (`frontend/public/sw.js`, sin Workbox) guarda el HTML, JS y CSS al instalarse. La navegación va primero a la red (para recibir versiones nuevas) y, si no hay, usa la copia. `/api`, `/admin` y `/static` nunca pasan por la caché.
+2. **Datos con copia local.** Catálogo, cajas y usuario se guardan en IndexedDB (`frontend/src/idb.ts`, almacén `kv`) cada vez que llegan del servidor (`cache.ts`). Sin red se usa la última copia y la caja avisa de qué fecha son los precios.
+3. **Cola de ventas.** Al cobrar se intenta enviar la venta. Si el servidor no responde (sin red, 502/503/504 o más de 10 s), la venta se guarda en el almacén `outbox` con el **mismo `client_uuid`**, `offline=true` y el precio cobrado en cada línea. Si el primer envío sí llegó, el servidor la reconoce al sincronizar y no la duplica.
+4. **Sincronización** (`offline.ts`, `sync.tsx`): al abrir la app, al volver la red, cada 30 s y con "Enviar ahora". Va en orden de creación y solo con las ventas **del usuario con sesión**, para que cada venta quede a nombre de quien la hizo. Se detiene sin red o con la sesión vencida (403). Una venta rechazada (400) queda marcada como "rechazada" y no se reintenta sola.
+5. **En el servidor**, una venta sin conexión acepta stock negativo, respeta el precio cobrado y se acepta aunque su turno ya haya cerrado. En esos casos queda `needs_review` y aparece en la **bandeja de revisión** (`/api/sales/review/`, pantalla "Revisión", permiso `reports.view`). Quien la atiende la marca revisada con una nota; la marca `needs_review` se conserva para la historia.
+6. **Sin conexión no se puede** abrir ni cerrar turno, anular, devolver ni registrar entradas: necesitan el servidor. Cerrar turno también exige que no haya ventas por enviar, para que el arqueo esté completo.
+7. **Sesión:** la app guarda el usuario en IndexedDB y, sin red, abre con esa copia. Al salir se borra.
+
+**Pendiente:** numeración legal por caja (prefijo y consecutivo local) cuando llegue la facturación electrónica. Hoy el número `V-000123` lo asigna el servidor al sincronizar.
 
 ## Autenticación
 - Sesión de Django en cookie `HttpOnly` (12 h, configurable con `SESSION_COOKIE_AGE`) + token CSRF. Se eligió frente a JWT porque no añade dependencias y JavaScript no puede leer la cookie (menos riesgo ante XSS).

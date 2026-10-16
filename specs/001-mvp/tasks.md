@@ -15,6 +15,8 @@
 - [x] **T8** Frontend PWA: inicio de sesión, POS, entradas a bodega, existencias. (Historias 3, 4 y 8)
   - React + Vite + TypeScript, sin librerías de UI ni router. Caja: elegir caja, abrir turno, vender (lector o búsqueda), pago mixto y cierre con arqueo a ciegas.
   - Lo "PWA" (instalable, service worker, sin conexión) queda para la T9.
-- [ ] **T9** Modo sin conexión: catálogo en IndexedDB, cola de ventas, sincronización y bandeja `needs_review`. (Historia 5)
+- [x] **T9** Modo sin conexión: catálogo en IndexedDB, cola de ventas, sincronización y bandeja `needs_review`. (Historia 5)
+  - Service worker y manifest escritos a mano (sin dependencias). Ver "Modo sin conexión" en docs/arquitectura.md.
+  - No verificado en el panel del navegador de Claude (Electron no registra service workers): hay que probar la instalación en Chrome o Edge.
 - [ ] **T10** CI con GitHub Actions (pytest) y despliegue con Docker + PostgreSQL.
   - [x] CI: `.github/workflows/tests.yml` corre migraciones y pytest en Python 3.12 y 3.14 en cada PR.

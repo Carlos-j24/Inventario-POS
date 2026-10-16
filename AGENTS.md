@@ -22,6 +22,8 @@ Inventario y punto de venta para ferreterías: entradas a bodega, ventas que des
 - Permisos de la API con `require("codigo.permiso")` de `apps/accounts/drf.py`, nunca por nombre de rol.
 - En el frontend, el dinero va en centavos enteros (`money.ts`), nunca en `float` de pesos. El backend recalcula y es la fuente de verdad.
 - Cada intento de cobro o de entrada genera su `client_uuid` una sola vez: un reintento reutiliza el mismo.
+- Sin conexión: la lógica va en `offline.ts` (sin React ni IndexedDB, para poder probarla) y el estado en `sync.tsx`. Solo se va a la cola si el servidor es inalcanzable (`isUnreachable`), nunca ante un 400 o un 500.
+- El service worker solo se registra en el build de producción. Para probarlo: `npm run build` y `npx vite preview` (puerto 4173).
 
 ## Reglas de dominio / trampas
 - **El stock solo se mueve con `inventory.services.record_movement`.** Nunca escribir `StockLevel.quantity` a mano.
