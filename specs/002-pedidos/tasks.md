@@ -1,6 +1,6 @@
 # Tareas — Spec 002
 
-> Spec aprobada por el equipo (PR #13, 2026-10-16). Decisiones en spec.md.
+> ✅ **Spec completada (2026-10-16).** Aprobada por el equipo en el PR #13; decisiones en spec.md.
 
 - [x] **T1** Modelo `Order` + `OrderLine` (estado, código diario, vendedor, vencimiento) y `Sale.salesperson`. Migraciones. (Historias 1 y 5)
   - El código es único por día y de 4 dígitos (restricciones en la base de datos). Un pedido pagado tiene su venta y viceversa. La fecha de negocio es la de Bogotá. Las ventas anteriores quedan con el cajero como vendedor.
@@ -15,4 +15,5 @@
   - Buscador y tabla del carrito extraídos a `components/` y compartidos con la caja. Probado en Chrome como andres.ventas (pedido 4193 creado, 7341 cancelado).
 - [x] **T6** En Caja: campo "Código de pedido", lista de pendientes, carga del pedido en el carrito y cobro. (Historias 3 y 4)
   - Las líneas del pedido llevan su precio acordado y su tope; la unidad no cambia. Sin red, un pedido no va a la cola. Probado en Chrome: el pedido 4193 de andres.ventas lo cobró laura.caja (V-000008, 1 de 2 martillos).
-- [ ] **T7** Mostrar vendedor y cajero en la venta (admin y API). Prueba de punta a punta en el navegador con dos usuarios. (Historia 5)
+- [x] **T7** Mostrar vendedor y cajero en la venta (admin y API). Prueba de punta a punta en el navegador con dos usuarios. (Historia 5)
+  - Admin: columnas y filtros "vendió" / "cobró (cajero)" y el código del pedido en las ventas; pedidos de solo lectura con sus líneas y el estado efectivo. La API ya devolvía `salesperson` y `order_code` (T4). La prueba de punta a punta con dos usuarios se hizo en la T6.

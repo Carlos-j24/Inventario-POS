@@ -22,6 +22,11 @@
 - `StockLevel` es el saldo por producto y bodega. Solo lo toca `record_movement`, que bloquea la fila mientras escribe.
 - Unidades: cada producto tiene una unidad base y presentaciones con factor (1 rollo = 100 m). Se compra en rollos y se vende en metros.
 
+## Pedidos (spec 002)
+- El vendedor arma un `Order` con precio congelado por línea y recibe un código de 4 dígitos, único en el día de negocio (hora de Bogotá). El pedido **no mueve inventario**.
+- La caja lo carga por código (`/api/orders/code/<código>/`) y lo cobra por `POST /api/sales/` con `order` (+ `order_lines` si cobra menos). Bloquea el pedido, crea la venta con `salesperson` = vendedor y `seller` = cajero, y lo marca PAGADO en la misma transacción.
+- Solo con conexión. Los pendientes de días anteriores cuentan como vencidos (`effective_status`); `manage.py expire_orders` deja el estado guardado al día.
+
 ## Roles y permisos
 - `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones.
 - `Role`: conjunto editable de permisos. Por defecto: Administrador, Supervisor, Jefe de bodega, Auxiliar de bodega, Ventas, Caja.

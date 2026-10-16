@@ -21,8 +21,12 @@ class Sale(models.Model):
     shift = models.ForeignKey("cash.Shift", on_delete=models.PROTECT, related_name="sales")
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name="sales")
     # seller cobró la venta (cajero); salesperson la vendió (quien armó el pedido, o el cajero si fue directa).
-    seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sales")
-    salesperson = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sales_made")
+    seller = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sales", verbose_name="cobró (cajero)"
+    )
+    salesperson = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sales_made", verbose_name="vendió"
+    )
     offline = models.BooleanField(default=False, help_text="Se hizo sin conexión y llegó al sincronizar.")
     needs_review = models.BooleanField(
         default=False,
