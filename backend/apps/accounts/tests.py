@@ -12,7 +12,7 @@ def test_default_roles_are_seeded():
 
 def test_admin_role_has_every_permission():
     admin = Role.objects.get(name="Administrador")
-    assert admin.permissions.count() == 0  # fallo a propósito
+    assert admin.permissions.count() == Permission.objects.count()
 
 
 def test_user_gets_union_of_role_permissions(make_user):
