@@ -5,8 +5,8 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - Spec 001, T1–T7 (2026-10-15/16): backend completo. Roles y permisos, catálogo con presentaciones, kardex, ventas con IVA incluido, caja con pago mixto y arqueo, anulaciones y devoluciones, sesión en cookie y API de usuarios. 92 tests de pytest.
 - T8 (2026-10-16): frontend React + Vite + TS con Caja, Entradas y Existencias, probado de punta a punta en el navegador.
 - T9 (2026-10-16): modo sin conexión (cola de ventas en IndexedDB, sincronización idempotente), service worker y manifest, y bandeja de revisión. Probado apagando los servidores: la venta quedó en cola y llegó una sola vez. 97 tests de pytest y 25 de Vitest.
-- Repositorio público Carlos-j24/Inventario-POS. El CI corre pytest (3.12 y 3.14) y el frontend (tipos, Vitest, build) en cada PR.
-- Falta: T10 (despliegue con Docker + PostgreSQL, Django sirviendo el build en el mismo dominio).
+- T10 (2026-10-16): Docker (gunicorn + WhiteNoise, un contenedor) + PostgreSQL. Guía en docs/despliegue.md. **Spec 001 (MVP) completa.**
+- Repositorio público Carlos-j24/Inventario-POS. El CI corre pytest (3.12 y 3.14), el frontend (tipos, Vitest, build) y la imagen de Docker con PostgreSQL (`scripts/smoke-test.sh`) en cada PR.
 
 ## Decisiones (y por qué)
 - AGENTS.md es la fuente única de reglas; CLAUDE.md solo lo importa → mismas reglas para Claude Code y OpenCode.
@@ -17,6 +17,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - Precios con IVA incluido → así se exhiben en ferretería; el POS suma totales y el backend separa la base y el IVA.
 - Turno por caja física, no por cajero (decisión del equipo, 2026-10-16) → el arqueo cuadra el cajón; si cambia el cajero, se cierra y se abre otro turno.
 - Sesión en cookie y no JWT → sin dependencias nuevas y la cookie HttpOnly no la lee JavaScript; obliga a servir la PWA y la API desde el mismo dominio.
+- gunicorn + WhiteNoise en un solo contenedor (decisión del equipo, 2026-10-16) → más simple que nginx aparte; HTTPS lo pone un proxy delante (Caddy).
 - Pago mixto permitido (decisión del equipo) → tarjeta y transferencia no pueden pasarse del total; el efectivo da vueltas.
 
 ## Aprendizajes y errores a evitar
@@ -31,6 +32,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 
 ## Próximos pasos
 - Verificar en Chrome o Edge que la app se instala y abre sin red (service worker). El manifest solo trae un ícono SVG: si algún navegador pide PNG de 192 y 512 px, añadirlos.
-- T10: Docker + PostgreSQL, y que Django (o nginx) sirva el build de `frontend/dist` en el mismo dominio que `/api`.
+- Este equipo no tiene Docker: el despliegue solo se ha probado en el CI. Primer despliegue real: servidor con dominio y HTTPS.
+- Spec 002 por definir con el equipo (ideas: pedidos del rol Ventas que cobra caja, devoluciones y usuarios en la PWA, facturación electrónica DIAN, reportes).
 - Pantallas que faltan en la PWA: devoluciones/anulaciones (supervisor) y administración de usuarios (hoy por el admin de Django).
 - Admin: etiquetas en español (`verbose_name`) y booleanos de solo lectura que muestran el texto de ayuda en vez de Sí/No.
