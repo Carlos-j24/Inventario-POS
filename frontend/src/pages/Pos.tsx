@@ -1,13 +1,12 @@
-import { useEffect, useMemo, useRef, useState, type FormEvent } from "react";
+import { useEffect, useRef, useState, type FormEvent } from "react";
 
 import { api, type PaymentMethod, type Product, type Register, type Sale, type Shift } from "../api";
 import { useAuth } from "../auth";
 import { fetchWithCache } from "../cache";
-import {
-  cartTotalCents, checkPayments, findByCode, lineTotalCents, quantityError, searchProducts, unitPriceCents,
-  type CartLine,
-} from "../cart";
-import { centsToApi, formatMoney, formatQty, toCents } from "../money";
+import { addToCart, cartTotalCents, checkPayments, quantityError, unitPriceCents, type CartLine } from "../cart";
+import CartTable from "../components/CartTable";
+import ProductSearch from "../components/ProductSearch";
+import { centsToApi, formatMoney, toCents } from "../money";
 import { isUnreachable, toOfflineBody, type QueuedSale } from "../offline";
 import { useSync } from "../sync";
 
@@ -108,7 +107,6 @@ function OpenShift({ register, onOpened, onBack }: { register: Register; onOpene
 function Selling({ register, shiftId, onShiftClosed }: { register: Register; shiftId: number; onShiftClosed: () => void }) {
   const [products, setProducts] = useState<Product[]>([]);
   const [lines, setLines] = useState<CartLine[]>([]);
-  const [query, setQuery] = useState("");
   const [notice, setNotice] = useState<string | null>(null);
   const [checkout, setCheckout] = useState(false);
   const [closing, setClosing] = useState(false);
@@ -126,35 +124,15 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
       .catch((e) => setNotice(e.message));
   }, [online]);
 
-  const results = useMemo(() => searchProducts(products, query), [products, query]);
   const total = cartTotalCents(lines);
   const lineErrors = lines.map(quantityError);
   const canCharge = lines.length > 0 && lineErrors.every((e) => e === null);
 
-  function add(product: Product, unit = product.base_unit) {
-    setLines((ls) => {
-      const same = ls.find((l) => l.product.id === product.id && l.unit === unit);
-      if (same) return ls.map((l) => (l === same ? { ...l, quantity: l.quantity + 1 } : l));
-      return [...ls, { key: crypto.randomUUID(), product, unit, quantity: 1 }];
-    });
-    setQuery("");
+  function add(product: Product, unit: string) {
+    setLines((ls) => addToCart(ls, product, unit));
     setNotice(null);
     setLastSale(null);
     setLastQueued(null);
-    searchRef.current?.focus();
-  }
-
-  function onSearchSubmit(e: FormEvent) {
-    e.preventDefault();
-    // El lector de código de barras escribe el código y presiona Enter.
-    const hit = findByCode(products, query);
-    if (hit) add(hit.product, hit.unit);
-    else if (results.length === 1) add(results[0]);
-    else setNotice(results.length ? "Elige el producto de la lista." : `No se encontró "${query}".`);
-  }
-
-  function update(key: string, patch: Partial<CartLine>) {
-    setLines((ls) => ls.map((l) => (l.key === key ? { ...l, ...patch } : l)));
   }
 
   if (closing) return <CloseShift shiftId={shiftId} onCancel={() => setClosing(false)} onClosed={onShiftClosed} />;
@@ -181,72 +159,9 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
             ventas se guardan en este equipo y se envían al volver la red.
           </p>
         )}
-        <form onSubmit={onSearchSubmit}>
-          <input
-            ref={searchRef}
-            className="search"
-            placeholder="Código de barras, SKU o nombre…"
-            value={query}
-            onChange={(e) => setQuery(e.target.value)}
-            autoFocus
-            aria-label="Buscar producto"
-          />
-        </form>
-        {results.length > 0 && (
-          <ul className="results">
-            {results.map((p) => (
-              <li key={p.id}>
-                <button onClick={() => add(p)}>
-                  <span>{p.name}</span>
-                  <span className="muted">{p.sku} · {formatMoney(toCents(p.sale_price))}/{p.base_unit}</span>
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <ProductSearch products={products} onPick={add} inputRef={searchRef} />
         {notice && <p className="error">{notice}</p>}
-
-        <table className="cart">
-          <thead>
-            <tr><th>Producto</th><th>Cantidad</th><th>Unidad</th><th className="num">Precio</th><th className="num">Total</th><th /></tr>
-          </thead>
-          <tbody>
-            {lines.map((l, i) => (
-              <tr key={l.key}>
-                <td>{l.product.name}{lineErrors[i] && <div className="error small">{lineErrors[i]}</div>}</td>
-                <td>
-                  <input
-                    className="qty"
-                    type="number"
-                    min="0"
-                    step={l.product.allows_fractions ? "0.001" : "1"}
-                    value={l.quantity}
-                    onChange={(e) => update(l.key, { quantity: Number(e.target.value) })}
-                    aria-label={`Cantidad de ${l.product.name}`}
-                  />
-                </td>
-                <td>
-                  <select value={l.unit} onChange={(e) => update(l.key, { unit: e.target.value })}>
-                    <option value={l.product.base_unit}>{l.product.base_unit}</option>
-                    {l.product.units.map((u) => (
-                      <option key={u.unit} value={u.unit}>{u.unit} ({formatQty(u.factor)} {l.product.base_unit})</option>
-                    ))}
-                  </select>
-                </td>
-                <td className="num">{formatMoney(unitPriceCents(l.product, l.unit))}</td>
-                <td className="num">{formatMoney(lineTotalCents(l))}</td>
-                <td>
-                  <button className="link" onClick={() => setLines((ls) => ls.filter((x) => x.key !== l.key))} aria-label={`Quitar ${l.product.name}`}>
-                    ✕
-                  </button>
-                </td>
-              </tr>
-            ))}
-            {lines.length === 0 && (
-              <tr><td colSpan={6} className="muted center">Escanea o busca un producto para empezar.</td></tr>
-            )}
-          </tbody>
-        </table>
+        <CartTable lines={lines} onChange={setLines} emptyText="Escanea o busca un producto para empezar." />
       </section>
 
       <aside className="card summary">

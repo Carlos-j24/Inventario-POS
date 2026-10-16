@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Product } from "./api";
 import {
-  cartTotalCents, checkPayments, findByCode, lineTotalCents, quantityError, searchProducts, unitPriceCents,
+  addToCart, cartTotalCents, checkPayments, findByCode, lineTotalCents, quantityError, searchProducts, unitPriceCents,
   type CartLine,
 } from "./cart";
 
@@ -89,5 +89,14 @@ describe("cobro", () => {
       checkPayments(total, [{ method: "TRANSFER", amountCents: total }, { method: "CASH", amountCents: 100 }]).error,
     ).not.toBeNull();
     expect(checkPayments(total, []).error).not.toBeNull();
+  });
+});
+
+describe("addToCart", () => {
+  it("suma 1 si el producto ya está en esa unidad y crea línea nueva en otra unidad", () => {
+    let lines = addToCart([], cable, "m");
+    lines = addToCart(lines, cable, "m");
+    lines = addToCart(lines, cable, "rollo");
+    expect(lines.map((l) => [l.unit, l.quantity])).toEqual([["m", 2], ["rollo", 1]]);
   });
 });

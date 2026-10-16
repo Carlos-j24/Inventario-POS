@@ -88,3 +88,10 @@ export function checkPayments(totalCents: number, payments: PaymentDraft[]) {
     payments: used,
   };
 }
+
+/** Agrega un producto al carrito: si ya está en esa unidad, suma 1; si no, una línea nueva. */
+export function addToCart(lines: CartLine[], product: Product, unit = product.base_unit): CartLine[] {
+  const same = lines.find((l) => l.product.id === product.id && l.unit === unit);
+  if (same) return lines.map((l) => (l === same ? { ...l, quantity: l.quantity + 1 } : l));
+  return [...lines, { key: crypto.randomUUID(), product, unit, quantity: 1 }];
+}

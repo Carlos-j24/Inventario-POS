@@ -138,3 +138,34 @@ export interface StockMovement {
   quantity: string;
   balance_after: string;
 }
+
+export interface OrderLine {
+  id: number;
+  product: number;
+  sku: string;
+  name: string;
+  unit: string;
+  quantity: string;
+  unit_price: string;
+  total: string;
+}
+
+export interface StockWarning {
+  sku: string;
+  name: string;
+  kind: "sin_existencias" | "bajo_minimo";
+  available: string;
+}
+
+export interface Order {
+  id: number;
+  code: number;
+  business_date: string;
+  status: "PENDING" | "PAID" | "CANCELLED" | "EXPIRED";
+  salesperson: string;
+  total: string;
+  created_at: string;
+  sale_number: string | null;
+  lines: OrderLine[];
+  warnings?: StockWarning[];
+}
