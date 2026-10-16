@@ -9,6 +9,7 @@ import Receipts from "./pages/Receipts";
 import Review from "./pages/Review";
 import Sales from "./pages/Sales";
 import Stock from "./pages/Stock";
+import Users from "./pages/Users";
 import { useSync } from "./sync";
 
 // Cada pantalla aparece si el usuario tiene alguno de sus permisos; el backend vuelve a comprobarlo.
@@ -19,6 +20,7 @@ const PAGES: { id: string; label: string; permission: string | string[]; Compone
   { id: "stock", label: "Existencias", permission: "inventory.view", Component: Stock },
   { id: "sales", label: "Ventas", permission: ["sales.void", "reports.view"], Component: Sales },
   { id: "review", label: "Revisión", permission: "reports.view", Component: Review },
+  { id: "users", label: "Usuarios", permission: "users.manage", Component: Users },
 ];
 
 export default function App() {

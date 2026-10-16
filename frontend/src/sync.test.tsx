@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { AuthProvider } from "./auth";
 import { SyncProvider, useSync } from "./sync";
 
-const me = { id: 1, username: "laura", first_name: "", last_name: "", roles: ["Caja"], permissions: ["cash.operate"] };
+const me = { id: 1, username: "laura", first_name: "", last_name: "", roles: ["Caja"], permissions: ["cash.operate"], must_change_password: false };
 
 function Status() {
   const { online } = useSync();

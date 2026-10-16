@@ -63,6 +63,8 @@ export interface Me {
   last_name: string;
   roles: string[];
   permissions: string[];
+  /** Contraseña temporal puesta por un administrador: hay que cambiarla antes de usar la app. */
+  must_change_password: boolean;
 }
 
 export interface ProductUnit {
@@ -220,4 +222,27 @@ export interface SaleDetail extends Omit<SaleListItem, "register"> {
   lines: SaleDetailLine[];
   payments: { method: PaymentMethod; amount: string; received: string; change: string; reference: string }[];
   returns: SaleReturn[];
+}
+
+export interface AppUser {
+  id: number;
+  username: string;
+  first_name: string;
+  last_name: string;
+  email: string;
+  is_active: boolean;
+  roles: string[];
+  must_change_password: boolean;
+  last_login: string | null;
+}
+
+export interface Role {
+  id: number;
+  name: string;
+  permissions: string[];
+}
+
+export interface PermissionInfo {
+  code: string;
+  description: string;
 }
