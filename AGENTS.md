@@ -29,7 +29,9 @@ Inventario y punto de venta para ferreterías: entradas a bodega, ventas que des
 - Los precios de venta **incluyen IVA** (precio al público). El IVA se separa por línea y se redondea al centavo.
 - Venta en línea: precio del catálogo y sin stock negativo. Venta sin conexión: se respeta el precio cobrado y se acepta negativo, marcando `needs_review`.
 - Toda venta pertenece al turno abierto de una caja y sale de la bodega de esa caja. Una venta sin conexión que llega con el turno ya cerrado se acepta y se marca `needs_review`.
-- En los pagos, `amount` es lo que se abona a la venta; las vueltas solo existen en efectivo. Efectivo esperado al cierre = base + pagos en efectivo de ventas no anuladas.
+- En los pagos, `amount` es lo que se abona a la venta; las vueltas solo existen en efectivo. Efectivo esperado al cierre = base + pagos en efectivo de ventas no anuladas − reembolsos en efectivo.
+- **El arqueo de un turno cerrado nunca cambia.** Por eso una venta solo se anula mientras su turno siga abierto; después se hace una devolución (`sales/returns.py`), que reembolsa desde el turno abierto actual.
+- En devoluciones parciales, la última parte de una línea reembolsa el resto exacto del total, para no perder ni sobrar centavos.
 
 ## Forma de trabajar
 - Lee `docs/constitution.md`, `MEMORY.md` y la spec activa antes de tocar código.

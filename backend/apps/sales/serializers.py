@@ -3,7 +3,7 @@ from rest_framework import serializers
 from apps.cash.models import Payment, Shift
 from apps.catalog.models import MONEY, QTY, Product, Unit
 
-from .models import Sale, SaleLine
+from .models import Sale, SaleLine, SaleReturn, SaleReturnLine
 
 
 class SaleLineInputSerializer(serializers.Serializer):
@@ -43,7 +43,7 @@ class SaleLineSerializer(serializers.ModelSerializer):
     class Meta:
         model = SaleLine
         fields = [
-            "product", "unit", "quantity", "unit_price", "catalog_price",
+            "id", "product", "unit", "quantity", "unit_price", "catalog_price",
             "tax_rate", "subtotal", "tax", "total",
         ]
 
@@ -64,5 +64,43 @@ class SaleSerializer(serializers.ModelSerializer):
         model = Sale
         fields = [
             "id", "number", "client_uuid", "status", "shift", "warehouse", "seller", "offline",
-            "needs_review", "subtotal", "tax", "total", "occurred_at", "created_at", "lines", "payments",
+            "needs_review", "subtotal", "tax", "total", "occurred_at", "created_at",
+            "void_reason", "voided_at", "lines", "payments",
+        ]
+
+
+class VoidSerializer(serializers.Serializer):
+    reason = serializers.CharField(max_length=200)
+
+
+class ReturnLineInputSerializer(serializers.Serializer):
+    line = serializers.PrimaryKeyRelatedField(queryset=SaleLine.objects.all(), source="sale_line")
+    quantity = serializers.DecimalField(**QTY)
+
+
+class ReturnInputSerializer(serializers.Serializer):
+    client_uuid = serializers.UUIDField()
+    shift = serializers.PrimaryKeyRelatedField(queryset=Shift.objects.all())
+    refund_method = serializers.ChoiceField(choices=Payment.Method.choices)
+    reason = serializers.CharField(max_length=200)
+    lines = ReturnLineInputSerializer(many=True, allow_empty=False)
+
+
+class SaleReturnLineSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = SaleReturnLine
+        fields = ["sale_line", "quantity", "subtotal", "tax", "total"]
+
+
+class SaleReturnSerializer(serializers.ModelSerializer):
+    sale = serializers.SlugRelatedField(slug_field="pk", read_only=True)
+    user = serializers.SlugRelatedField(slug_field="username", read_only=True)
+    refund_method = serializers.CharField(source="refund.method", read_only=True)
+    lines = SaleReturnLineSerializer(many=True, read_only=True)
+
+    class Meta:
+        model = SaleReturn
+        fields = [
+            "id", "number", "client_uuid", "sale", "shift", "user", "reason",
+            "total", "refund_method", "created_at", "lines",
         ]
