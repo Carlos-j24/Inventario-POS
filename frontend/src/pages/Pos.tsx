@@ -119,11 +119,12 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
   const { user } = useAuth();
   const { online, pending, enqueue } = useSync();
 
+  // Se vuelve a pedir al recuperar la conexión, para dejar de vender con precios de la copia.
   useEffect(() => {
     fetchWithCache<Product[]>("/api/catalog/products/")
       .then((r) => { setProducts(r.data); setCatalogDate(r.staleSince); })
       .catch((e) => setNotice(e.message));
-  }, []);
+  }, [online]);
 
   const results = useMemo(() => searchProducts(products, query), [products, query]);
   const total = cartTotalCents(lines);
@@ -176,8 +177,8 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
         </div>
         {catalogDate && (
           <p className="warn-note">
-            Sin conexión: precios de la copia del {new Date(catalogDate).toLocaleString("es-CO")}. Las ventas se
-            guardan en este equipo y se envían al volver la red.
+            Sin conexión: precios de la copia guardada el {new Date(catalogDate).toLocaleString("es-CO")}; las
+            ventas se guardan en este equipo y se envían al volver la red.
           </p>
         )}
         <form onSubmit={onSearchSubmit}>

@@ -77,12 +77,13 @@ function SyncStatus() {
 }
 
 function SyncMessage() {
-  const { message, failed } = useSync();
+  const { message, failed, online } = useSync();
   const { offlineSession } = useAuth();
-  if (!message && !failed.length && !offlineSession) return null;
+  const offlineNote = offlineSession && !online;
+  if (!message && !failed.length && !offlineNote) return null;
   return (
     <div className="banner" role="status">
-      {offlineSession && <p>Abriste la app sin conexión con la sesión guardada en este equipo.</p>}
+      {offlineNote && <p>Abriste la app sin conexión con la sesión guardada en este equipo.</p>}
       {message && <p>{message}</p>}
       {failed.map((f) => (
         <p key={f.client_uuid} className="error">
