@@ -132,3 +132,9 @@ tr.negative td { background: var(--danger-bg); }
 .done.queued { border-color: var(--warn); }
 .review-item { border-top: 1px solid var(--line); padding: 12px 0; display: flex; flex-direction: column; gap: 8px; }
 .review-item .row input { flex: 1; }
+.order-created { display: flex; flex-direction: column; gap: 8px; align-items: stretch; }
+.order-code { font-size: 4rem; font-weight: 800; letter-spacing: 0.1em; color: var(--brand); text-align: center; font-variant-numeric: tabular-nums; }
+.my-orders { margin-top: 16px; border-top: 1px solid var(--line); padding-top: 12px; }
+.my-orders h3 { font-size: 1rem; margin: 0 0 8px; }
+.my-orders li { padding: 4px 0; }
+.code-chip { background: var(--bg); border: 1px solid var(--line); border-radius: 6px; padding: 2px 8px; font-variant-numeric: tabular-nums; }

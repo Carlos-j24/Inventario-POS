@@ -38,6 +38,6 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 ## Próximos pasos
 - Verificado (2026-10-16): Chrome de escritorio y Android (OPPO Reno13 F) abren sin conexión y se instalan con el ícono SVG. Cómo probar en un celular: docs/despliegue.md.
 - Este equipo no tiene Docker: el despliegue solo se ha probado en el CI. Primer despliegue real: servidor con dominio y HTTPS.
-- Spec 002 (pedidos vendedor → caja) escrita y con decisiones cerradas (2026-10-16): precio del pedido, vence al final del día, código de 4 dígitos, stock solo avisa. Aprobada; T1–T4 hechas (backend y API completos); faltan las pantallas (T5, T6) y T7. Después, en orden de prioridad del equipo: pantallas de supervisor/admin, reportes, facturación DIAN.
+- Spec 002 (pedidos vendedor → caja) escrita y con decisiones cerradas (2026-10-16): precio del pedido, vence al final del día, código de 4 dígitos, stock solo avisa. Aprobada; T1–T5 hechas (backend, API y pantalla del vendedor); faltan T6 (caja cobra el pedido) y T7. Después, en orden de prioridad del equipo: pantallas de supervisor/admin, reportes, facturación DIAN.
 - Pantallas que faltan en la PWA: devoluciones/anulaciones (supervisor) y administración de usuarios (hoy por el admin de Django).
 - Admin: etiquetas en español (`verbose_name`) y booleanos de solo lectura que muestran el texto de ayuda en vez de Sí/No.

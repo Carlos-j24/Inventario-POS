@@ -3,6 +3,7 @@ import { useState } from "react";
 import { useAuth } from "./auth";
 import { promptInstall, useCanInstall } from "./install";
 import Login from "./pages/Login";
+import Orders from "./pages/Orders";
 import Pos from "./pages/Pos";
 import Receipts from "./pages/Receipts";
 import Review from "./pages/Review";
@@ -12,6 +13,7 @@ import { useSync } from "./sync";
 // Cada pantalla aparece solo si el usuario tiene el permiso; el backend vuelve a comprobarlo.
 const PAGES = [
   { id: "pos", label: "Caja", permission: "cash.operate", Component: Pos },
+  { id: "orders", label: "Pedidos", permission: "sales.create", Component: Orders },
   { id: "receipts", label: "Entradas", permission: "inventory.receive", Component: Receipts },
   { id: "stock", label: "Existencias", permission: "inventory.view", Component: Stock },
   { id: "review", label: "Revisión", permission: "reports.view", Component: Review },
