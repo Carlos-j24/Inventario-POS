@@ -28,6 +28,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - Vitest sin `globals`: Testing Library no limpia el DOM entre tests; hace falta `afterEach(cleanup)` en `test-setup.ts`.
 - El panel del navegador de Claude (Electron) no registra service workers ("unknown error when fetching the script"): el SW se prueba en Chrome o Edge.
 - En Windows, un `fetch` a un puerto local apagado tarda unos 8 s en fallar: por eso `api.ts` tiene un límite de 10 s y lo trata como sin conexión.
+- `gh pr merge --auto` sin checks obligatorios en la rama fusiona AL INSTANTE, aunque el CI siga corriendo (pasó con el PR #8, 2026-10-16). Para usarlo, main debe exigir los checks.
 - Bases de desarrollo con ventas anteriores a la T5 no migran (las ventas exigen turno): borrar `db.sqlite3` y volver a migrar.
 
 ## Próximos pasos
