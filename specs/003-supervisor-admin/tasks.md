@@ -1,6 +1,6 @@
 # Tareas — Spec 003
 
-> Spec aprobada por el equipo (PR #21, 2026-10-16). Decisiones en spec.md.
+> ✅ **Spec completada (2026-10-16).** Aprobada por el equipo en el PR #21; decisiones en spec.md.
 
 - [x] **T1** Backend: `GET /api/sales/` (buscar y filtrar), el detalle de la venta con sus devoluciones y lo ya devuelto por línea, y los permisos del detalle. (Historias 1 y 4)
   - `GET /api/sales/`: hoy por defecto; `?number=` (V-000123, v123 o 123, en cualquier fecha), `?date=`, `?register=`, `?status=`, `?needs_review=1`; máximo 200. El detalle trae `returns`, `returned_quantity` por línea, `register` y `shift_open`.
@@ -14,4 +14,5 @@
   - Permiso `users.manage`. Errores del servidor (último administrador, clave débil) a la vista; el campo de contraseña no se borra si se rechaza. Probado en Chrome: alta de maria.caja (Caja, clave temporal), roles, desactivar y reactivar; el administrador no puede desactivarse.
 - [x] **T6** Roles y permisos en lenguaje claro (todos editables). "Cambiar mi contraseña" para todos y pantalla de cambio obligatorio. (Historias 6 y 7)
   - Pantalla Roles (`users.manage`) con permisos agrupados por tema. "Cambiar mi contraseña" desde el nombre en la cabecera. Con clave temporal la app solo muestra "Hola, …" y el cambio. Probado en Chrome: maria.caja entró con su clave temporal, la API le respondía 403, cambió la clave y apareció la app con Caja, Pedidos y Existencias.
-- [ ] **T7** Prueba de punta a punta en el navegador: alta de un cajero nuevo que vende, y una devolución hecha por el supervisor que se refleja en el arqueo.
+- [x] **T7** Prueba de punta a punta en el navegador: alta de un cajero nuevo que vende, y una devolución hecha por el supervisor que se refleja en el arqueo.
+  - En Chrome (2026-10-16): el administrador creó a maria.caja con clave temporal (T5); ella entró, la cambió (T6), abrió turno en Caja 2 con $50.000 y vendió 2 martillos (V-000009, $56.000, vueltas $4.000). sofia.super devolvió 1 martillo desde Caja 2 (D-000002, $28.000). María cerró a ciegas contando $78.000: **esperado $78.000, diferencia 0**. Stock de martillos 5 → 4.

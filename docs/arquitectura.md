@@ -27,6 +27,10 @@
 - La caja lo carga por código (`/api/orders/code/<código>/`) y lo cobra por `POST /api/sales/` con `order` (+ `order_lines` si cobra menos). Bloquea el pedido, crea la venta con `salesperson` = vendedor y `seller` = cajero, y lo marca PAGADO en la misma transacción.
 - Solo con conexión. Los pendientes de días anteriores cuentan como vencidos (`effective_status`); `manage.py expire_orders` deja el estado guardado al día.
 
+## Supervisor y administración (spec 003)
+- **Ventas** (`sales.void` o `reports.view`): `GET /api/sales/` lista las de hoy o busca por número; el detalle trae devoluciones y si su turno sigue abierto. Anular exige el turno abierto; si no, se devuelve y el reembolso sale de una caja con turno abierto, sin tocar arqueos cerrados.
+- **Usuarios y Roles** (`users.manage`): la contraseña que pone el administrador es temporal (`must_change_password`). Hasta cambiarla, la API solo permite `me`, `password` y `logout`; el bloqueo vive en `require()`, `require_any()` y el permiso por defecto.
+
 ## Roles y permisos
 - `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones.
 - `Role`: conjunto editable de permisos. Por defecto: Administrador, Supervisor, Jefe de bodega, Auxiliar de bodega, Ventas, Caja.

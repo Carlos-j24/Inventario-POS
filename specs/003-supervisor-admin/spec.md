@@ -1,6 +1,6 @@
 # Spec 003 — Pantallas de supervisor y administrador
 
-> Estado: **decisiones cerradas por el equipo (2026-10-16)**; pendiente aprobar el PR para empezar a programar.
+> Estado: ✅ **completada (2026-10-16)**. Tareas en tasks.md (T1–T7, PRs #22–#28).
 
 ## Problema
 El backend ya sabe anular, devolver y gestionar usuarios y roles (specs 001 y 002), pero **no hay pantallas**: el supervisor y el administrador dependen del admin de Django o de la API. En la ferretería, cuando un cliente devuelve un producto o el cajero se equivoca, el supervisor no tiene cómo hacerlo desde la app, y el administrador no puede dar de alta a un empleado sin entrar al admin técnico.
