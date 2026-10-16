@@ -159,3 +159,5 @@ tr.negative td { background: var(--danger-bg); }
 .action-form h3 { margin: 0; }
 button.danger-btn { background: var(--danger); color: #fff; border-color: var(--danger); font-weight: 600; }
 .nested { background: var(--bg); }
+.role-checks { border: 1px solid var(--line); border-radius: 8px; display: flex; flex-wrap: wrap; gap: 6px 16px; padding: 8px 12px; }
+.role-checks legend { color: var(--muted); font-size: 0.9rem; padding: 0 4px; }

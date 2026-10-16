@@ -80,3 +80,8 @@ export function useAuth(): AuthState {
 export function useCan(): (permission: string) => boolean {
   return useContext(AuthContext)?.can ?? (() => false);
 }
+
+/** El usuario con sesión, o null (también fuera del proveedor, p. ej. en tests de una pantalla). */
+export function useMe(): Me | null {
+  return useContext(AuthContext)?.user ?? null;
+}
