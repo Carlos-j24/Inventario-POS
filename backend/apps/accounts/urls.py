@@ -1,7 +1,9 @@
 from django.urls import path
 from rest_framework.routers import SimpleRouter
 
-from .views import CsrfView, LoginView, LogoutView, MeView, PermissionListView, RoleViewSet, UserViewSet
+from .views import (
+    CsrfView, LoginView, LogoutView, MeView, PasswordChangeView, PermissionListView, RoleViewSet, UserViewSet,
+)
 
 router = SimpleRouter()
 router.register("users", UserViewSet, basename="user")
@@ -12,6 +14,7 @@ auth_urlpatterns = [
     path("login/", LoginView.as_view(), name="auth-login"),
     path("logout/", LogoutView.as_view(), name="auth-logout"),
     path("me/", MeView.as_view(), name="auth-me"),
+    path("password/", PasswordChangeView.as_view(), name="auth-password"),
 ]
 
 urlpatterns = [
