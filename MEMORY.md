@@ -3,6 +3,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 
 ## Estado actual
 - 2026-10-15: esqueleto del backend (spec 001, tareas T1 a T3). Usuarios, roles y permisos; catálogo con unidades y presentaciones; inventario con kardex, entradas por API y existencias. 21 tests en verde.
+- 2026-10-15: repositorio público Carlos-j24/Inventario-POS. CI (GitHub Actions) con pytest en Python 3.12 y 3.14 en cada PR: no fusionar con el CI en rojo.
 - Falta: ventas, caja, frontend PWA y sincronización sin conexión (ver `specs/001-mvp/tasks.md`).
 
 ## Decisiones (y por qué)
