@@ -1,3 +1,6 @@
+import datetime
+import re
+
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.shortcuts import get_object_or_404
 from rest_framework import generics, status
@@ -5,25 +8,58 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.drf import require
+from apps.accounts.drf import require, require_any
 
-from .models import Sale
+from .models import Sale, business_date
 from .returns import create_return, mark_reviewed, void_sale
 from .serializers import (
-    ReturnInputSerializer, ReviewItemSerializer, ReviewSerializer, SaleInputSerializer, SaleReturnSerializer,
-    SaleSerializer, VoidSerializer,
+    ReturnInputSerializer, ReviewItemSerializer, ReviewSerializer, SaleDetailSerializer, SaleInputSerializer,
+    SaleListSerializer, SaleReturnSerializer, SaleSerializer, VoidSerializer,
 )
 from .services import create_sale
 
 
-class SaleCreateView(APIView):
-    """Registra y cobra una venta en un turno de caja.
+LIST_LIMIT = 200
+_NUMBER = re.compile(r"^\s*(?:V-?)?0*(\d+)\s*$", re.IGNORECASE)
 
-    Reenviar el mismo client_uuid devuelve la venta ya creada (200). Como incluye el cobro,
-    exige cash.operate; el vendedor sin caja tendrá su flujo de pedidos más adelante.
+
+class SaleCreateView(APIView):
+    """POST: registra y cobra una venta en un turno de caja (exige cash.operate).
+    Reenviar el mismo client_uuid devuelve la venta ya creada (200).
+
+    GET (spec 003): busca y lista ventas para el supervisor (sales.void o reports.view).
+    Por defecto las de hoy; filtros ?number=V-000123, ?date=AAAA-MM-DD, ?register=<id>,
+    ?status=COMPLETED|VOIDED y ?needs_review=1.
     """
 
-    permission_classes = [require("cash.operate")]
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [require_any("sales.void", "reports.view")()]
+        return [require("cash.operate")()]
+
+    def get(self, request):
+        params = request.query_params
+        sales = Sale.objects.select_related("shift__register", "seller", "salesperson", "order")
+        number = params.get("number", "").strip()
+        if number:
+            match = _NUMBER.match(number)
+            if not match:
+                raise ValidationError({"number": "Escribe el número de la venta, por ejemplo V-000123."})
+            sales = sales.filter(pk=int(match.group(1)))  # un número exacto se busca en cualquier fecha
+        else:
+            try:
+                day = datetime.date.fromisoformat(params["date"]) if params.get("date") else business_date()
+            except ValueError:
+                raise ValidationError({"date": "Usa el formato AAAA-MM-DD."})
+            sales = sales.filter(occurred_at__date=day)  # en hora de Bogotá (TIME_ZONE)
+        if params.get("register"):
+            sales = sales.filter(shift__register_id=params["register"])
+        if params.get("status"):
+            sales = sales.filter(status=params["status"])
+        if params.get("needs_review") == "1":
+            sales = sales.filter(needs_review=True)
+        sales = sales.order_by("-occurred_at", "-pk")[:LIST_LIMIT]
+        return Response(SaleListSerializer(sales, many=True).data)
 
     def post(self, request):
         data = SaleInputSerializer(data=request.data)
@@ -103,8 +139,10 @@ class ReviewView(APIView):
 
 
 class SaleDetailView(generics.RetrieveAPIView):
-    permission_classes = [require("sales.create")]
-    serializer_class = SaleSerializer
-    queryset = Sale.objects.select_related("warehouse", "seller").prefetch_related(
-        "lines__product", "lines__unit", "payments"
+    """Detalle con líneas, pagos, devoluciones y lo ya devuelto por línea (spec 003)."""
+
+    permission_classes = [require_any("sales.create", "sales.void", "reports.view")]
+    serializer_class = SaleDetailSerializer
+    queryset = Sale.objects.select_related("warehouse", "seller", "salesperson", "shift__register", "order").prefetch_related(
+        "lines__product", "lines__unit", "lines__return_lines", "payments", "returns__refund", "returns__lines",
     )

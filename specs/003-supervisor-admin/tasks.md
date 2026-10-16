@@ -1,8 +1,9 @@
 # Tareas — Spec 003
 
-> Decisiones cerradas (ver spec.md). Se programan cuando se apruebe el PR de la spec.
+> Spec aprobada por el equipo (PR #21, 2026-10-16). Decisiones en spec.md.
 
-- [ ] **T1** Backend: `GET /api/sales/` (buscar y filtrar), el detalle de la venta con sus devoluciones y lo ya devuelto por línea, y los permisos del detalle. (Historias 1 y 4)
+- [x] **T1** Backend: `GET /api/sales/` (buscar y filtrar), el detalle de la venta con sus devoluciones y lo ya devuelto por línea, y los permisos del detalle. (Historias 1 y 4)
+  - `GET /api/sales/`: hoy por defecto; `?number=` (V-000123, v123 o 123, en cualquier fecha), `?date=`, `?register=`, `?status=`, `?needs_review=1`; máximo 200. El detalle trae `returns`, `returned_quantity` por línea, `register` y `shift_open`.
 - [ ] **T2** Backend: `POST /api/auth/password/`, marca `must_change_password` al crear o resetear un usuario, y bloqueo de la API mientras esté marcada. (Historias 5 y 7)
 - [ ] **T3** Pantalla Ventas: buscar, listar y ver el detalle. (Historia 1)
 - [ ] **T4** Anular y devolver desde el detalle (con elección de la caja abierta para el reembolso). Enlace desde la bandeja de revisión. (Historias 2, 3 y 4)
