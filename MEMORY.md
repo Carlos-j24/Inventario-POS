@@ -27,6 +27,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - El servidor de Vite (5173) es otro origen para Django: sin `CSRF_TRUSTED_ORIGINS` el login falla con 403 "Origin checking failed". Solo pasa en desarrollo.
 - Vitest sin `globals`: Testing Library no limpia el DOM entre tests; hace falta `afterEach(cleanup)` en `test-setup.ts`.
 - El panel del navegador de Claude (Electron) no registra service workers ("unknown error when fetching the script"): el SW se prueba en Chrome (con Claude in Chrome funciona).
+- Chrome lanza "beforeinstallprompt" una sola vez por carga y nunca si la app ya está instalada: el botón "Instalar app" desaparece entonces (no es un fallo).
 - `navigator.onLine` solo dice si hay red local: el estado "En línea" sale de `/api/health/` (fallo encontrado en Chrome con el servidor apagado).
 - En el service worker: nunca guardar respuestas con error como copia sin red, y borrar los `/assets` viejos en cada versión nueva (si no, la caché crece sin límite).
 - En Windows, un `fetch` a un puerto local apagado tarda unos 8 s en fallar: por eso `api.ts` tiene un límite de 10 s y lo trata como sin conexión.
@@ -34,7 +35,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - Bases de desarrollo con ventas anteriores a la T5 no migran (las ventas exigen turno): borrar `db.sqlite3` y volver a migrar.
 
 ## Próximos pasos
-- El modo sin conexión quedó verificado en Chrome (2026-10-16). Falta probar el botón "Instalar" del navegador y en un celular Android; el manifest solo trae un ícono SVG: si alguno pide PNG de 192 y 512 px, añadirlos.
+- Verificado en Chrome de escritorio (2026-10-16): sin conexión e instalación (botón "Instalar app" propio; Chrome acepta el ícono SVG). Falta Android; si pide PNG de 192 y 512 px, añadirlos.
 - Este equipo no tiene Docker: el despliegue solo se ha probado en el CI. Primer despliegue real: servidor con dominio y HTTPS.
 - Spec 002 por definir con el equipo (ideas: pedidos del rol Ventas que cobra caja, devoluciones y usuarios en la PWA, facturación electrónica DIAN, reportes).
 - Pantallas que faltan en la PWA: devoluciones/anulaciones (supervisor) y administración de usuarios (hoy por el admin de Django).
