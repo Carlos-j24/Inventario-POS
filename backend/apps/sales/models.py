@@ -1,0 +1,57 @@
+from django.conf import settings
+from django.db import models
+
+from apps.catalog.models import MONEY, QTY, Product, Unit
+from apps.inventory.models import StockMovement, Warehouse
+
+
+class Sale(models.Model):
+    class Status(models.TextChoices):
+        COMPLETED = "COMPLETED", "Completada"
+        VOIDED = "VOIDED", "Anulada"
+
+    # UUID que genera el POS: reenviar la misma venta no la duplica.
+    client_uuid = models.UUIDField(unique=True)
+    status = models.CharField(max_length=10, choices=Status.choices, default=Status.COMPLETED)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name="sales")
+    seller = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sales")
+    offline = models.BooleanField(default=False, help_text="Se hizo sin conexión y llegó al sincronizar.")
+    needs_review = models.BooleanField(
+        default=False, help_text="Dejó stock negativo o cobró un precio distinto al del catálogo."
+    )
+    subtotal = models.DecimalField(**MONEY)
+    tax = models.DecimalField(**MONEY)
+    total = models.DecimalField(**MONEY)
+    occurred_at = models.DateTimeField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        verbose_name = "venta"
+
+    @property
+    def number(self):
+        return f"V-{self.pk:06d}"
+
+    def __str__(self):
+        return f"{self.number} · {self.total}"
+
+
+class SaleLine(models.Model):
+    """Línea de venta. Los precios incluyen IVA (precio al público); el IVA se separa por línea."""
+
+    sale = models.ForeignKey(Sale, on_delete=models.CASCADE, related_name="lines")
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="+")
+    unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name="+")
+    quantity = models.DecimalField(**QTY, help_text="En la unidad vendida.")
+    unit_price = models.DecimalField(**MONEY, help_text="Precio por unidad vendida, IVA incluido.")
+    catalog_price = models.DecimalField(**MONEY, help_text="Precio del catálogo al registrar la venta.")
+    tax_rate = models.DecimalField(max_digits=5, decimal_places=2)
+    subtotal = models.DecimalField(**MONEY)
+    tax = models.DecimalField(**MONEY)
+    total = models.DecimalField(**MONEY)
+    movement = models.OneToOneField(StockMovement, on_delete=models.PROTECT, related_name="sale_line")
+
+    class Meta:
+        verbose_name = "línea de venta"
+        verbose_name_plural = "líneas de venta"
