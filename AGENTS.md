@@ -32,6 +32,7 @@ Inventario y punto de venta para ferreterías: entradas a bodega, ventas que des
 - En los pagos, `amount` es lo que se abona a la venta; las vueltas solo existen en efectivo. Efectivo esperado al cierre = base + pagos en efectivo de ventas no anuladas − reembolsos en efectivo.
 - **El arqueo de un turno cerrado nunca cambia.** Por eso una venta solo se anula mientras su turno siga abierto; después se hace una devolución (`sales/returns.py`), que reembolsa desde el turno abierto actual.
 - En devoluciones parciales, la última parte de una línea reembolsa el resto exacto del total, para no perder ni sobrar centavos.
+- Autenticación por sesión en cookie + CSRF (`/api/auth/`), no JWT. Los usuarios no se borran, se desactivan. Siempre debe quedar al menos un usuario activo con `users.manage` (`accounts/services.py`).
 
 ## Forma de trabajar
 - Lee `docs/constitution.md`, `MEMORY.md` y la spec activa antes de tocar código.

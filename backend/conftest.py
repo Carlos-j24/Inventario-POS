@@ -1,12 +1,19 @@
 from decimal import Decimal
 
 import pytest
+from django.core.cache import cache
 
 from apps.accounts.models import Role, User
 from apps.cash.models import CashRegister
 from apps.cash.services import open_shift
 from apps.catalog.models import Category, Product, ProductUnit, Unit
 from apps.inventory.models import Warehouse
+
+
+@pytest.fixture(autouse=True)
+def clear_cache():
+    """El límite de intentos de inicio de sesión vive en la caché: cada test empieza de cero."""
+    cache.clear()
 
 
 @pytest.fixture

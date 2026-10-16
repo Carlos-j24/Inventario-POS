@@ -7,7 +7,8 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - 2026-10-15: repositorio público Carlos-j24/Inventario-POS. CI (GitHub Actions) con pytest en Python 3.12 y 3.14 en cada PR: no fusionar con el CI en rojo.
 - 2026-10-16: T5 caja: turnos por caja física, pago mixto con vueltas, arqueo al cierre. Las ventas ahora exigen turno y pagos. 55 tests en verde.
 - 2026-10-16: T6 anulaciones (venta completa, turno abierto) y devoluciones parciales con reembolso. 71 tests en verde.
-- Falta: autenticación, frontend PWA y sincronización sin conexión (ver `specs/001-mvp/tasks.md`).
+- 2026-10-16: T7 autenticación (sesión en cookie + CSRF, login con límite de intentos) y API de usuarios y roles. 90 tests en verde.
+- Falta: frontend PWA y sincronización sin conexión (ver `specs/001-mvp/tasks.md`).
 
 ## Decisiones (y por qué)
 - AGENTS.md es la fuente única de reglas; CLAUDE.md solo lo importa → mismas reglas para Claude Code y OpenCode.
@@ -17,6 +18,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - Roles editables y permisos fijos por código → el admin crea roles nuevos sin tocar el código.
 - Precios con IVA incluido → así se exhiben en ferretería; el POS suma totales y el backend separa la base y el IVA.
 - Turno por caja física, no por cajero (decisión del equipo, 2026-10-16) → el arqueo cuadra el cajón; si cambia el cajero, se cierra y se abre otro turno.
+- Sesión en cookie y no JWT → sin dependencias nuevas y la cookie HttpOnly no la lee JavaScript; obliga a servir la PWA y la API desde el mismo dominio.
 - Pago mixto permitido (decisión del equipo) → tarjeta y transferencia no pueden pasarse del total; el efectivo da vueltas.
 
 ## Aprendizajes y errores a evitar
@@ -26,5 +28,5 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - Bases de desarrollo con ventas anteriores a la T5 no migran (las ventas exigen turno): borrar `db.sqlite3` y volver a migrar.
 
 ## Próximos pasos
-- T7: autenticación para la PWA (sesión con cookie o JWT) y API de usuarios y roles para el administrador.
+- T8: frontend PWA (React + Vite) servido desde el mismo dominio que la API: inicio de sesión, POS, entradas a bodega, existencias.
 - Admin: etiquetas en español (`verbose_name`) y booleanos de solo lectura que muestran el texto de ayuda en vez de Sí/No.
