@@ -69,6 +69,12 @@ Vencer los pedidos que nadie cobró (spec 002). La app ya los trata como vencido
 docker compose exec -T app python manage.py expire_orders
 ```
 
+Enviar a la DIAN los documentos electrónicos pendientes (spec 005), **cada minuto** cuando la facturación esté encendida (`INVOICING_ENABLED=1`). Con `flock` no se cruzan dos ejecuciones:
+
+```bash
+flock -n /tmp/fiscal.lock docker compose exec -T app python manage.py send_fiscal_documents
+```
+
 ## Copias de seguridad
 La base de datos vive en el volumen `pgdata`. Copia diaria recomendada:
 

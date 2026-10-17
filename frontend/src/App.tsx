@@ -3,6 +3,7 @@ import { useState, type ComponentType } from "react";
 import { useAuth } from "./auth";
 import { promptInstall, useCanInstall } from "./install";
 import ChangePassword from "./pages/ChangePassword";
+import FiscalInbox from "./pages/FiscalInbox";
 import Login from "./pages/Login";
 import Orders from "./pages/Orders";
 import Pos from "./pages/Pos";
@@ -24,6 +25,7 @@ const PAGES: { id: string; label: string; permission: string | string[]; Compone
   { id: "sales", label: "Ventas", permission: ["sales.void", "reports.view"], Component: Sales },
   { id: "review", label: "Revisión", permission: "reports.view", Component: Review },
   { id: "reports", label: "Reportes", permission: "reports.view", Component: Reports },
+  { id: "fiscal", label: "DIAN", permission: "reports.view", Component: FiscalInbox },
   { id: "users", label: "Usuarios", permission: "users.manage", Component: Users },
   { id: "roles", label: "Roles", permission: "users.manage", Component: Roles },
 ];
