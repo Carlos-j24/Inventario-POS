@@ -163,3 +163,14 @@ button.danger-btn { background: var(--danger); color: #fff; border-color: var(--
 .role-checks legend { color: var(--muted); font-size: 0.9rem; padding: 0 4px; }
 .perm-group { flex-direction: column; flex-wrap: nowrap; }
 .results button.active-item { background: var(--bg); font-weight: 600; }
+
+/* Reportes (spec 004) */
+.report-tabs { display: flex; gap: 4px; flex-wrap: wrap; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 12px; }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 8px; margin: 0 0 8px; }
+.kpi { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+.kpi dt { color: var(--muted); font-size: 0.8rem; }
+.kpi dd { margin: 2px 0 0; font-size: 1.3rem; font-weight: 700; font-variant-numeric: tabular-nums; }
+.report-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 8px 24px; }
+.report-table h3 { font-size: 1rem; margin: 16px 0 6px; }
+.table-wrap { overflow-x: auto; }
+.report-table .badge { margin-left: 6px; }
