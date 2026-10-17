@@ -33,11 +33,11 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - En Windows, un `fetch` a un puerto local apagado tarda unos 8 s en fallar: por eso `api.ts` tiene un límite de 10 s y lo trata como sin conexión.
 - El inicio de sesión admite 5 intentos por minuto (`LOGIN_RATE`): una prueba que cambia de usuario varias veces seguidas recibe 429.
 - `gh pr merge --auto` sin checks obligatorios fusiona AL INSTANTE (pasó con el PR #8). Ahora main exige los checks, pero GitHub a veces no dispara la fusión al quedar todo en verde (PR #9, #10, #27): revisar y fusionar a mano.
-- Los tests de concurrencia (dos cajas a la vez) no corren en SQLite: el job `pytest-postgres` del CI corre la suite contra PostgreSQL.
+- Los tests de concurrencia (dos cajas a la vez) no corren en SQLite: el job `pytest-postgres` del CI corre la suite contra PostgreSQL. Llevan `django_db(transaction=True, serialized_rollback=True)`: sin lo segundo vacían la base, incluidos los datos de las migraciones (unidades, roles), y rompen el test transaccional siguiente (pasó en el PR #38).
 - Bases de desarrollo con ventas anteriores a la T5 no migran (las ventas exigen turno): borrar `db.sqlite3` y volver a migrar.
 - El BOM del CSV se escribe con `String.fromCharCode(0xfeff)`: el escape `\uFEFF` puede acabar guardado como carácter invisible. Para comprobarlo, leer los bytes: `Blob.text()` quita el BOM.
 
 ## Próximos pasos
-- **Spec 005 (facturación DIAN)** aprobada (PR #36) y en curso: T1 hecha (exento/excluido y clientes). Decisiones (2026-10-17): proveedor tecnológico por API con adaptador, DE-POS a consumidor final y factura a pedido, contingencia sin conexión, tiquete de 80 mm con QR. Falta elegir el proveedor (decisión comercial) y confirmar con el contador las devoluciones parciales de un DE-POS.
+- **Spec 005 (facturación DIAN)** aprobada (PR #36) y en curso: T1 (exento/excluido y clientes) y T2 (numeración por caja) hechas. Decisiones (2026-10-17): proveedor tecnológico por API con adaptador, DE-POS a consumidor final y factura a pedido, contingencia sin conexión, tiquete de 80 mm con QR. Falta elegir el proveedor (decisión comercial) y confirmar con el contador las devoluciones parciales de un DE-POS.
 - Primer despliegue real: servidor con dominio y HTTPS (este equipo no tiene Docker; el despliegue solo se prueba en el CI). Cómo probar en un celular: docs/despliegue.md.
 - Admin de Django: etiquetas en español (`verbose_name`) y booleanos de solo lectura que muestran el texto de ayuda en vez de Sí/No.
