@@ -3,7 +3,10 @@ import uuid
 from django.conf import settings
 from django.db import models
 
-from apps.catalog.models import MONEY, QTY, Product
+from apps.catalog.models import QTY, Product
+
+# Costos con 4 decimales: el costo por metro de un rollo no siempre da centavos exactos.
+COST = {"max_digits": 16, "decimal_places": 4}
 
 
 class Warehouse(models.Model):
@@ -37,7 +40,12 @@ class StockMovement(models.Model):
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="movements")
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name="movements")
     quantity = models.DecimalField(**QTY, help_text="En unidad base; positiva entra, negativa sale.")
-    unit_cost = models.DecimalField(**MONEY, null=True, blank=True)
+    # Costo por unidad base. Entradas: el de la compra. Salidas: el promedio ponderado del momento
+    # (spec 004). Devoluciones: el mismo con que salió lo devuelto.
+    unit_cost = models.DecimalField(**COST, null=True, blank=True)
+    cost_estimated = models.BooleanField(
+        default=False, help_text="Costo asignado después (ventas anteriores a la spec 004)."
+    )
     balance_after = models.DecimalField(**QTY)
     reference = models.CharField(max_length=80, blank=True)
     needs_review = models.BooleanField(
@@ -63,6 +71,7 @@ class StockLevel(models.Model):
     product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="stock_levels")
     warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name="stock_levels")
     quantity = models.DecimalField(**QTY, default=0)
+    average_cost = models.DecimalField(**COST, default=0, help_text="Costo promedio ponderado por unidad base.")
 
     class Meta:
         constraints = [
