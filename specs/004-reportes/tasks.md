@@ -1,8 +1,9 @@
 # Tareas — Spec 004
 
-> Decisiones cerradas (ver spec.md). Se programan cuando se apruebe el PR de la spec.
+> Spec aprobada por el equipo (PR #29, 2026-10-16), incluida la regla de devoluciones. Decisiones en spec.md.
 
-- [ ] **T1** Costo promedio ponderado en entradas, ventas y devoluciones; permiso `reports.costs` (migración de datos); costo estimado para las ventas anteriores.
+- [x] **T1** Costo promedio ponderado en entradas, ventas y devoluciones; permiso `reports.costs` (migración de datos); costo estimado para las ventas anteriores.
+  - `inventory/costing.py` (fórmula y `replay_costs`). `StockLevel.average_cost` y costos con 4 decimales. La migración recalcula todo el kardex en orden; en la base de demostración marcó 17 salidas como costo estimado y los promedios coinciden con los costos de compra.
 - [ ] **T2** API de reportes de ventas y de productos (`/api/reports/sales/`, `/api/reports/products/`).
 - [ ] **T3** API de inventario valorizado, márgenes y arqueos (`/api/reports/inventory/`, `/api/reports/margins/`, `/api/reports/shifts/`), con `reports.costs` para márgenes e inventario valorizado.
 - [ ] **T4** Pantalla Reportes: hoy por defecto, accesos rápidos y rango; pestañas por reporte y tablas.

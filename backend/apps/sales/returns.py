@@ -51,6 +51,7 @@ def void_sale(*, sale, user, reason):
             record_movement(
                 kind=RETURN, product=line.product, warehouse=sale.warehouse, quantity=line.quantity,
                 unit=line.unit, user=user, reference=f"Anulación {sale.number}",
+                unit_cost=line.movement.unit_cost,  # vuelve al costo con que salió (spec 004)
             )
         sale.status = Sale.Status.VOIDED
         sale.voided_by = user
@@ -110,6 +111,7 @@ def _create_return(sale, user, shift, lines, refund_method, reason, client_uuid)
             movement, _ = record_movement(
                 kind=RETURN, product=line.product, warehouse=sale.warehouse, quantity=qty,
                 unit=line.unit, user=user, reference=f"Devolución de {sale.number}",
+                unit_cost=line.movement.unit_cost,  # vuelve al costo con que salió (spec 004)
             )
             SaleReturnLine.objects.create(
                 sale_return=sale_return, sale_line=line, quantity=qty,

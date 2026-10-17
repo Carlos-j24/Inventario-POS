@@ -11,6 +11,7 @@ from django.utils import timezone
 
 from apps.catalog.units import to_base_quantity
 
+from .costing import COST_PLACES, next_average
 from .models import StockLevel, StockMovement
 
 Kind = StockMovement.Kind
@@ -57,7 +58,7 @@ def record_movement(
 
     if unit_cost is not None and unit is not None and unit.pk != product.base_unit_id:
         # El costo llega por presentación (p. ej. por rollo); se guarda por unidad base.
-        unit_cost = (Decimal(unit_cost) * Decimal(quantity) / base_qty).quantize(Decimal("0.01"))
+        unit_cost = (Decimal(unit_cost) * Decimal(quantity) / base_qty).quantize(COST_PLACES)
 
     try:
         return _apply(
@@ -77,6 +78,13 @@ def _apply(kind, product, warehouse, signed, user, unit_cost, reference,
         level, _ = StockLevel.objects.select_for_update().get_or_create(
             product=product, warehouse=warehouse
         )
+        if signed > 0:
+            # Entra: con su costo (compra, o el original si es una devolución) o, si no trae, al
+            # promedio vigente. Recalcula el promedio ponderado (spec 004, decisión 1).
+            cost = Decimal(unit_cost) if unit_cost is not None else level.average_cost
+            level.average_cost = next_average(level.quantity, level.average_cost, signed, cost)
+        else:
+            cost = level.average_cost  # sale al costo promedio de este momento
         new_balance = level.quantity + signed
         if new_balance < 0 and not allow_negative:
             raise InsufficientStock(
@@ -84,13 +92,13 @@ def _apply(kind, product, warehouse, signed, user, unit_cost, reference,
                 f"hay {level.quantity}, se piden {-signed}."
             )
         level.quantity = new_balance
-        level.save(update_fields=["quantity"])
+        level.save(update_fields=["quantity", "average_cost"])
         movement = StockMovement.objects.create(
             kind=kind,
             product=product,
             warehouse=warehouse,
             quantity=signed,
-            unit_cost=unit_cost,
+            unit_cost=cost,
             balance_after=new_balance,
             reference=reference,
             client_uuid=client_uuid,

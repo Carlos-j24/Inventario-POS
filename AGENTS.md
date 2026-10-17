@@ -33,7 +33,8 @@ Inventario y punto de venta para ferreterías: entradas a bodega, ventas que des
 - Todo lo que el POS crea sin conexión lleva un `client_uuid`: reenviarlo no debe duplicar nada.
 - Una venta sin conexión puede dejar stock negativo; se acepta y se marca `needs_review` para que bodega lo revise.
 - Los permisos son fijos en código (se añaden con una migración de datos); los roles son datos que edita el administrador.
-- Dinero y cantidades siempre con `Decimal`, nunca `float`.
+- Dinero y cantidades siempre con `Decimal`, nunca `float`. Costos con 4 decimales (`COST`).
+- Costo promedio ponderado (spec 004): lo mantiene `record_movement`. Las salidas se registran al promedio vigente; lo que entra recalcula el promedio, y una devolución entra con el costo con que salió (pásalo en `unit_cost`). El costo de una venta no se cambia nunca.
 - Los precios de venta **incluyen IVA** (precio al público). El IVA se separa por línea y se redondea al centavo.
 - Venta en línea: precio del catálogo y sin stock negativo. Venta sin conexión: se respeta el precio cobrado y se acepta negativo, marcando `needs_review`.
 - Toda venta pertenece al turno abierto de una caja y sale de la bodega de esa caja. Una venta sin conexión que llega con el turno ya cerrado se acepta y se marca `needs_review`.
