@@ -179,7 +179,7 @@ def test_without_stock_the_order_is_not_charged(vendor, cashier, shift, hammer, 
 
 
 @pytest.mark.skipif(connection.vendor == "sqlite", reason="SQLite no permite escrituras concurrentes")
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db(transaction=True, serialized_rollback=True)
 def test_two_cashiers_charging_at_once_produce_one_sale(cashier, shift, order):  # pragma: no cover
     errors = []
 

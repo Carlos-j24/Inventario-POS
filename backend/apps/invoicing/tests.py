@@ -83,7 +83,7 @@ def test_the_last_day_of_validity_still_works(register):
 
 
 @pytest.mark.skipif(connection.vendor == "sqlite", reason="SQLite no permite escrituras concurrentes")
-@pytest.mark.django_db(transaction=True)
+@pytest.mark.django_db(transaction=True, serialized_rollback=True)
 def test_two_registers_at_once_never_repeat_a_number(register):  # pragma: no cover
     resolution(register, range_to=40)
     numbers, errors = [], []
