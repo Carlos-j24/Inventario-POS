@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import NumberingResolution
+from .models import FiscalDocument, FiscalEvent, NumberingResolution
 from .numbering import resolution_status
 
 
@@ -22,3 +22,32 @@ class NumberingResolutionAdmin(admin.ModelAdmin):
 
     def has_delete_permission(self, request, obj=None):
         return False  # se desactiva; no se borra
+
+
+class FiscalEventInline(admin.TabularInline):
+    model = FiscalEvent
+    extra = 0
+    can_delete = False
+    readonly_fields = ("at", "kind", "detail")
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(FiscalDocument)
+class FiscalDocumentAdmin(admin.ModelAdmin):
+    """Solo lectura: los documentos los crea el sistema y la DIAN los valida."""
+
+    list_display = ("code", "kind", "status", "sale", "customer", "total", "issued_at", "attempts")
+    list_filter = ("kind", "status")
+    search_fields = ("number", "cude", "sale__id", "customer__name", "customer__id_number")
+    inlines = [FiscalEventInline]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

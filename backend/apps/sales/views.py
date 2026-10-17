@@ -145,4 +145,5 @@ class SaleDetailView(generics.RetrieveAPIView):
     serializer_class = SaleDetailSerializer
     queryset = Sale.objects.select_related("warehouse", "seller", "salesperson", "shift__register", "order").prefetch_related(
         "lines__product", "lines__unit", "lines__return_lines", "payments", "returns__refund", "returns__lines",
+        "fiscal_documents__customer", "fiscal_documents__corrects",
     )

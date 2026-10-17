@@ -4,6 +4,8 @@ from rest_framework import serializers
 
 from apps.cash.models import Payment, Shift
 from apps.catalog.models import MONEY, QTY, Product, Unit
+from apps.customers.models import Customer
+from apps.invoicing.models import FiscalDocument
 
 from .models import Order, OrderLine, Sale, SaleLine, SaleReturn, SaleReturnLine
 
@@ -39,6 +41,9 @@ class SaleInputSerializer(serializers.Serializer):
     order = serializers.PrimaryKeyRelatedField(queryset=Order.objects.all(), required=False, allow_null=True)
     order_lines = OrderLineChargeSerializer(many=True, required=False, allow_null=True)
     payments = PaymentInputSerializer(many=True, allow_empty=False)
+    # Spec 005: a quién va el documento electrónico (consumidor final si no se dice) y si pidió factura.
+    customer = serializers.PrimaryKeyRelatedField(queryset=Customer.objects.filter(is_active=True), required=False, allow_null=True)
+    invoice = serializers.BooleanField(default=False)
 
     def validate(self, data):
         order = data.get("order")
@@ -238,14 +243,29 @@ class SaleDetailLineSerializer(SaleLineSerializer):
         return str(sum((r.quantity for r in obj.return_lines.all()), Decimal(0)))
 
 
+class FiscalDocumentSerializer(serializers.ModelSerializer):
+    kind_label = serializers.CharField(source="get_kind_display", read_only=True)
+    status_label = serializers.CharField(source="get_status_display", read_only=True)
+    customer = serializers.CharField(source="customer.name", read_only=True)
+    corrects = serializers.CharField(source="corrects.code", read_only=True, default=None)
+
+    class Meta:
+        model = FiscalDocument
+        fields = [
+            "id", "kind", "kind_label", "code", "status", "status_label", "customer", "issued_at",
+            "subtotal", "tax", "total", "cude", "qr_data", "corrects", "last_error",
+        ]
+
+
 class SaleDetailSerializer(SaleSerializer):
     register = serializers.CharField(source="shift.register.code", read_only=True)
     shift_open = serializers.SerializerMethodField()
     lines = SaleDetailLineSerializer(many=True, read_only=True)
     returns = SaleReturnSerializer(many=True, read_only=True)
+    fiscal_documents = FiscalDocumentSerializer(many=True, read_only=True)
 
     class Meta(SaleSerializer.Meta):
-        fields = SaleSerializer.Meta.fields + ["register", "shift_open", "returns", "reviewed_at", "review_note"]
+        fields = SaleSerializer.Meta.fields + ["register", "shift_open", "returns", "reviewed_at", "review_note", "fiscal_documents"]
 
     def get_shift_open(self, obj):
         """Anular solo se puede con el turno de la venta abierto: la pantalla lo usa para ofrecer devolución."""

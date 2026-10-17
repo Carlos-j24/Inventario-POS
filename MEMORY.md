@@ -38,6 +38,6 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - El BOM del CSV se escribe con `String.fromCharCode(0xfeff)`: el escape `\uFEFF` puede acabar guardado como carácter invisible. Para comprobarlo, leer los bytes: `Blob.text()` quita el BOM.
 
 ## Próximos pasos
-- **Spec 005 (facturación DIAN)** aprobada (PR #36) y en curso: T1 (exento/excluido y clientes) y T2 (numeración por caja) hechas. Decisiones (2026-10-17): proveedor tecnológico por API con adaptador, DE-POS a consumidor final y factura a pedido, contingencia sin conexión, tiquete de 80 mm con QR. Falta elegir el proveedor (decisión comercial) y confirmar con el contador las devoluciones parciales de un DE-POS.
+- **Spec 005 (facturación DIAN)** aprobada (PR #36) y en curso: T1 (exento/excluido y clientes), T2 (numeración por caja) y T3 (documentos y notas con proveedor simulado; interruptor `INVOICING_ENABLED` apagado) hechas. Decisiones (2026-10-17): proveedor tecnológico por API con adaptador, DE-POS a consumidor final y factura a pedido, contingencia sin conexión, tiquete de 80 mm con QR. Falta elegir el proveedor (decisión comercial) y confirmar con el contador las devoluciones parciales de un DE-POS.
 - Primer despliegue real: servidor con dominio y HTTPS (este equipo no tiene Docker; el despliegue solo se prueba en el CI). Cómo probar en un celular: docs/despliegue.md.
 - Admin de Django: etiquetas en español (`verbose_name`) y booleanos de solo lectura que muestran el texto de ayuda en vez de Sí/No.

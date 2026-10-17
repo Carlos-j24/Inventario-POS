@@ -168,4 +168,12 @@ LOGGING = {
     "root": {"handlers": ["console"], "level": os.environ.get("LOG_LEVEL", "INFO")},
 }
 
+# Facturación electrónica (spec 005). Apagada hasta tener proveedor real (T7): las ventas no
+# generan documentos fiscales. El proveedor simulado solo sirve en desarrollo y tests.
+INVOICING_ENABLED = os.environ.get("INVOICING_ENABLED", "0") == "1"
+INVOICING_PROVIDER = os.environ.get("INVOICING_PROVIDER", "apps.invoicing.providers.simulated.SimulatedProvider")
+INVOICING_SIMULATED_MODE = os.environ.get("INVOICING_SIMULATED_MODE", "ok")
+if INVOICING_ENABLED and not DEBUG and INVOICING_PROVIDER.endswith("SimulatedProvider"):
+    raise ImproperlyConfigured("En producción la facturación electrónica necesita un proveedor real (INVOICING_PROVIDER).")
+
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
