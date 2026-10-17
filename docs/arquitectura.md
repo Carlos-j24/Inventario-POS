@@ -34,6 +34,8 @@
 ## Reportes (spec 004)
 - **Costo promedio ponderado**: cada entrada recalcula `StockLevel.average_cost`; cada salida guarda el promedio del momento en `unit_cost`, y una devolución vuelve con el costo con que salió (`inventory/costing.py`).
 - **API** (`reports.view`, solo lectura): `GET /api/reports/sales/` (totales, por día, caja, vendedor y medio de pago) y `GET /api/reports/products/` (más vendidos por cantidad y por valor, y sin movimiento). Período `?from=AAAA-MM-DD&to=…` en hora de Bogotá, hoy por defecto y máximo un año; filtros `register`, `salesperson` y `limit`.
+- **Con costos** (`reports.costs`, solo Administrador por defecto): `GET /api/reports/inventory/` (foto actual: existencias × costo promedio, por producto y total; marca bajo mínimo y negativos; una existencia negativa vale 0; `?warehouse`) y `GET /api/reports/margins/` (venta neta sin IVA − costo guardado en cada salida, con % y aviso de costo estimado).
+- **Arqueos** (`reports.view`): `GET /api/reports/shifts/` lista los turnos cerrados en el período (por fecha de cierre) con lo que entró por cada medio, esperado, contado y diferencia; totaliza faltantes y sobrantes.
 - Las ventas anuladas no cuentan. Una devolución resta el día en que se hizo, en la caja de donde salió el reembolso y al vendedor de la venta: así el reporte cuadra con los arqueos.
 - El dinero sale como texto con 2 decimales y las cantidades con 3, nunca como número de coma flotante.
 
