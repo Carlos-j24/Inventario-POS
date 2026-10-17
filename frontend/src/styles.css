@@ -174,3 +174,4 @@ button.danger-btn { background: var(--danger); color: #fff; border-color: var(--
 .report-table h3 { font-size: 1rem; margin: 16px 0 6px; }
 .table-wrap { overflow-x: auto; }
 .report-table .badge { margin-left: 6px; }
+.report-tabs .download { margin-left: auto; }

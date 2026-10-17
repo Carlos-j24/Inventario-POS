@@ -5,7 +5,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - **Spec 001 (MVP)** completa: backend (roles, catálogo, kardex, ventas con IVA incluido, caja con pago mixto y arqueo, devoluciones, sesión en cookie), frontend React con modo sin conexión e instalable, y despliegue Docker + PostgreSQL.
 - **Spec 002 (pedidos vendedor → caja)** completa: el vendedor arma el pedido con un código de 4 dígitos y la caja lo cobra; la venta guarda quién vendió y quién cobró.
 - **Spec 003 (supervisor y administrador)** completa: pantallas Ventas (buscar, anular, devolver), Usuarios, Roles, cambiar mi contraseña y contraseña temporal con cambio obligatorio (la API bloquea hasta cambiarla).
-- **Spec 004 (reportes)** en curso: T1 (costo promedio ponderado, permiso `reports.costs`), T2 (API de ventas y productos), T3 (API de inventario valorizado, márgenes y arqueos) y T4 (pantalla Reportes) hechas.
+- **Spec 004 (reportes)** en curso: T1 (costo promedio ponderado, permiso `reports.costs`), T2 (API de ventas y productos), T3 (API de inventario valorizado, márgenes y arqueos), T4 (pantalla Reportes) y T5 (CSV) hechas; falta la T6 (prueba de punta a punta).
 - Repositorio público Carlos-j24/Inventario-POS. main exige 5 checks: pytest 3.12 y 3.14, pytest-postgres, frontend y docker (`scripts/smoke-test.sh`).
 
 ## Decisiones (y por qué)
@@ -34,6 +34,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - `gh pr merge --auto` sin checks obligatorios fusiona AL INSTANTE (pasó con el PR #8). Ahora main exige los checks, pero GitHub a veces no dispara la fusión al quedar todo en verde (PR #9, #10, #27): revisar y fusionar a mano.
 - Los tests de concurrencia (dos cajas a la vez) no corren en SQLite: el job `pytest-postgres` del CI corre la suite contra PostgreSQL.
 - Bases de desarrollo con ventas anteriores a la T5 no migran (las ventas exigen turno): borrar `db.sqlite3` y volver a migrar.
+- El BOM del CSV se escribe con `String.fromCharCode(0xfeff)`: el escape `\uFEFF` puede acabar guardado como carácter invisible. Para comprobarlo, leer los bytes: `Blob.text()` quita el BOM.
 
 ## Próximos pasos
 - Siguientes specs, por prioridad del equipo: **reportes** (ventas por día y vendedor, más vendidos, inventario valorizado, arqueos) y **facturación electrónica DIAN** (proveedor tecnológico y numeración por caja).

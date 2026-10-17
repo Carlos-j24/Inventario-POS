@@ -10,5 +10,6 @@
   - `costs.py` (inventario valorizado y márgenes) y `shifts.py` (arqueos). Stock negativo vale 0 y se marca; márgenes con el costo guardado en cada salida (sin costo → 0 y marcado como estimado); arqueos por fecha de cierre.
 - [x] **T4** Pantalla Reportes: hoy por defecto, accesos rápidos y rango; pestañas por reporte y tablas.
   - `pages/Reports.tsx` y `reports.ts` (accesos rápidos con la semana desde el lunes, rango y URL de cada reporte). Inventario y Márgenes solo aparecen con `reports.costs`; el inventario es una foto de hoy y no usa el período ni la caja.
-- [ ] **T5** Exportar cada reporte a CSV (`;` y coma decimal).
+- [x] **T5** Exportar cada reporte a CSV (`;` y coma decimal).
+  - Se arma en el navegador con la misma respuesta que muestra la pantalla (`csv.ts`, `reportCsv.ts`): mismas cifras sin otro endpoint. BOM UTF-8, CRLF, números sin separador de miles, fechas en hora de Bogotá; textos que empiezan por = + - @ se neutralizan (inyección de fórmulas).
 - [ ] **T6** Prueba de punta a punta: comparar los reportes con los datos de la base de demostración y con los arqueos.
