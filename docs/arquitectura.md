@@ -31,6 +31,12 @@
 - **Ventas** (`sales.void` o `reports.view`): `GET /api/sales/` lista las de hoy o busca por número; el detalle trae devoluciones y si su turno sigue abierto. Anular exige el turno abierto; si no, se devuelve y el reembolso sale de una caja con turno abierto, sin tocar arqueos cerrados.
 - **Usuarios y Roles** (`users.manage`): la contraseña que pone el administrador es temporal (`must_change_password`). Hasta cambiarla, la API solo permite `me`, `password` y `logout`; el bloqueo vive en `require()`, `require_any()` y el permiso por defecto.
 
+## Reportes (spec 004)
+- **Costo promedio ponderado**: cada entrada recalcula `StockLevel.average_cost`; cada salida guarda el promedio del momento en `unit_cost`, y una devolución vuelve con el costo con que salió (`inventory/costing.py`).
+- **API** (`reports.view`, solo lectura): `GET /api/reports/sales/` (totales, por día, caja, vendedor y medio de pago) y `GET /api/reports/products/` (más vendidos por cantidad y por valor, y sin movimiento). Período `?from=AAAA-MM-DD&to=…` en hora de Bogotá, hoy por defecto y máximo un año; filtros `register`, `salesperson` y `limit`.
+- Las ventas anuladas no cuentan. Una devolución resta el día en que se hizo, en la caja de donde salió el reembolso y al vendedor de la venta: así el reporte cuadra con los arqueos.
+- El dinero sale como texto con 2 decimales y las cantidades con 3, nunca como número de coma flotante.
+
 ## Roles y permisos
 - `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones.
 - `Role`: conjunto editable de permisos. Por defecto: Administrador, Supervisor, Jefe de bodega, Auxiliar de bodega, Ventas, Caja.
