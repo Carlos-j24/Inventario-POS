@@ -90,3 +90,89 @@ class NumberingResolution(models.Model):
                 errors["range_from"] = f"El rango se cruza con otra resolución del prefijo «{self.prefix}»."
         if errors:
             raise ValidationError(errors)
+
+
+class FiscalDocument(models.Model):
+    """Documento electrónico de una venta, anulación o devolución (spec 005, T3).
+
+    El DE-POS y la factura llevan numeración autorizada de la caja; las notas, un consecutivo
+    interno (art. 22 y 36). Nace pendiente: la cola de envío (T4) lo manda al proveedor.
+    """
+
+    class Kind(models.TextChoices):
+        POS = "POS", "Documento equivalente POS"
+        INVOICE = "INVOICE", "Factura electrónica"
+        POS_ADJUSTMENT = "POS_ADJUSTMENT", "Nota de ajuste"
+        CREDIT_NOTE = "CREDIT_NOTE", "Nota crédito"
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pendiente de envío"
+        VALIDATED = "VALIDATED", "Validado por la DIAN"
+        REJECTED = "REJECTED", "Rechazado"
+
+    kind = models.CharField("tipo", max_length=16, choices=Kind.choices)
+    status = models.CharField("estado", max_length=10, choices=Status.choices, default=Status.PENDING)
+    sale = models.ForeignKey("sales.Sale", on_delete=models.PROTECT, related_name="fiscal_documents", verbose_name="venta")
+    sale_return = models.ForeignKey(
+        "sales.SaleReturn", on_delete=models.PROTECT, related_name="fiscal_documents", null=True, blank=True,
+        verbose_name="devolución",
+    )
+    corrects = models.ForeignKey(
+        "self", on_delete=models.PROTECT, related_name="notes", null=True, blank=True,
+        verbose_name="documento que corrige",
+    )
+    customer = models.ForeignKey("customers.Customer", on_delete=models.PROTECT, related_name="fiscal_documents", verbose_name="cliente")
+    resolution = models.ForeignKey(
+        NumberingResolution, on_delete=models.PROTECT, related_name="documents", null=True, blank=True,
+        verbose_name="resolución",
+    )
+    prefix = models.CharField("prefijo", max_length=4, blank=True)
+    number = models.PositiveBigIntegerField("número")
+    issued_at = models.DateTimeField("generado")
+    subtotal = models.DecimalField(max_digits=14, decimal_places=2)
+    tax = models.DecimalField(max_digits=14, decimal_places=2)
+    total = models.DecimalField(max_digits=14, decimal_places=2)
+    cude = models.CharField("CUFE/CUDE", max_length=96, blank=True)
+    qr_data = models.TextField("contenido del QR", blank=True)
+    provider_id = models.CharField("id en el proveedor", max_length=80, blank=True)
+    attempts = models.PositiveIntegerField("intentos de envío", default=0)
+    last_error = models.TextField("último error", blank=True)
+    validated_at = models.DateTimeField("validado", null=True, blank=True)
+
+    class Meta:
+        ordering = ["-issued_at", "-pk"]
+        verbose_name = "documento electrónico"
+        verbose_name_plural = "documentos electrónicos"
+        constraints = [
+            models.UniqueConstraint(fields=["kind", "prefix", "number"], name="unique_fiscal_number"),
+        ]
+
+    def __str__(self):
+        return f"{self.get_kind_display()} {self.code}"
+
+    @property
+    def code(self):
+        return f"{self.prefix}{self.number}"
+
+    @property
+    def is_note(self):
+        return self.kind in (self.Kind.POS_ADJUSTMENT, self.Kind.CREDIT_NOTE)
+
+
+class FiscalEvent(models.Model):
+    """Historial de un documento: creación, envíos, validación, rechazos y errores."""
+
+    document = models.ForeignKey(FiscalDocument, on_delete=models.CASCADE, related_name="events")
+    at = models.DateTimeField(auto_now_add=True)
+    kind = models.CharField(max_length=20)
+    detail = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["at", "pk"]
+
+
+class InternalCounter(models.Model):
+    """Consecutivo interno (las notas no usan numeración autorizada de la DIAN)."""
+
+    key = models.CharField(max_length=30, unique=True)
+    next_number = models.PositiveBigIntegerField(default=1)

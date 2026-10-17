@@ -15,6 +15,7 @@ from django.utils import timezone
 from apps.cash.models import Refund, Shift
 from apps.inventory.models import StockMovement
 from apps.inventory.services import record_movement
+from apps.invoicing.documents import issue_for_return, issue_for_void
 
 from .models import Sale, SaleReturn, SaleReturnLine
 from .services import money, split_tax
@@ -58,6 +59,7 @@ def void_sale(*, sale, user, reason):
         sale.voided_at = timezone.now()
         sale.void_reason = reason
         sale.save(update_fields=["status", "voided_by", "voided_at", "void_reason"])
+        issue_for_void(sale)
     return sale
 
 
@@ -123,6 +125,7 @@ def _create_return(sale, user, shift, lines, refund_method, reason, client_uuid)
         StockMovement.objects.filter(return_line__sale_return=sale_return).update(
             reference=f"Devolución {sale_return.number} de {sale.number}"
         )
+        issue_for_return(sale_return)
     return sale_return
 
 

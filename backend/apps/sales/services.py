@@ -10,6 +10,7 @@ from apps.cash.services import apply_payments
 from apps.catalog.models import ProductUnit
 from apps.inventory.models import StockMovement
 from apps.inventory.services import record_movement
+from apps.invoicing.documents import issue_for_sale
 
 from .models import Order, Sale, SaleLine
 
@@ -37,7 +38,8 @@ def split_tax(total, rate):
     return subtotal, total - subtotal
 
 
-def create_sale(*, user, shift, lines, payments, client_uuid, offline=False, occurred_at=None, order=None):
+def create_sale(*, user, shift, lines, payments, client_uuid, offline=False, occurred_at=None, order=None,
+                customer=None, invoice=False):
     """Registra y cobra una venta en el turno de una caja. Devuelve (venta, creada).
 
     lines: dicts con product, quantity y opcionalmente unit y unit_price.
@@ -48,6 +50,9 @@ def create_sale(*, user, shift, lines, payments, client_uuid, offline=False, occ
 
     Con order (spec 002) se cobra un pedido: lines son dicts con order_line y quantity (o None
     para cobrarlo completo), se cobra el precio del pedido y la venta queda a nombre de su vendedor.
+
+    customer e invoice (spec 005): a quién va el documento electrónico (consumidor final si no se
+    dice) y si el cliente pidió factura electrónica en vez del documento equivalente POS.
     """
     existing = Sale.objects.filter(client_uuid=client_uuid).first()
     if existing:
@@ -57,7 +62,10 @@ def create_sale(*, user, shift, lines, payments, client_uuid, offline=False, occ
     if not lines and order is None:
         raise ValidationError("La venta no tiene líneas.")
     try:
-        sale = _create(user, shift, lines, payments, client_uuid, offline, occurred_at or timezone.now(), order)
+        sale = _create(
+            user, shift, lines, payments, client_uuid, offline, occurred_at or timezone.now(), order,
+            customer=customer, invoice=invoice,
+        )
         return sale, True
     except IntegrityError:
         # Dos envíos simultáneos de la misma venta: el otro ganó.
@@ -103,7 +111,7 @@ def _lock_payable_order(order):
     return order
 
 
-def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, order=None):
+def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, order=None, *, customer=None, invoice=False):
     with transaction.atomic():
         # Bloquear el turno evita que se cierre a mitad de una venta.
         shift = Shift.objects.select_for_update().select_related("register").get(pk=shift.pk)
@@ -156,6 +164,7 @@ def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, ord
         sale.save(update_fields=["subtotal", "tax", "total", "needs_review"])
         apply_payments(sale=sale, shift=shift, payments=payments)
         StockMovement.objects.filter(sale_line__sale=sale).update(reference=f"Venta {sale.number}")
+        issue_for_sale(sale, customer=customer, invoice=invoice)
         if order is not None:
             order.status = Order.Status.PAID
             order.sale = sale
