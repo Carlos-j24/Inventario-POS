@@ -2,9 +2,9 @@ import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { InventoryReport, MarginsReport, ProductsReport, SalesReport, ShiftsReport } from "../api";
 import { AuthProvider } from "../auth";
 import { presetPeriod } from "../reports";
+import { inventory, margins, products, sales, shifts } from "./reportFixtures";
 import Reports from "./Reports";
 import { todayIso } from "./Sales";
 
@@ -22,56 +22,6 @@ function mockApi(routes: Record<string, () => Response>) {
 const urls = (fetch: ReturnType<typeof mockApi>) => fetch.mock.calls.map(([u]) => u);
 
 afterEach(() => vi.unstubAllGlobals());
-
-const row = (sales_count: number, total: string, returns: string, net: string) => ({ sales_count, total, returns, net });
-
-const sales: SalesReport = {
-  from: "2026-10-15", to: "2026-10-16",
-  totals: {
-    sales_count: 8, total: "1256100.00", subtotal: "1055546.21", tax: "200553.79",
-    returns_total: "56000.00", returns_subtotal: "47058.82", returns_tax: "8941.18",
-    net_total: "1200100.00", net_subtotal: "1008487.39", net_tax: "191612.61", average_ticket: "157012.50",
-  },
-  by_day: [{ day: "2026-10-15", ...row(4, "980100.00", "0.00", "980100.00") }, { day: "2026-10-16", ...row(4, "276000.00", "56000.00", "220000.00") }],
-  by_register: [{ register: "CAJA1", ...row(7, "1200100.00", "28000.00", "1172100.00") }],
-  by_salesperson: [{ salesperson: "andres.ventas", ...row(1, "68000.00", "28000.00", "40000.00") }],
-  by_method: [{ method: "CASH", label: "Efectivo", payments: "960100.00", refunds: "56000.00", net: "904100.00" }],
-};
-
-const products: ProductsReport = {
-  from: "2026-10-16", to: "2026-10-16",
-  by_quantity: [{ product: 6, sku: "TOR-1/4", name: "Tornillo 1/4", unit: "und", sales_count: 1, quantity: "100.000", total: "15000.00", subtotal: "12605.04" }],
-  by_value: [{ product: 5, sku: "PIN-VIN-B", name: "Pintura vinilo blanca", unit: "gal", sales_count: 3, quantity: "10.000", total: "600000.00", subtotal: "504201.68" }],
-  not_moved: [{ product: 9, sku: "LIJ-80", name: "Lija 80", unit: "und", stock: "12.500" }],
-};
-
-const shifts: ShiftsReport = {
-  from: "2026-10-16", to: "2026-10-16",
-  totals: {
-    shifts: 1, expected_cash: "274100.00", counted_cash: "272100.00", difference: "-2000.00", shortage: "2000.00", overage: "0.00",
-    by_method: { CASH: "124100.00", CARD: "200000.00", TRANSFER: "0.00" },
-  },
-  rows: [{
-    shift: 3, register: "CAJA1", opened_by: "laura.caja", opened_at: "2026-10-16T13:00:00Z", closed_by: "laura.caja",
-    closed_at: "2026-10-16T23:00:00Z", sales_count: 4, opening_float: "150000.00",
-    by_method: { CASH: "124100.00", CARD: "200000.00", TRANSFER: "0.00" },
-    expected_cash: "274100.00", counted_cash: "272100.00", difference: "-2000.00", notes: "Faltó un billete",
-  }],
-};
-
-const inventory: InventoryReport = {
-  totals: { value: "1373350.00", products: 2, below_min: 1, negative: 1 },
-  rows: [
-    { product: 2, sku: "MAR-16", name: "Martillo 16 oz", unit: "und", stock: "4.000", min_stock: "5.000", average_cost: "19000.0000", value: "76000.00", below_min: true, negative: false },
-    { product: 5, sku: "PIN-VIN-B", name: "Pintura vinilo blanca", unit: "gal", stock: "-2.000", min_stock: "0.000", average_cost: null, value: "0.00", below_min: false, negative: true },
-  ],
-};
-
-const margins: MarginsReport = {
-  from: "2026-10-16", to: "2026-10-16",
-  totals: { net_sales: "1008487.39", cost: "822150.00", margin: "186337.39", margin_pct: "18.5", cost_estimated: true },
-  rows: [{ product: 2, sku: "MAR-16", name: "Martillo 16 oz", net_sales: "188235.28", cost: "152000.00", margin: "36235.28", margin_pct: "19.2", cost_estimated: true }],
-};
 
 const registers = () => json([{ id: 2, code: "CAJA2", name: "Caja 2", warehouse: "PRAL", open_shift: null }]);
 
@@ -179,6 +129,31 @@ describe("pantalla Reportes", () => {
     expect(await screen.findByText(/costo estimado/)).toBeInTheDocument();
     expect(screen.getByText("Margen %").parentElement).toHaveTextContent("18,5 %");
     expect(screen.getByRole("table", { name: "Por producto" })).toHaveTextContent(/Martillo.*estimado.*36\.235.*19,2 %/);
+  });
+
+  it("descarga el CSV del reporte que se está viendo", async () => {
+    mockApi(base);
+    const blobs: Blob[] = [];
+    const downloads: string[] = [];
+    vi.stubGlobal("URL", Object.assign(URL, {
+      createObjectURL: vi.fn((blob: Blob) => { blobs.push(blob); return "blob:reporte"; }),
+      revokeObjectURL: vi.fn(),
+    }));
+    const click = vi.spyOn(HTMLAnchorElement.prototype, "click").mockImplementation(function (this: HTMLAnchorElement) {
+      downloads.push(this.download);
+    });
+    render(<Reports />);
+    const button = screen.getByRole("button", { name: "Descargar CSV" });
+    expect(button).toBeDisabled(); // todavía no hay datos
+    await userEvent.click(screen.getByRole("button", { name: "Arqueos" }));
+    await screen.findByRole("table", { name: "Turnos cerrados en el período" });
+
+    await userEvent.click(button);
+    expect(downloads).toEqual([`reporte-arqueos_${today}.csv`]);
+    const text = await blobs[0].text();
+    expect(text).toContain("CAJA1;laura.caja;");
+    expect(text).toContain("Faltantes;2000,00");
+    click.mockRestore();
   });
 
   it("muestra el error del servidor", async () => {

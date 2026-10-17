@@ -13,7 +13,9 @@ import {
   type ShiftsReport,
 } from "../api";
 import { useCan } from "../auth";
+import { downloadCsv } from "../csv";
 import { formatMoney, formatQty, toCents } from "../money";
+import { reportCsv } from "../reportCsv";
 import { formatDay, formatPct, matchPreset, PRESETS, presetPeriod, reportUrl, type Period } from "../reports";
 import { todayIso } from "./Sales";
 
@@ -103,6 +105,16 @@ export default function Reports() {
             {t.label}
           </button>
         ))}
+        <button
+          className="link download"
+          disabled={data == null || !!error}
+          onClick={() => {
+            const file = reportCsv(tab, data, period, today);
+            downloadCsv(file.filename, file.content);
+          }}
+        >
+          Descargar CSV
+        </button>
       </nav>
       {error && <p className="error" role="alert">{error}</p>}
       {!error && !data && <p className="muted">Cargando…</p>}
