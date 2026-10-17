@@ -54,7 +54,9 @@ def process_queue(now=None, provider=None, limit=100):
 
 
 def deadline(document):
-    return document.issued_at + DEADLINE
+    """48 horas desde la emisión o, en contingencia, desde que la venta llegó al servidor."""
+    start = document.created_at if document.contingency and document.created_at else document.issued_at
+    return start + DEADLINE
 
 
 def alert(document, now=None):

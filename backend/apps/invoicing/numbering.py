@@ -16,8 +16,9 @@ class NumberingError(Exception):
     """No hay numeración vigente: el documento no puede salir sin número autorizado."""
 
 
-def take_number(register, document_type, today=None):
-    """Toma el siguiente número autorizado. Devuelve (resolución, número).
+def take_numbers(register, document_type, count=1, today=None):
+    """Toma los siguientes `count` números autorizados de una misma resolución. Devuelve
+    (resolución, primero, último); si a la resolución le quedan menos, entrega los que tenga.
 
     Debe llamarse dentro de la transacción del documento: si esta se deshace, el número no se
     gasta. Se bloquean todas las resoluciones vigentes de la caja (no solo la primera) para que dos
@@ -35,9 +36,16 @@ def take_number(register, document_type, today=None):
         resolution = next((r for r in candidates if r.next_number <= r.range_to), None)
         if resolution is None:
             raise NumberingError(why_unavailable(register, document_type, today))
-        number = resolution.next_number
-        resolution.next_number = number + 1
+        first = resolution.next_number
+        last = min(first + count - 1, resolution.range_to)
+        resolution.next_number = last + 1
         resolution.save(update_fields=["next_number"])
+    return resolution, first, last
+
+
+def take_number(register, document_type, today=None):
+    """Toma el siguiente número autorizado. Devuelve (resolución, número)."""
+    resolution, number, _ = take_numbers(register, document_type, 1, today)
     return resolution, number
 
 

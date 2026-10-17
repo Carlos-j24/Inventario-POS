@@ -3,6 +3,8 @@
 Los documentos se crean dentro de la transacción de la venta, la anulación o la devolución:
 si esta falla, no queda documento ni se gasta número. El envío al proveedor es aparte (cola, T4).
 """
+import logging
+
 from django.conf import settings
 from django.core.exceptions import ValidationError
 from django.db import transaction
@@ -11,12 +13,14 @@ from django.utils import timezone
 
 from apps.customers.models import Customer
 from apps.customers.rules import FINAL_CONSUMER_NUMBER
+from apps.sales.models import Sale
 
-from .models import FiscalDocument, FiscalEvent, InternalCounter
+from .models import ContingencyBlock, FiscalDocument, FiscalEvent, InternalCounter, NumberingResolution
 from .numbering import NumberingError, take_number
 from .providers import ProviderUnavailable, get_provider
 
 Kind = FiscalDocument.Kind
+logger = logging.getLogger(__name__)
 NOTE_FOR = {Kind.POS: Kind.POS_ADJUSTMENT, Kind.INVOICE: Kind.CREDIT_NOTE}
 NOTE_PREFIX = {Kind.POS_ADJUSTMENT: "NA", Kind.CREDIT_NOTE: "NC"}
 
@@ -29,14 +33,16 @@ def final_consumer():
     return Customer.objects.get(id_number=FINAL_CONSUMER_NUMBER)
 
 
-def issue_for_sale(sale, *, customer=None, invoice=False):
+def issue_for_sale(sale, *, customer=None, invoice=False, contingency_number=None):
     """DE-POS por defecto o factura si el cliente la pide (spec 005, decisión 2). None si no aplica.
 
-    Las ventas sin conexión quedan para la contingencia (T5).
+    Una venta sin conexión recibe su documento de contingencia (T5).
     """
-    if not settings.INVOICING_ENABLED or sale.offline:
+    if not settings.INVOICING_ENABLED:
         return None
     customer = customer or final_consumer()
+    if sale.offline:
+        return issue_contingency(sale, customer, contingency_number, invoice_requested=invoice)
     if invoice and customer.is_final_consumer:
         raise ValidationError("Para la factura electrónica identifica al cliente: el consumidor final no puede recibirla.")
     kind = Kind.INVOICE if invoice else Kind.POS
@@ -49,6 +55,57 @@ def issue_for_sale(sale, *, customer=None, invoice=False):
         issued_at=timezone.now(), subtotal=sale.subtotal, tax=sale.tax, total=sale.total,
     )
     log(document, "created", f"Venta {sale.number}")
+    return document
+
+
+def _contingency_number(register, number):
+    """La resolución del número que puso el POS, si viene de un bloque de la caja y no está usado."""
+    if number is None:
+        return None
+    block = (
+        ContingencyBlock.objects.filter(register=register, start__lte=number, end__gte=number)
+        .select_related("resolution").first()
+    )
+    if block is None:
+        return None
+    used = FiscalDocument.objects.filter(kind=Kind.POS, prefix=block.resolution.prefix, number=number).exists()
+    return None if used else block.resolution
+
+
+def issue_contingency(sale, customer, number=None, *, invoice_requested=False):
+    """Documento POS de una venta hecha sin conexión (Res. 165 de 2023, art. 37, 2.2).
+
+    El tiquete ya se entregó con el número del bloque de la caja; aquí se genera el documento
+    electrónico para transmitirlo dentro de 48 horas desde que llegó. Una venta sin conexión nunca
+    se rechaza: si el número no sirve, se numera ahora (y queda en el historial); si no hay
+    numeración, la venta queda para revisión sin documento.
+    """
+    register = sale.shift.register
+    notes = []
+    resolution = _contingency_number(register, number)
+    if resolution is None:
+        if number is not None:
+            notes.append(f"El número de contingencia {number} no es de un bloque de la caja o ya se usó: se numeró al recibir la venta.")
+        for document_type in (NumberingResolution.DocumentType.CONTINGENCY, NumberingResolution.DocumentType.POS):
+            try:
+                resolution, number = take_number(register, document_type)
+                break
+            except NumberingError:
+                continue
+        else:
+            logger.warning("Venta %s sin conexión sin documento: la caja %s no tiene numeración.", sale.number, register.code)
+            Sale.objects.filter(pk=sale.pk).update(needs_review=True)
+            return None
+    if invoice_requested:
+        notes.append("Se pidió factura sin conexión: se emitió documento POS de contingencia.")
+    document = FiscalDocument.objects.create(
+        kind=Kind.POS, contingency=True, sale=sale, customer=customer, resolution=resolution,
+        prefix=resolution.prefix, number=number, issued_at=sale.occurred_at,
+        subtotal=sale.subtotal, tax=sale.tax, total=sale.total,
+    )
+    log(document, "created", f"Venta {sale.number} sin conexión (contingencia)")
+    for note in notes:
+        log(document, "note", note)
     return document
 
 

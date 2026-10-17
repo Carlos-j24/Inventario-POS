@@ -13,6 +13,8 @@ export interface QueuedSale {
   body: Record<string, unknown>;
   status: "pending" | "failed";
   error?: string;
+  /** Número del tiquete de contingencia (spec 005, T5), si el equipo tenía bloque. */
+  contingencyCode?: string;
 }
 
 export interface OutboxStore {

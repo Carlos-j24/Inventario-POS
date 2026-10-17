@@ -39,7 +39,7 @@ def split_tax(total, rate):
 
 
 def create_sale(*, user, shift, lines, payments, client_uuid, offline=False, occurred_at=None, order=None,
-                customer=None, invoice=False):
+                customer=None, invoice=False, contingency_number=None):
     """Registra y cobra una venta en el turno de una caja. Devuelve (venta, creada).
 
     lines: dicts con product, quantity y opcionalmente unit y unit_price.
@@ -53,6 +53,7 @@ def create_sale(*, user, shift, lines, payments, client_uuid, offline=False, occ
 
     customer e invoice (spec 005): a quién va el documento electrónico (consumidor final si no se
     dice) y si el cliente pidió factura electrónica en vez del documento equivalente POS.
+    contingency_number: número que el POS puso sin conexión, de su bloque de contingencia.
     """
     existing = Sale.objects.filter(client_uuid=client_uuid).first()
     if existing:
@@ -64,7 +65,7 @@ def create_sale(*, user, shift, lines, payments, client_uuid, offline=False, occ
     try:
         sale = _create(
             user, shift, lines, payments, client_uuid, offline, occurred_at or timezone.now(), order,
-            customer=customer, invoice=invoice,
+            customer=customer, invoice=invoice, contingency_number=contingency_number,
         )
         return sale, True
     except IntegrityError:
@@ -111,7 +112,8 @@ def _lock_payable_order(order):
     return order
 
 
-def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, order=None, *, customer=None, invoice=False):
+def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, order=None, *, customer=None, invoice=False,
+            contingency_number=None):
     with transaction.atomic():
         # Bloquear el turno evita que se cierre a mitad de una venta.
         shift = Shift.objects.select_for_update().select_related("register").get(pk=shift.pk)
@@ -164,7 +166,7 @@ def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, ord
         sale.save(update_fields=["subtotal", "tax", "total", "needs_review"])
         apply_payments(sale=sale, shift=shift, payments=payments)
         StockMovement.objects.filter(sale_line__sale=sale).update(reference=f"Venta {sale.number}")
-        issue_for_sale(sale, customer=customer, invoice=invoice)
+        issue_for_sale(sale, customer=customer, invoice=invoice, contingency_number=contingency_number)
         if order is not None:
             order.status = Order.Status.PAID
             order.sale = sale

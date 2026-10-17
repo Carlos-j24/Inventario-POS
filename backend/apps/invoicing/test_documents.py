@@ -78,16 +78,6 @@ def test_without_numbering_the_sale_fails_with_the_reason(cashier, shift, wareho
     assert StockLevel.objects.get(product=hammer, warehouse=warehouse).quantity == 20
 
 
-@enabled
-def test_offline_sales_are_left_for_contingency(cashier, shift, hammer, numbering):
-    sale, _ = create_sale(
-        user=cashier, shift=shift, client_uuid=uuid.uuid4(), offline=True,
-        lines=[{"product": hammer, "quantity": Decimal("1"), "unit_price": Decimal("28000")}],
-        payments=[{"method": "CASH", "amount": "28000"}],
-    )
-    assert sale.fiscal_documents.count() == 0
-
-
 # --- notas -------------------------------------------------------------------
 
 @enabled

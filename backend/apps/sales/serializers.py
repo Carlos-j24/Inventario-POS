@@ -44,6 +44,7 @@ class SaleInputSerializer(serializers.Serializer):
     # Spec 005: a quién va el documento electrónico (consumidor final si no se dice) y si pidió factura.
     customer = serializers.PrimaryKeyRelatedField(queryset=Customer.objects.filter(is_active=True), required=False, allow_null=True)
     invoice = serializers.BooleanField(default=False)
+    contingency_number = serializers.IntegerField(required=False, allow_null=True, min_value=1)
 
     def validate(self, data):
         order = data.get("order")
@@ -253,7 +254,7 @@ class FiscalDocumentSerializer(serializers.ModelSerializer):
         model = FiscalDocument
         fields = [
             "id", "kind", "kind_label", "code", "status", "status_label", "customer", "issued_at",
-            "subtotal", "tax", "total", "cude", "qr_data", "corrects", "last_error",
+            "subtotal", "tax", "total", "cude", "qr_data", "corrects", "last_error", "contingency",
         ]
 
 

@@ -7,6 +7,7 @@ import { addToCart, cartTotalCents, checkPayments, linePriceCents, orderToCart, 
 import CartTable from "../components/CartTable";
 import OrderLoader from "../components/OrderLoader";
 import ProductSearch from "../components/ProductSearch";
+import { ensureBlocks, kvBlockStore, takeContingencyNumber, type BlockStore } from "../contingency";
 import { centsToApi, formatMoney, toCents } from "../money";
 import { isUnreachable, toOfflineBody, type QueuedSale } from "../offline";
 import { useSync } from "../sync";
@@ -119,6 +120,21 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
   const { user } = useAuth();
   const { online, pending, enqueue } = useSync();
 
+  // Con conexión y facturación encendida, deja números de contingencia listos para vender sin red (spec 005, T5).
+  useEffect(() => {
+    if (!online) return;
+    api<{ enabled: boolean }>("/api/invoicing/status/")
+      .then(({ enabled }) =>
+        enabled
+          ? ensureBlocks(kvBlockStore, register.id, () =>
+              api<{ prefix: string; start: number; end: number }>("/api/invoicing/contingency-blocks/", {
+                method: "POST", body: { register: register.id },
+              }))
+          : false,
+      )
+      .catch(() => {}); // sin bloque, el servidor numera la venta al recibirla
+  }, [online, register.id]);
+
   // Se vuelve a pedir al recuperar la conexión, para dejar de vender con precios de la copia.
   useEffect(() => {
     fetchWithCache<Product[]>("/api/catalog/products/")
@@ -217,6 +233,7 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
           pending.some((p) => p.client_uuid === lastQueued.client_uuid) ? (
             <div className="done queued" role="status">
               <strong>Venta guardada sin conexión</strong>
+              {lastQueued.contingencyCode && <span>Tiquete de contingencia {lastQueued.contingencyCode}</span>}
               <span>Total {formatMoney(lastQueued.totalCents)}</span>
               <span className="muted small">Se enviará sola al volver la red.</span>
             </div>
@@ -232,6 +249,7 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
       {checkout && user && (
         <Checkout
           shiftId={shiftId}
+          registerId={register.id}
           lines={lines}
           totalCents={total}
           username={user.username}
@@ -263,8 +281,11 @@ const METHODS: { method: PaymentMethod; label: string }[] = [
   { method: "TRANSFER", label: "Transferencia" },
 ];
 
-export function Checkout({ shiftId, lines, totalCents, username, queue, order = null, onCancel, onPaid, onQueued }: {
+export function Checkout({ shiftId, registerId, blocks = kvBlockStore, lines, totalCents, username, queue, order = null, onCancel, onPaid, onQueued }: {
   shiftId: number;
+  /** Caja del turno: de sus bloques sale el número de contingencia de una venta sin conexión. */
+  registerId?: number;
+  blocks?: BlockStore;
   lines: CartLine[];
   totalCents: number;
   username: string;
@@ -318,13 +339,16 @@ export function Checkout({ shiftId, lines, totalCents, username, queue, order = 
       }
       // Sin servidor: la venta se guarda con el mismo client_uuid. Si el primer envío sí llegó,
       // el servidor la reconoce al sincronizar y no la duplica.
+      // Número de contingencia para el tiquete; sin bloque, el servidor la numera al recibirla.
+      const contingency = registerId == null ? null : await takeContingencyNumber(blocks, registerId).catch(() => null);
       const item: QueuedSale = {
         client_uuid: clientUuid,
         username,
         createdAt: new Date().toISOString(),
         totalCents,
-        body: toOfflineBody(body, lines.map(linePriceCents)),
+        body: { ...toOfflineBody(body, lines.map(linePriceCents)), ...(contingency && { contingency_number: contingency.number }) },
         status: "pending",
+        ...(contingency && { contingencyCode: contingency.code }),
       };
       try {
         await queue(item);

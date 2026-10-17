@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.db import transaction
 from django.db.models import Q
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
@@ -6,8 +8,10 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.accounts.drf import require, require_any
+from apps.cash.models import CashRegister
 
-from .models import FiscalDocument, NumberingResolution
+from .models import ContingencyBlock, FiscalDocument, NumberingResolution
+from .numbering import NumberingError, take_numbers
 from .queue import DEADLINE, DUE_SOON, retry
 from .serializers import FiscalDocumentDetailSerializer, FiscalDocumentRowSerializer, NumberingResolutionSerializer
 
@@ -75,3 +79,35 @@ class FiscalDocumentRetryView(APIView):
         except ValueError as err:
             return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
         return Response(FiscalDocumentDetailSerializer(documents().prefetch_related("events").get(pk=pk)).data)
+
+
+class InvoicingStatusView(APIView):
+    """Si la facturación electrónica está encendida: el POS solo reserva bloques si lo está."""
+
+    permission_classes = [require_any("cash.operate", "sales.create", "reports.view")]
+
+    def get(self, request):
+        return Response({"enabled": settings.INVOICING_ENABLED})
+
+
+class ContingencyBlockView(APIView):
+    """Reserva un bloque de números de contingencia para que un equipo de caja venda sin servidor (T5)."""
+
+    permission_classes = [require("cash.operate")]
+
+    def post(self, request):
+        if not settings.INVOICING_ENABLED:
+            return Response({"detail": "La facturación electrónica está apagada."}, status=status.HTTP_409_CONFLICT)
+        register = get_object_or_404(CashRegister, pk=request.data.get("register"))
+        try:
+            with transaction.atomic():
+                resolution, first, last = take_numbers(
+                    register, NumberingResolution.DocumentType.CONTINGENCY, settings.CONTINGENCY_BLOCK_SIZE,
+                )
+                ContingencyBlock.objects.create(
+                    register=register, resolution=resolution, start=first, end=last, reserved_by=request.user,
+                )
+        except NumberingError as err:
+            return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({"register": register.pk, "prefix": resolution.prefix, "start": first, "end": last},
+                        status=status.HTTP_201_CREATED)
