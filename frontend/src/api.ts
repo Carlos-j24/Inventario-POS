@@ -360,3 +360,46 @@ export interface ShiftsReport {
     notes: string;
   }[];
 }
+
+// --- Documentos electrónicos DIAN (spec 005) ---
+
+export type FiscalStatus = "PENDING" | "VALIDATED" | "REJECTED";
+
+export interface FiscalDocumentRow {
+  id: number;
+  kind: "POS" | "INVOICE" | "POS_ADJUSTMENT" | "CREDIT_NOTE";
+  kind_label: string;
+  code: string;
+  status: FiscalStatus;
+  status_label: string;
+  sale: number;
+  sale_number: string;
+  register: string;
+  customer: string;
+  customer_id: number;
+  total: string;
+  issued_at: string;
+  attempts: number;
+  last_error: string;
+  next_attempt_at: string | null;
+  validated_at: string | null;
+  cude: string;
+  /** Plazo de 48 horas para transmitir (art. 37). */
+  deadline: string;
+  alert: "overdue" | "due_soon" | null;
+  /** Código del documento que esta nota espera que se valide primero. */
+  waiting_for: string | null;
+}
+
+export interface FiscalDocumentDetail extends FiscalDocumentRow {
+  subtotal: string;
+  tax: string;
+  qr_data: string;
+  corrects: string | null;
+  events: { at: string; kind: string; detail: string }[];
+}
+
+export interface FiscalInbox {
+  summary: { pending: number; rejected: number; overdue: number; due_soon: number };
+  results: FiscalDocumentRow[];
+}

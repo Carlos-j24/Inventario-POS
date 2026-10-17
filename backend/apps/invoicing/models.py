@@ -138,6 +138,9 @@ class FiscalDocument(models.Model):
     attempts = models.PositiveIntegerField("intentos de envío", default=0)
     last_error = models.TextField("último error", blank=True)
     validated_at = models.DateTimeField("validado", null=True, blank=True)
+    next_attempt_at = models.DateTimeField(
+        "próximo intento", null=True, blank=True, db_index=True, help_text="La cola espera hasta entonces tras una falla.",
+    )
 
     class Meta:
         ordering = ["-issued_at", "-pk"]

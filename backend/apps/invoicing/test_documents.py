@@ -1,5 +1,4 @@
 """Documentos electrónicos por venta, anulación y devolución (spec 005, T3)."""
-import datetime
 import os
 import subprocess
 import sys
@@ -12,43 +11,17 @@ from django.core.exceptions import ValidationError
 from django.test import override_settings
 from rest_framework.test import APIClient
 
-from apps.customers.models import Customer
-from apps.inventory.models import StockLevel, StockMovement
-from apps.inventory.services import record_movement
+from apps.inventory.models import StockLevel
 from apps.sales.models import Sale
 from apps.sales.returns import create_return, void_sale
 from apps.sales.services import create_sale
 
 from .documents import send_document
-from .models import FiscalDocument, NumberingResolution
+from .models import FiscalDocument
 
 pytestmark = [pytest.mark.django_db, pytest.mark.usefixtures("stocked")]
 enabled = override_settings(INVOICING_ENABLED=True)
 Kind, Status = FiscalDocument.Kind, FiscalDocument.Status
-
-
-@pytest.fixture
-def cashier(make_user):
-    return make_user("caja1", "Caja")
-
-
-@pytest.fixture
-def stocked(cashier, warehouse, hammer, cable):
-    for product, qty in ((hammer, 20), (cable, 500)):
-        record_movement(kind=StockMovement.Kind.RECEIPT, product=product, warehouse=warehouse, quantity=qty, user=cashier, unit_cost="1000")
-
-
-@pytest.fixture
-def numbering(register):
-    common = {"register": register, "number": "18764", "issued_on": datetime.date(2026, 1, 1),
-              "valid_from": datetime.date(2026, 1, 1), "valid_until": datetime.date(2027, 12, 31), "range_from": 1, "range_to": 5000}
-    NumberingResolution.objects.create(document_type="POS", prefix="CJ1", **common)
-    NumberingResolution.objects.create(document_type="INVOICE", prefix="FE1", **common)
-
-
-@pytest.fixture
-def client_co(db):
-    return Customer.objects.create(id_type="31", id_number="800197268", check_digit="4", person_type="1", name="Constructora SAS", email="compras@ejemplo.co")
 
 
 def sell(user, shift, product, qty="2", **kwargs):
