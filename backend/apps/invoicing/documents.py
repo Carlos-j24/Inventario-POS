@@ -96,7 +96,10 @@ def send_document(document, provider=None):
     """
     provider = provider or get_provider()
     with transaction.atomic():
-        document = FiscalDocument.objects.select_for_update().select_related("customer", "corrects").get(pk=document.pk)
+        document = (
+            FiscalDocument.objects.select_for_update(of=("self",))  # PostgreSQL no bloquea el lado opcional de un JOIN
+            .select_related("customer", "corrects").get(pk=document.pk)
+        )
         if document.status != FiscalDocument.Status.PENDING:
             return document
         document.attempts += 1
