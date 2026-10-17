@@ -1,6 +1,6 @@
 # Spec 004 — Reportes
 
-> Estado: **decisiones cerradas por el equipo (2026-10-16)**; pendiente aprobar el PR para empezar a programar.
+> Estado: ✅ **completada (2026-10-17)**. Tareas en tasks.md (T1–T6, PRs #30–#35).
 
 ## Problema
 El dueño de la ferretería no tiene cómo saber, sin hacer cuentas a mano, cuánto vendió, qué se vende más, cuánto vale lo que tiene en bodega ni cuánto gana. Los datos existen (ventas, pagos, devoluciones, kardex, arqueos), pero no hay reportes.
