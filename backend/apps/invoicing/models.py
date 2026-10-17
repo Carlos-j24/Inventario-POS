@@ -82,14 +82,41 @@ class NumberingResolution(models.Model):
             errors["range_to"] = "El rango termina antes de empezar."
         elif self.range_from and self.range_to:
             # Un mismo prefijo no puede repetir números para el mismo tipo de documento, en ninguna caja.
+            # Contingencia y POS generan el mismo documento (DE-POS): sus números no pueden cruzarse.
+            same_document = SHARED_NUMBERING.get(self.document_type, {self.document_type})
             overlapping = NumberingResolution.objects.filter(
-                document_type=self.document_type, prefix=self.prefix,
+                document_type__in=same_document, prefix=self.prefix,
                 range_from__lte=self.range_to, range_to__gte=self.range_from,
             ).exclude(pk=self.pk)
             if overlapping.exists():
                 errors["range_from"] = f"El rango se cruza con otra resolución del prefijo «{self.prefix}»."
         if errors:
             raise ValidationError(errors)
+
+
+SHARED_NUMBERING = {
+    NumberingResolution.DocumentType.POS: {NumberingResolution.DocumentType.POS, NumberingResolution.DocumentType.CONTINGENCY},
+    NumberingResolution.DocumentType.CONTINGENCY: {NumberingResolution.DocumentType.POS, NumberingResolution.DocumentType.CONTINGENCY},
+}
+
+
+class ContingencyBlock(models.Model):
+    """Números de contingencia reservados por un equipo de caja para vender sin servidor (T5)."""
+
+    register = models.ForeignKey(CashRegister, on_delete=models.PROTECT, related_name="contingency_blocks", verbose_name="caja")
+    resolution = models.ForeignKey(NumberingResolution, on_delete=models.PROTECT, related_name="blocks", verbose_name="resolución")
+    start = models.PositiveBigIntegerField("desde")
+    end = models.PositiveBigIntegerField("hasta")
+    reserved_by = models.ForeignKey("accounts.User", on_delete=models.PROTECT, related_name="+", verbose_name="reservó")
+    reserved_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-reserved_at"]
+        verbose_name = "bloque de contingencia"
+        verbose_name_plural = "bloques de contingencia"
+
+    def __str__(self):
+        return f"{self.register.code} · {self.resolution.prefix}{self.start}–{self.resolution.prefix}{self.end}"
 
 
 class FiscalDocument(models.Model):
@@ -138,6 +165,10 @@ class FiscalDocument(models.Model):
     attempts = models.PositiveIntegerField("intentos de envío", default=0)
     last_error = models.TextField("último error", blank=True)
     validated_at = models.DateTimeField("validado", null=True, blank=True)
+    contingency = models.BooleanField(
+        "contingencia", default=False, help_text="Venta sin conexión: el tiquete se entregó antes de transmitir (art. 37).",
+    )
+    created_at = models.DateTimeField("recibido", auto_now_add=True, null=True)
     next_attempt_at = models.DateTimeField(
         "próximo intento", null=True, blank=True, db_index=True, help_text="La cola espera hasta entonces tras una falla.",
     )

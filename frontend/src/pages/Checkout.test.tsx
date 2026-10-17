@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Product } from "../api";
+import type { ContingencyBlock } from "../contingency";
 import { Checkout } from "./Pos";
 
 const hammer: Product = {
@@ -116,6 +117,28 @@ describe("Checkout sin conexión", () => {
     expect(item.body.lines).toEqual([{ product: 2, unit: "und", quantity: "3", unit_price: "28000.00" }]);
     expect(props.onQueued).toHaveBeenCalledWith(item);
     expect(props.onPaid).not.toHaveBeenCalled();
+  });
+
+  it("numera el tiquete con el bloque de contingencia de la caja (spec 005)", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    const saved: Record<number, ContingencyBlock[]> = { 3: [{ prefix: "CT1", start: 1, end: 50, next: 7 }] };
+    const blocks = { get: async (r: number) => structuredClone(saved[r]), set: async (r: number, b: ContingencyBlock[]) => { saved[r] = b; } };
+    const props = setup({ registerId: 3, blocks });
+    await payExact();
+    const item = props.queue.mock.calls[0][0];
+    expect((item.body as { contingency_number: number }).contingency_number).toBe(7);
+    expect(item.contingencyCode).toBe("CT17");
+    expect(saved[3][0].next).toBe(8);
+  });
+
+  it("sin bloque de contingencia la venta va igual a la cola, sin número", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    const blocks = { get: async () => undefined, set: async () => {} };
+    const props = setup({ registerId: 3, blocks });
+    await payExact();
+    const item = props.queue.mock.calls[0][0];
+    expect("contingency_number" in item.body).toBe(false);
+    expect(item.contingencyCode).toBeUndefined();
   });
 
   it("con el servidor caído (503) también va a la cola", async () => {

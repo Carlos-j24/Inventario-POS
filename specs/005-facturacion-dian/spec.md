@@ -36,6 +36,7 @@ Ventas a crédito y eventos RADIAN (acuse y aceptación), documento soporte de c
 - Si una **devolución parcial** de un DE-POS se hace con nota de ajuste (el art. 22 habla de "anulación o corrección") o si conviene otro mecanismo.
 - Los códigos exactos de contingencia (tipo 3 y tipo 4) y su manejo los define el anexo técnico y, en la práctica, el proveedor.
 - Responsabilidades fiscales de la ferretería (régimen, gran contribuyente, autorretenedor) para el encabezado de los documentos.
+- Los números de contingencia que un equipo reservó y no usó (por ejemplo, si se daña) quedan sin usar: confirmar si hay que informarlos a la DIAN.
 
 ## Criterios de aceptación (propuestos)
 - Una venta en línea queda con un DE-POS validado (CUDE y QR) en segundos, sin hacer esperar a la caja.

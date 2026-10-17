@@ -173,6 +173,8 @@ LOGGING = {
 INVOICING_ENABLED = os.environ.get("INVOICING_ENABLED", "0") == "1"
 INVOICING_PROVIDER = os.environ.get("INVOICING_PROVIDER", "apps.invoicing.providers.simulated.SimulatedProvider")
 INVOICING_SIMULATED_MODE = os.environ.get("INVOICING_SIMULATED_MODE", "ok")
+# Números de contingencia que reserva cada equipo de caja para vender sin servidor (T5).
+CONTINGENCY_BLOCK_SIZE = int(os.environ.get("CONTINGENCY_BLOCK_SIZE", 50))
 if INVOICING_ENABLED and not DEBUG and INVOICING_PROVIDER.endswith("SimulatedProvider"):
     raise ImproperlyConfigured("En producción la facturación electrónica necesita un proveedor real (INVOICING_PROVIDER).")
 

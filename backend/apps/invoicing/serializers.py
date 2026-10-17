@@ -49,7 +49,7 @@ class FiscalDocumentRowSerializer(serializers.ModelSerializer):
         fields = [
             "id", "kind", "kind_label", "code", "status", "status_label", "sale", "sale_number", "register",
             "customer", "customer_id", "total", "issued_at", "attempts", "last_error", "next_attempt_at",
-            "validated_at", "cude", "deadline", "alert", "waiting_for",
+            "validated_at", "cude", "contingency", "deadline", "alert", "waiting_for",
         ]
 
     def get_deadline(self, obj):

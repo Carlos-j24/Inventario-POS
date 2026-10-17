@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import FiscalDocument, FiscalEvent, NumberingResolution
+from .models import ContingencyBlock, FiscalDocument, FiscalEvent, NumberingResolution
 from .numbering import resolution_status
 
 
@@ -38,13 +38,28 @@ class FiscalEventInline(admin.TabularInline):
 class FiscalDocumentAdmin(admin.ModelAdmin):
     """Solo lectura: los documentos los crea el sistema y la DIAN los valida."""
 
-    list_display = ("code", "kind", "status", "sale", "customer", "total", "issued_at", "attempts")
-    list_filter = ("kind", "status")
+    list_display = ("code", "kind", "status", "contingency", "sale", "customer", "total", "issued_at", "attempts")
+    list_filter = ("kind", "status", "contingency")
     search_fields = ("number", "cude", "sale__id", "customer__name", "customer__id_number")
     inlines = [FiscalEventInline]
 
     def has_add_permission(self, request):
         return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(ContingencyBlock)
+class ContingencyBlockAdmin(admin.ModelAdmin):
+    list_display = ("register", "resolution", "start", "end", "reserved_by", "reserved_at")
+    list_filter = ("register",)
+
+    def has_add_permission(self, request):
+        return False  # los reserva el POS
 
     def has_change_permission(self, request, obj=None):
         return False
