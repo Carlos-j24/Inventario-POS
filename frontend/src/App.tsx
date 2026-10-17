@@ -8,6 +8,7 @@ import Orders from "./pages/Orders";
 import Pos from "./pages/Pos";
 import Receipts from "./pages/Receipts";
 import Review from "./pages/Review";
+import Reports from "./pages/Reports";
 import Roles from "./pages/Roles";
 import Sales from "./pages/Sales";
 import Stock from "./pages/Stock";
@@ -22,6 +23,7 @@ const PAGES: { id: string; label: string; permission: string | string[]; Compone
   { id: "stock", label: "Existencias", permission: "inventory.view", Component: Stock },
   { id: "sales", label: "Ventas", permission: ["sales.void", "reports.view"], Component: Sales },
   { id: "review", label: "Revisión", permission: "reports.view", Component: Review },
+  { id: "reports", label: "Reportes", permission: "reports.view", Component: Reports },
   { id: "users", label: "Usuarios", permission: "users.manage", Component: Users },
   { id: "roles", label: "Roles", permission: "users.manage", Component: Roles },
 ];

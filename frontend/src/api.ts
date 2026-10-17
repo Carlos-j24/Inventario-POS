@@ -246,3 +246,115 @@ export interface PermissionInfo {
   code: string;
   description: string;
 }
+
+// --- Reportes (spec 004). El dinero llega como texto con 2 decimales y las cantidades con 3. ---
+
+export interface ReportRow {
+  sales_count: number;
+  total: string;
+  returns: string;
+  net: string;
+}
+
+export interface SalesReport {
+  from: string;
+  to: string;
+  totals: {
+    sales_count: number;
+    total: string;
+    subtotal: string;
+    tax: string;
+    returns_total: string;
+    returns_subtotal: string;
+    returns_tax: string;
+    net_total: string;
+    net_subtotal: string;
+    net_tax: string;
+    average_ticket: string;
+  };
+  by_day: (ReportRow & { day: string })[];
+  by_register: (ReportRow & { register: string })[];
+  by_salesperson: (ReportRow & { salesperson: string })[];
+  by_method: { method: PaymentMethod; label: string; payments: string; refunds: string; net: string }[];
+}
+
+export interface ProductReportRow {
+  product: number;
+  sku: string;
+  name: string;
+  unit: string;
+  sales_count: number;
+  quantity: string;
+  total: string;
+  subtotal: string;
+}
+
+export interface ProductsReport {
+  from: string;
+  to: string;
+  by_quantity: ProductReportRow[];
+  by_value: ProductReportRow[];
+  not_moved: { product: number; sku: string; name: string; unit: string; stock: string }[];
+}
+
+export interface InventoryReport {
+  totals: { value: string; products: number; below_min: number; negative: number };
+  rows: {
+    product: number;
+    sku: string;
+    name: string;
+    unit: string;
+    stock: string;
+    min_stock: string;
+    /** null si no hay existencias positivas. */
+    average_cost: string | null;
+    value: string;
+    below_min: boolean;
+    negative: boolean;
+  }[];
+}
+
+export interface MarginRow {
+  net_sales: string;
+  cost: string;
+  margin: string;
+  /** Porcentaje con un decimal; null si la venta neta es 0. */
+  margin_pct: string | null;
+  cost_estimated: boolean;
+}
+
+export interface MarginsReport {
+  from: string;
+  to: string;
+  totals: MarginRow;
+  rows: (MarginRow & { product: number; sku: string; name: string })[];
+}
+
+export interface ShiftsReport {
+  from: string;
+  to: string;
+  totals: {
+    shifts: number;
+    expected_cash: string;
+    counted_cash: string;
+    difference: string;
+    shortage: string;
+    overage: string;
+    by_method: Record<PaymentMethod, string>;
+  };
+  rows: {
+    shift: number;
+    register: string;
+    opened_by: string;
+    opened_at: string;
+    closed_by: string | null;
+    closed_at: string;
+    sales_count: number;
+    opening_float: string;
+    by_method: Record<PaymentMethod, string>;
+    expected_cash: string;
+    counted_cash: string;
+    difference: string;
+    notes: string;
+  }[];
+}

@@ -38,6 +38,7 @@
 - **Arqueos** (`reports.view`): `GET /api/reports/shifts/` lista los turnos cerrados en el período (por fecha de cierre) con lo que entró por cada medio, esperado, contado y diferencia; totaliza faltantes y sobrantes.
 - Las ventas anuladas no cuentan. Una devolución resta el día en que se hizo, en la caja de donde salió el reembolso y al vendedor de la venta: así el reporte cuadra con los arqueos.
 - El dinero sale como texto con 2 decimales y las cantidades con 3, nunca como número de coma flotante.
+- **Pantalla Reportes** (`pages/Reports.tsx`): hoy por defecto, accesos rápidos (ayer, esta semana desde el lunes, este mes) y rango libre; filtro de caja. Pestañas Ventas, Productos y Arqueos; Inventario valorizado y Márgenes solo con `reports.costs`. Solo muestra lo que calcula el servidor.
 
 ## Roles y permisos
 - `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones.
