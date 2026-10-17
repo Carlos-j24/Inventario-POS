@@ -82,6 +82,8 @@ export interface Product {
   barcode: string | null;
   sale_price: string;
   tax_rate: string;
+  /** Excluido de IVA (no causa IVA), distinto de exento al 0 %. Opcional: el catálogo guardado sin conexión puede ser anterior. */
+  vat_excluded?: boolean;
   allows_fractions: boolean;
   min_stock: string;
   units: ProductUnit[];

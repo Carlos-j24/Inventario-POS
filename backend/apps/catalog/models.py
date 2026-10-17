@@ -47,6 +47,11 @@ class Product(models.Model):
     barcode = models.CharField(max_length=40, unique=True, null=True, blank=True)
     sale_price = models.DecimalField(**MONEY, validators=[MinValueValidator(0)])
     tax_rate = models.CharField(max_length=2, choices=TaxRate.choices, default=TaxRate.GENERAL)
+    # Para la DIAN no es lo mismo exento (gravado al 0 %) que excluido (no causa IVA), aunque
+    # ninguno cobre IVA (spec 005, T1). Solo tiene sentido con tarifa 0 %.
+    vat_excluded = models.BooleanField(
+        "excluido de IVA", default=False, help_text="No causa IVA (distinto de exento). Solo con tarifa 0 %."
+    )
     allows_fractions = models.BooleanField(
         default=False, help_text="Se puede vender en cantidades no enteras (metros, kilos)."
     )
@@ -56,6 +61,13 @@ class Product(models.Model):
     class Meta:
         ordering = ["name"]
         verbose_name = "producto"
+        constraints = [
+            models.CheckConstraint(
+                condition=models.Q(vat_excluded=False) | models.Q(tax_rate="0"),
+                name="vat_excluded_only_at_zero_rate",
+                violation_error_message="Un producto excluido de IVA debe tener tarifa 0 %%.",
+            ),
+        ]
 
     def __str__(self):
         return f"{self.sku} · {self.name}"

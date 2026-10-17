@@ -3,6 +3,7 @@ from decimal import Decimal
 
 import pytest
 from django.core.exceptions import ValidationError
+from django.db import IntegrityError, transaction
 from rest_framework.test import APIClient
 
 from apps.cash.services import close_shift
@@ -76,6 +77,34 @@ def test_exempt_product_has_no_vat(seller, shift, hammer, stocked):
     sale, _ = create_sale(user=seller, shift=shift, lines=[{"product": hammer, "quantity": 1}])
     assert sale.tax == 0
     assert sale.subtotal == sale.total
+    assert sale.lines.get().vat_excluded is False
+
+
+def test_excluded_product_has_no_vat_and_the_line_remembers_it(seller, shift, hammer, stocked):
+    hammer.tax_rate, hammer.vat_excluded = Product.TaxRate.EXEMPT, True
+    hammer.save()
+    sale, _ = create_sale(user=seller, shift=shift, lines=[{"product": hammer, "quantity": 1}])
+    assert (sale.tax, sale.lines.get().vat_excluded) == (0, True)
+    # Si después el producto cambia, la venta conserva lo que era al vender.
+    Product.objects.filter(pk=hammer.pk).update(vat_excluded=False)
+    sale.refresh_from_db()
+    assert sale.lines.get().vat_excluded is True
+    assert api(seller).get(f"/api/sales/{sale.pk}/").data["lines"][0]["vat_excluded"] is True
+
+
+def test_excluded_requires_zero_rate(hammer):
+    hammer.vat_excluded = True  # con tarifa 19 %
+    with pytest.raises(ValidationError) as err:
+        hammer.full_clean()
+    assert "debe tener tarifa 0 %." in str(err.value)
+    with transaction.atomic(), pytest.raises(IntegrityError):
+        hammer.save()
+
+
+def test_catalog_api_tells_excluded_from_exempt(seller, hammer):
+    Product.objects.filter(pk=hammer.pk).update(tax_rate="0", vat_excluded=True)
+    product = next(p for p in api(seller).get("/api/catalog/products/").data if p["sku"] == "MAR-16")
+    assert (product["tax_rate"], product["vat_excluded"]) == ("0", True)
 
 
 def test_online_sale_without_stock_rolls_back_everything(seller, shift, warehouse, hammer, cable, stocked):

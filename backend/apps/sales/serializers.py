@@ -67,7 +67,7 @@ class SaleLineSerializer(serializers.ModelSerializer):
         model = SaleLine
         fields = [
             "id", "product", "unit", "quantity", "unit_price", "catalog_price",
-            "tax_rate", "subtotal", "tax", "total",
+            "tax_rate", "vat_excluded", "subtotal", "tax", "total",
         ]
 
 

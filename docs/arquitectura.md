@@ -40,6 +40,10 @@
 - El dinero sale como texto con 2 decimales y las cantidades con 3, nunca como número de coma flotante.
 - **Pantalla Reportes** (`pages/Reports.tsx`): hoy por defecto, accesos rápidos (ayer, esta semana desde el lunes, este mes) y rango libre; filtro de caja. Pestañas Ventas, Productos y Arqueos; Inventario valorizado y Márgenes solo con `reports.costs`. Solo muestra lo que calcula el servidor; "Descargar CSV" arma el archivo en el navegador con esa misma respuesta (`;`, coma decimal, BOM UTF-8).
 
+## Facturación electrónica (spec 005)
+- **Exento y excluido:** `Product.vat_excluded` (no causa IVA) solo con tarifa 0 %, garantizado por una restricción de la base; se copia a `SaleLine` al vender para que el documento fiscal sepa qué era en ese momento.
+- **Clientes** (`apps.customers`): tipo de documento con los códigos de la DIAN, dígito de verificación del NIT calculado (módulo 11, `rules.py`), persona natural o jurídica, correo y responsabilidades fiscales. El **consumidor final** (`222222222222`) lo crea una migración y no se puede modificar. API `GET/POST /api/customers/` (búsqueda `?q=` por número o nombre, máximo 20), `GET/PATCH /api/customers/<id>/` y `GET /api/customers/final-consumer/`, con `cash.operate` o `sales.create`. Los clientes no se borran: se desactivan.
+
 ## Roles y permisos
 - `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones.
 - `Role`: conjunto editable de permisos. Por defecto: Administrador, Supervisor, Jefe de bodega, Auxiliar de bodega, Ventas, Caja.
