@@ -42,5 +42,5 @@ docker compose up -d --build
 
 ## Documentación
 - [Arquitectura](docs/arquitectura.md) · [Constitución](docs/constitution.md) · [Despliegue](docs/despliegue.md)
-- [Spec 001 — MVP](specs/001-mvp/spec.md) y sus [tareas](specs/001-mvp/tasks.md)
+- Specs: [001 — MVP](specs/001-mvp/spec.md) · [002 — Pedidos](specs/002-pedidos/spec.md) · [003 — Supervisor y administrador](specs/003-supervisor-admin/spec.md) · [004 — Reportes](specs/004-reportes/spec.md) (cada una con su `tasks.md`)
 - Reglas para agentes de IA: [AGENTS.md](AGENTS.md)
