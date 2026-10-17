@@ -145,7 +145,7 @@ def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, ord
             )
             SaleLine.objects.create(
                 sale=sale, product=product, unit=unit, quantity=quantity,
-                unit_price=charged, catalog_price=listed, tax_rate=rate,
+                unit_price=charged, catalog_price=listed, tax_rate=rate, vat_excluded=product.vat_excluded,
                 subtotal=subtotal, tax=tax, total=total, movement=movement,
             )
             review = review or movement.needs_review or charged != listed

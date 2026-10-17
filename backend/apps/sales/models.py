@@ -71,6 +71,7 @@ class SaleLine(models.Model):
     unit_price = models.DecimalField(**MONEY, help_text="Precio por unidad vendida, IVA incluido.")
     catalog_price = models.DecimalField(**MONEY, help_text="Precio del catálogo al registrar la venta.")
     tax_rate = models.DecimalField(max_digits=5, decimal_places=2)
+    vat_excluded = models.BooleanField(default=False, help_text="Copiado del producto al vender (spec 005).")
     subtotal = models.DecimalField(**MONEY)
     tax = models.DecimalField(**MONEY)
     total = models.DecimalField(**MONEY)
