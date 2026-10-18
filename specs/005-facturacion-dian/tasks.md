@@ -15,4 +15,5 @@
 - [x] **T6** **Caja:** consumidor final por defecto; buscar o crear cliente; marcar "pedir factura electrónica". **Tiquete de 80 mm** con los datos del art. 19 y QR (impresión desde el navegador) y envío por correo opcional.
   - Dependencia nueva aprobada por el equipo: `segno` (QR en el servidor). Probado en el navegador: factura FE21 a un cliente nuevo con NIT, validada al cobrar, con QR y correo; y tiquete de contingencia CT251 sin servidor con el encabezado de la copia local.
 - [ ] **T7** **Proveedor real** (cuando el equipo lo elija): adaptador, credenciales por variables de entorno y set de pruebas de habilitación de la DIAN en el ambiente de pruebas.
+  - Comparación de proveedores en [proveedores.md](proveedores.md) (2026-10-17): pedir cotización y sandbox a The Factory HKA y Dataico (en el listado oficial, con API y documento POS); MATIAS API como plan B de costo si el equipo pasa a software propio.
 - [ ] **T8** Prueba de punta a punta: venta en línea, factura a pedido, anulación, devolución parcial y venta sin conexión transmitida al volver, todo validado en el ambiente de pruebas.
