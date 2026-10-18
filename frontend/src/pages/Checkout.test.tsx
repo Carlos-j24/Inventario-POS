@@ -99,6 +99,29 @@ describe("Checkout en línea", () => {
   });
 });
 
+describe("Checkout con cliente (spec 005)", () => {
+  it("sin elegir cliente no manda customer; con cliente y factura, los manda", async () => {
+    const client = {
+      id: 5, id_type: "31", id_type_label: "NIT", id_number: "800197268", check_digit: "4", person_type: "1",
+      name: "Constructora SAS", email: "", phone: "", address: "", city: "", tax_responsibilities: [], is_final_consumer: false,
+    };
+    const fetch = vi.fn((url: string, _init?: RequestInit) =>
+      Promise.resolve(url.startsWith("/api/customers/") ? respond([client], 200) : respond({ id: 1, number: "V-1", total: "84000.00", subtotal: "0", tax: "0", payments: [] }, 201)),
+    );
+    vi.stubGlobal("fetch", fetch);
+    setup();
+    expect(screen.queryByLabelText(/Pedir factura/)).not.toBeInTheDocument(); // consumidor final: no hay factura
+    await userEvent.click(screen.getByRole("button", { name: "Identificar cliente" }));
+    await userEvent.type(screen.getByLabelText("Buscar cliente"), "800");
+    await userEvent.click(await screen.findByRole("button", { name: /Constructora SAS/ }));
+    await userEvent.click(screen.getByLabelText(/Pedir factura/));
+    await payExact();
+    const sale = fetch.mock.calls.find(([u]) => u === "/api/sales/")!;
+    const body = JSON.parse(sale[1]!.body as string);
+    expect([body.customer, body.invoice]).toEqual([5, true]);
+  });
+});
+
 describe("Checkout sin conexión", () => {
   it("sin red guarda la venta en la cola como offline, con el precio cobrado y el mismo client_uuid", async () => {
     const fetch = vi.fn().mockRejectedValue(new TypeError("Failed to fetch"));
@@ -129,6 +152,18 @@ describe("Checkout sin conexión", () => {
     expect((item.body as { contingency_number: number }).contingency_number).toBe(7);
     expect(item.contingencyCode).toBe("CT17");
     expect(saved[3][0].next).toBe(8);
+  });
+
+  it("guarda el tiquete de contingencia para imprimirlo sin servidor", async () => {
+    vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
+    const saved: Record<number, ContingencyBlock[]> = { 3: [{ prefix: "CT1", start: 1, end: 50, next: 7 }] };
+    const blocks = { get: async (r: number) => structuredClone(saved[r]), set: async (r: number, b: ContingencyBlock[]) => { saved[r] = b; } };
+    const props = setup({ registerId: 3, registerCode: "CAJA3", blocks, business: { name: "Ferretería", trade_name: "", nit: "", address: "", city: "", phone: "", email: "", tax_regime: "" } });
+    await payExact();
+    const ticket = props.queue.mock.calls[0][0].ticket;
+    expect([ticket.title, ticket.code, ticket.total, ticket.register, ticket.cashier, ticket.business.name]).toEqual(
+      ["Documento de contingencia", "CT17", "84000.00", "CAJA3", "laura", "Ferretería"],
+    );
   });
 
   it("sin bloque de contingencia la venta va igual a la cola, sin número", async () => {

@@ -9,10 +9,13 @@ from rest_framework.views import APIView
 
 from apps.accounts.drf import require, require_any
 from apps.cash.models import CashRegister
+from apps.sales.models import Sale
 
 from .models import ContingencyBlock, FiscalDocument, NumberingResolution
 from .numbering import NumberingError, take_numbers
-from .queue import DEADLINE, DUE_SOON, retry
+from .documents import send_document
+from .queue import DEADLINE, DUE_SOON, backoff, retry
+from .ticket import business_data, ticket_for_sale
 from .serializers import FiscalDocumentDetailSerializer, FiscalDocumentRowSerializer, NumberingResolutionSerializer
 
 Status = FiscalDocument.Status
@@ -111,3 +114,34 @@ class ContingencyBlockView(APIView):
             return Response({"detail": str(err)}, status=status.HTTP_400_BAD_REQUEST)
         return Response({"register": register.pk, "prefix": resolution.prefix, "start": first, "end": last},
                         status=status.HTTP_201_CREATED)
+
+
+class BusinessView(APIView):
+    """Datos del negocio para el encabezado del tiquete (el POS los guarda para imprimir sin conexión)."""
+
+    def get(self, request):
+        return Response(business_data())
+
+
+class TicketView(APIView):
+    """Datos del tiquete de 80 mm de una venta (art. 19), con el QR si la DIAN ya validó."""
+
+    permission_classes = [require_any("cash.operate", "sales.void", "reports.view")]
+
+    def get(self, request, sale_id):
+        sale = get_object_or_404(Sale.objects.select_related("shift__register", "seller"), pk=sale_id)
+        return Response(ticket_for_sale(sale))
+
+
+class FiscalDocumentSendView(APIView):
+    """La caja lo envía apenas cobra, para entregar el tiquete ya validado sin esperar a la cola."""
+
+    permission_classes = [require("cash.operate")]
+
+    def post(self, request, pk):
+        document = send_document(get_object_or_404(FiscalDocument, pk=pk))
+        if document.status == Status.PENDING and document.last_error:
+            # Sin respuesta: la cola reintenta con su espera creciente.
+            document.next_attempt_at = timezone.now() + backoff(document.attempts)
+            document.save(update_fields=["next_attempt_at"])
+        return Response({"status": document.status, "last_error": document.last_error})

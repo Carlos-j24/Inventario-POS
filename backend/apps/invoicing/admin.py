@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import ContingencyBlock, FiscalDocument, FiscalEvent, NumberingResolution
+from .models import Business, ContingencyBlock, FiscalDocument, FiscalEvent, NumberingResolution
 from .numbering import resolution_status
 
 
@@ -63,6 +63,19 @@ class ContingencyBlockAdmin(admin.ModelAdmin):
 
     def has_change_permission(self, request, obj=None):
         return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Business)
+class BusinessAdmin(admin.ModelAdmin):
+    """Un solo registro: los datos del vendedor que salen en cada tiquete y documento."""
+
+    readonly_fields = ("check_digit",)
+
+    def has_add_permission(self, request):
+        return not Business.objects.exists()
 
     def has_delete_permission(self, request, obj=None):
         return False

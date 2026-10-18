@@ -175,6 +175,19 @@ INVOICING_PROVIDER = os.environ.get("INVOICING_PROVIDER", "apps.invoicing.provid
 INVOICING_SIMULATED_MODE = os.environ.get("INVOICING_SIMULATED_MODE", "ok")
 # Números de contingencia que reserva cada equipo de caja para vender sin servidor (T5).
 CONTINGENCY_BLOCK_SIZE = int(os.environ.get("CONTINGENCY_BLOCK_SIZE", 50))
+
+# Correo para enviar los documentos validados a los clientes que den su correo (spec 005, T6).
+# En desarrollo se imprimen en la consola; en producción, SMTP con estas variables.
+EMAIL_BACKEND = os.environ.get(
+    "EMAIL_BACKEND",
+    "django.core.mail.backends.console.EmailBackend" if DEBUG else "django.core.mail.backends.smtp.EmailBackend",
+)
+EMAIL_HOST = os.environ.get("EMAIL_HOST", "localhost")
+EMAIL_PORT = int(os.environ.get("EMAIL_PORT", 587))
+EMAIL_HOST_USER = os.environ.get("EMAIL_HOST_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("EMAIL_HOST_PASSWORD", "")
+EMAIL_USE_TLS = os.environ.get("EMAIL_USE_TLS", "1") == "1"
+DEFAULT_FROM_EMAIL = os.environ.get("DEFAULT_FROM_EMAIL", "facturacion@localhost")
 if INVOICING_ENABLED and not DEBUG and INVOICING_PROVIDER.endswith("SimulatedProvider"):
     raise ImproperlyConfigured("En producción la facturación electrónica necesita un proveedor real (INVOICING_PROVIDER).")
 
