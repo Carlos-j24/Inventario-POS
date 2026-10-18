@@ -1,16 +1,19 @@
 import { useEffect, useRef, useState, type FormEvent } from "react";
 
-import { api, type Order, type PaymentMethod, type Product, type Register, type Sale, type Shift } from "../api";
+import { api, type Business, type Customer, type Order, type PaymentMethod, type Product, type Register, type Sale, type Shift } from "../api";
 import { useAuth } from "../auth";
 import { fetchWithCache } from "../cache";
 import { addToCart, cartTotalCents, checkPayments, linePriceCents, orderToCart, quantityError, type CartLine } from "../cart";
 import CartTable from "../components/CartTable";
+import CustomerPicker from "../components/CustomerPicker";
 import OrderLoader from "../components/OrderLoader";
 import ProductSearch from "../components/ProductSearch";
+import TicketDialog from "../components/TicketDialog";
 import { ensureBlocks, kvBlockStore, takeContingencyNumber, type BlockStore } from "../contingency";
 import { centsToApi, formatMoney, toCents } from "../money";
 import { isUnreachable, toOfflineBody, type QueuedSale } from "../offline";
 import { useSync } from "../sync";
+import { offlineTicket } from "../ticket";
 
 const REGISTER_KEY = "pos.register";
 
@@ -116,6 +119,8 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
   const [lastQueued, setLastQueued] = useState<QueuedSale | null>(null);
   const [catalogDate, setCatalogDate] = useState<string | null>(null);
   const [order, setOrder] = useState<Order | null>(null); // pedido que se está cobrando (spec 002)
+  const [business, setBusiness] = useState<Business | null>(null);
+  const [ticket, setTicket] = useState<{ saleId: number } | { queued: QueuedSale } | null>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const { user } = useAuth();
   const { online, pending, enqueue } = useSync();
@@ -134,6 +139,11 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
       )
       .catch(() => {}); // sin bloque, el servidor numera la venta al recibirla
   }, [online, register.id]);
+
+  // Encabezado del tiquete; con copia local para imprimir el tiquete de contingencia sin red.
+  useEffect(() => {
+    fetchWithCache<Business>("/api/invoicing/business/").then((r) => setBusiness(r.data)).catch(() => setBusiness(null));
+  }, [online]);
 
   // Se vuelve a pedir al recuperar la conexión, para dejar de vender con precios de la copia.
   useEffect(() => {
@@ -227,6 +237,7 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
             {lastSale.payments.filter((p) => toCents(p.change) > 0).map((p) => (
               <span key={p.method} className="change">Vueltas {formatMoney(toCents(p.change))}</span>
             ))}
+            <button className="link" onClick={() => setTicket({ saleId: lastSale.id })}>Imprimir tiquete</button>
           </div>
         )}
         {lastQueued && (
@@ -236,6 +247,7 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
               {lastQueued.contingencyCode && <span>Tiquete de contingencia {lastQueued.contingencyCode}</span>}
               <span>Total {formatMoney(lastQueued.totalCents)}</span>
               <span className="muted small">Se enviará sola al volver la red.</span>
+              {lastQueued.ticket && <button className="link" onClick={() => setTicket({ queued: lastQueued })}>Imprimir tiquete</button>}
             </div>
           ) : (
             <div className="done" role="status">
@@ -250,6 +262,8 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
         <Checkout
           shiftId={shiftId}
           registerId={register.id}
+          registerCode={register.code}
+          business={business}
           lines={lines}
           totalCents={total}
           username={user.username}
@@ -261,14 +275,23 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
             setLines([]);
             setOrder(null);
             setLastSale(sale);
+            setTicket({ saleId: sale.id }); // el tiquete sale apenas se cobra
             searchRef.current?.focus();
           }}
           onQueued={(item) => {
             setCheckout(false);
             setLines([]);
             setLastQueued(item);
+            if (item.ticket) setTicket({ queued: item });
             searchRef.current?.focus();
           }}
+        />
+      )}
+      {ticket && (
+        <TicketDialog
+          saleId={"saleId" in ticket ? ticket.saleId : undefined}
+          data={"queued" in ticket ? ticket.queued.ticket : undefined}
+          onClose={() => { setTicket(null); searchRef.current?.focus(); }}
         />
       )}
     </div>
@@ -281,8 +304,14 @@ const METHODS: { method: PaymentMethod; label: string }[] = [
   { method: "TRANSFER", label: "Transferencia" },
 ];
 
-export function Checkout({ shiftId, registerId, blocks = kvBlockStore, lines, totalCents, username, queue, order = null, onCancel, onPaid, onQueued }: {
+export function Checkout({
+  shiftId, registerId, registerCode = "", business = null, blocks = kvBlockStore, lines, totalCents, username, queue,
+  order = null, onCancel, onPaid, onQueued,
+}: {
   shiftId: number;
+  registerCode?: string;
+  /** Encabezado del tiquete de contingencia. */
+  business?: Business | null;
   /** Caja del turno: de sus bloques sale el número de contingencia de una venta sin conexión. */
   registerId?: number;
   blocks?: BlockStore;
@@ -301,6 +330,9 @@ export function Checkout({ shiftId, registerId, blocks = kvBlockStore, lines, to
   const [refs, setRefs] = useState<Record<PaymentMethod, string>>({ CASH: "", CARD: "", TRANSFER: "" });
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  // Spec 005: a quién va el documento (consumidor final si no se elige) y si pidió factura electrónica.
+  const [customer, setCustomer] = useState<Customer | null>(null);
+  const [invoice, setInvoice] = useState(false);
   // Un UUID por intento de cobro: si la red falla y se reintenta, el servidor no duplica la venta.
   const [clientUuid] = useState(() => crypto.randomUUID());
 
@@ -324,6 +356,7 @@ export function Checkout({ shiftId, registerId, blocks = kvBlockStore, lines, to
         amount: centsToApi(p.amountCents),
         reference: refs[p.method],
       })),
+      ...(customer && { customer: customer.id, invoice }),
     };
     try {
       onPaid(await api<Sale>("/api/sales/", { method: "POST", body }));
@@ -349,6 +382,10 @@ export function Checkout({ shiftId, registerId, blocks = kvBlockStore, lines, to
         body: { ...toOfflineBody(body, lines.map(linePriceCents)), ...(contingency && { contingency_number: contingency.number }) },
         status: "pending",
         ...(contingency && { contingencyCode: contingency.code }),
+        ticket: offlineTicket({
+          business, lines, payments: check.payments, changeCents: check.changeCents,
+          contingencyCode: contingency?.code ?? null, cashier: username, register: registerCode,
+        }),
       };
       try {
         await queue(item);
@@ -365,6 +402,12 @@ export function Checkout({ shiftId, registerId, blocks = kvBlockStore, lines, to
     <div className="overlay" role="dialog" aria-label="Cobrar">
       <form className="card modal" onSubmit={pay}>
         <h2>Cobrar {formatMoney(totalCents)}</h2>
+        <CustomerPicker value={customer} onChange={(c) => { setCustomer(c); if (!c) setInvoice(false); }} />
+        {customer && (
+          <label className="check">
+            <input type="checkbox" checked={invoice} onChange={(e) => setInvoice(e.target.checked)} /> Pedir factura electrónica
+          </label>
+        )}
         {METHODS.map(({ method, label }) => (
           <div className="payment" key={method}>
             <label>

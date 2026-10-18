@@ -3,7 +3,7 @@
 // - Cada venta lleva su client_uuid: reenviarla nunca la duplica.
 // - Una venta en cola va con offline=true y el precio cobrado en cada línea.
 // - Solo se envían las ventas del usuario con sesión: el vendedor de cada venta debe ser quien la hizo.
-import { ApiError } from "./api";
+import { ApiError, type TicketData } from "./api";
 
 export interface QueuedSale {
   client_uuid: string;
@@ -15,6 +15,8 @@ export interface QueuedSale {
   error?: string;
   /** Número del tiquete de contingencia (spec 005, T5), si el equipo tenía bloque. */
   contingencyCode?: string;
+  /** Tiquete armado en el equipo, para imprimirlo sin servidor (T6). */
+  ticket?: TicketData;
 }
 
 export interface OutboxStore {

@@ -403,3 +403,56 @@ export interface FiscalInbox {
   summary: { pending: number; rejected: number; overdue: number; due_soon: number };
   results: FiscalDocumentRow[];
 }
+
+export interface Customer {
+  id: number;
+  id_type: string;
+  id_type_label: string;
+  id_number: string;
+  check_digit: string;
+  person_type: "1" | "2";
+  name: string;
+  email: string;
+  phone: string;
+  address: string;
+  city: string;
+  tax_responsibilities: string[];
+  is_final_consumer: boolean;
+}
+
+export interface Business {
+  name: string;
+  trade_name: string;
+  nit: string;
+  address: string;
+  city: string;
+  phone: string;
+  email: string;
+  tax_regime: string;
+}
+
+/** Representación gráfica para el tiquete de 80 mm (art. 19). La arma el servidor o, sin conexión, el POS. */
+export interface TicketData {
+  business: Business | null;
+  title: string;
+  code: string | null;
+  status: FiscalStatus | null;
+  /** Documento electrónico de la venta, para pedir que se envíe ya. */
+  document_id?: number | null;
+  sale_number: string | null;
+  issued_at: string;
+  register: string;
+  cashier: string;
+  customer: { name: string; document: string } | null;
+  lines: { name: string; quantity: string; unit: string; unit_price: string; total: string }[];
+  subtotal: string;
+  tax: string;
+  total: string;
+  taxes: { rate: string; base: string; tax: string }[];
+  payments: { label: string; amount: string }[];
+  change: string;
+  cude: string | null;
+  qr_svg: string | null;
+  resolution: string | null;
+  notes: string[];
+}

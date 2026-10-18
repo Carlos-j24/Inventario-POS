@@ -15,6 +15,7 @@ from apps.customers.models import Customer
 from apps.customers.rules import FINAL_CONSUMER_NUMBER
 from apps.sales.models import Sale
 
+from .mail import email_customer
 from .models import ContingencyBlock, FiscalDocument, FiscalEvent, InternalCounter, NumberingResolution
 from .numbering import NumberingError, take_number
 from .providers import ProviderUnavailable, get_provider
@@ -146,6 +147,13 @@ def issue_for_return(sale_return):
                        total=sums["total"], detail=f"Devolución {sale_return.number}: {sale_return.reason}")
 
 
+def _notify(pk):
+    """Correo al cliente, fuera de la transacción del envío: si falla, el documento sigue validado."""
+    document = FiscalDocument.objects.select_related("customer").get(pk=pk)
+    if email_customer(document):
+        log(document, "emailed", document.customer.email)
+
+
 def send_document(document, provider=None):
     """Envía un documento pendiente al proveedor y guarda el resultado. Lo usa la cola (T4).
 
@@ -173,6 +181,7 @@ def send_document(document, provider=None):
             document.validated_at = timezone.now()
             document.last_error = ""
             log(document, "validated", f"{provider.name}: {result.cude}")
+            transaction.on_commit(lambda: _notify(document.pk))
         else:
             document.status = FiscalDocument.Status.REJECTED
             document.last_error = result.message

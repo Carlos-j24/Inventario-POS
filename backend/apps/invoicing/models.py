@@ -210,3 +210,38 @@ class InternalCounter(models.Model):
 
     key = models.CharField(max_length=30, unique=True)
     next_number = models.PositiveBigIntegerField(default=1)
+
+
+class Business(models.Model):
+    """Datos del vendedor que van en cada documento (art. 19): un solo registro, se edita en el admin."""
+
+    name = models.CharField("razón social", max_length=200, default="Ferretería (configura los datos en el admin)")
+    trade_name = models.CharField("nombre comercial", max_length=200, blank=True)
+    nit = models.CharField("NIT", max_length=20, blank=True)
+    check_digit = models.CharField("dígito de verificación", max_length=1, blank=True)
+    address = models.CharField("dirección", max_length=200, blank=True)
+    city = models.CharField("ciudad", max_length=80, blank=True)
+    phone = models.CharField("teléfono", max_length=30, blank=True)
+    email = models.EmailField("correo", blank=True)
+    tax_regime = models.CharField(
+        "régimen", max_length=120, blank=True, help_text="Como debe aparecer en el tiquete, p. ej. «Responsable de IVA».",
+    )
+
+    class Meta:
+        verbose_name = "datos del negocio"
+        verbose_name_plural = "datos del negocio"
+
+    def __str__(self):
+        return self.name
+
+    @classmethod
+    def load(cls):
+        business, _ = cls.objects.get_or_create(pk=1)
+        return business
+
+    def clean(self):
+        from apps.customers.rules import check_digit
+
+        if self.nit:
+            self.nit = "".join(c for c in self.nit if c.isdigit())
+            self.check_digit = check_digit(self.nit)
