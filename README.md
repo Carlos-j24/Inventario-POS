@@ -29,7 +29,7 @@ npm run dev
 
 Abre http://localhost:5173. Vite reenvía `/api` a Django, así que el navegador ve un solo dominio (necesario para la sesión en cookie). Tests: `npm test`. Tipos: `npm run typecheck`.
 
-Pantallas según los permisos del usuario: **Caja** (`cash.operate`), **Entradas** (`inventory.receive`) y **Existencias** (`inventory.view`).
+Pantallas según los permisos del usuario: **Caja** (`cash.operate`), **Entradas** (`inventory.receive`), **Existencias** (`inventory.view`), **Productos** (`catalog.edit`; el precio con `catalog.edit_prices`), **Conteos** (`inventory.count`), **Ajustes** (los pide bodega y los aprueba `inventory.adjust`) y **Traslados** (`inventory.transfer`), además de las de ventas, reportes, DIAN y administración.
 
 ## Producción
 

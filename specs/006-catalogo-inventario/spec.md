@@ -1,6 +1,6 @@
 # Spec 006 — Catálogo e inventario en la app
 
-> Estado: **aprobada (PR #44, 2026-10-18)**; decisiones delegadas por el equipo. Tareas en tasks.md.
+> Estado: ✅ **completada (2026-10-19)**. Tareas en tasks.md (T1–T9, PRs #46–#54). Decisiones delegadas por el equipo (PR #44).
 
 ## Problema
 Hoy los productos solo se crean y se editan en el **admin de Django**, que no es una herramienta para el día a día de una ferretería: no pide permisos de la app, no deja rastro de quién cambió un precio y deja editar cosas que rompen el inventario (la unidad base o el factor de una presentación con movimientos ya hechos).
