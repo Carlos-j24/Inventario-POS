@@ -6,7 +6,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - **Spec 002 (pedidos vendedor → caja)** completa: el vendedor arma el pedido con un código de 4 dígitos y la caja lo cobra; la venta guarda quién vendió y quién cobró.
 - **Spec 003 (supervisor y administrador)** completa: pantallas Ventas (buscar, anular, devolver), Usuarios, Roles, cambiar mi contraseña y contraseña temporal con cambio obligatorio (la API bloquea hasta cambiarla).
 - **Spec 004 (reportes)** completa: costo promedio ponderado guardado en cada salida, pantalla Reportes (ventas, productos, arqueos; inventario valorizado y márgenes con `reports.costs`) y CSV para Excel.
-- **Spec 006 (catálogo e inventario en la app)** aprobada (PR #44) y en curso: T1 (API del catálogo con historial de precios y producto pendiente de precio) y T2 (pantalla Productos) hechas.
+- **Spec 006 (catálogo e inventario en la app)** aprobada (PR #44) y en curso: T1 (API del catálogo con historial de precios y producto pendiente de precio) T2 (pantalla Productos) y T3 (ajustes en el backend) hechas.
 - Repositorio público Carlos-j24/Inventario-POS. main exige 5 checks: pytest 3.12 y 3.14, pytest-postgres, frontend y docker (`scripts/smoke-test.sh`).
 
 ## Decisiones (y por qué)
@@ -35,7 +35,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - El inicio de sesión admite 5 intentos por minuto (`LOGIN_RATE`): una prueba que cambia de usuario varias veces seguidas recibe 429.
 - `gh pr merge --auto` sin checks obligatorios fusiona AL INSTANTE (pasó con el PR #8). Ahora main exige los checks, pero GitHub a veces no dispara la fusión al quedar todo en verde (PR #9, #10, #27): revisar y fusionar a mano.
 - Los tests de concurrencia (dos cajas a la vez) no corren en SQLite: el job `pytest-postgres` del CI corre la suite contra PostgreSQL. Llevan `django_db(transaction=True, serialized_rollback=True)`: sin lo segundo vacían la base, incluidos los datos de las migraciones (unidades, roles), y rompen el test transaccional siguiente (pasó en el PR #38).
-- SQLite ignora `select_for_update`: los errores de bloqueo solo salen en el job `pytest-postgres` (PR #39: no se puede bloquear el lado opcional de un `select_related`; usar `of=("self",)`).
+- SQLite ignora `select_for_update`: los errores de bloqueo solo salen en el job `pytest-postgres` (PR #39: no se puede bloquear el lado opcional de un `select_related`; usar `of=("self",)`). Tampoco reinicia los id entre tests: no asumir números como `AJ-000001` (PR #48).
 - Bases de desarrollo con ventas anteriores a la T5 no migran (las ventas exigen turno): borrar `db.sqlite3` y volver a migrar.
 - El BOM del CSV se escribe con `String.fromCharCode(0xfeff)`: el escape `\uFEFF` puede acabar guardado como carácter invisible. Para comprobarlo, leer los bytes: `Blob.text()` quita el BOM.
 

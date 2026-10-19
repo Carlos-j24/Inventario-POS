@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import StockLevel, StockMovement, Warehouse
+from .models import Adjustment, AdjustmentLine, StockLevel, StockMovement, Warehouse
 
 admin.site.register(Warehouse)
 
@@ -23,6 +23,34 @@ class StockMovementAdmin(admin.ModelAdmin):
 
     list_display = ("created_at", "kind", "product", "warehouse", "quantity", "balance_after", "user")
     list_filter = ("kind", "warehouse", "needs_review")
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class AdjustmentLineInline(admin.TabularInline):
+    model = AdjustmentLine
+    extra = 0
+    can_delete = False
+    readonly_fields = ("product", "unit", "quantity", "base_quantity", "unit_cost", "movement")
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Adjustment)
+class AdjustmentAdmin(admin.ModelAdmin):
+    """Solo consulta: los ajustes se piden y aprueban en la app (spec 006)."""
+
+    list_display = ("number", "warehouse", "reason", "status", "requested_by", "decided_by", "created_at")
+    list_filter = ("status", "reason", "warehouse")
+    inlines = [AdjustmentLineInline]
 
     def has_add_permission(self, request):
         return False
