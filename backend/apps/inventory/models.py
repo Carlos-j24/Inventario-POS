@@ -147,3 +147,64 @@ class AdjustmentLine(models.Model):
 
     class Meta:
         verbose_name = "línea de ajuste"
+
+
+class PhysicalCount(models.Model):
+    """Conteo físico de una bodega, completa o de una categoría (spec 006, T5).
+
+    Conteo ciego: quien cuenta no ve lo que dice el sistema. Al aprobarse, las diferencias generan un
+    ajuste "Conteo físico" ya aprobado.
+    """
+
+    class Status(models.TextChoices):
+        OPEN = "OPEN", "Abierto"
+        SUBMITTED = "SUBMITTED", "Contado, por aprobar"
+        APPROVED = "APPROVED", "Aprobado"
+        VOIDED = "VOIDED", "Anulado"
+
+    client_uuid = models.UUIDField(unique=True)
+    warehouse = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name="counts", verbose_name="bodega")
+    category = models.ForeignKey(
+        "catalog.Category", on_delete=models.PROTECT, related_name="+", null=True, blank=True, verbose_name="categoría",
+    )
+    status = models.CharField("estado", max_length=10, choices=Status.choices, default=Status.OPEN)
+    opened_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    submitted_at = models.DateTimeField(null=True, blank=True)
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+", null=True, blank=True)
+    decided_at = models.DateTimeField(null=True, blank=True)
+    void_note = models.CharField("motivo de la anulación", max_length=200, blank=True)
+    adjustment = models.OneToOneField(
+        Adjustment, on_delete=models.PROTECT, related_name="physical_count", null=True, blank=True,
+        help_text="El ajuste con las diferencias, si las hubo.",
+    )
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        verbose_name = "conteo físico"
+        verbose_name_plural = "conteos físicos"
+
+    def __str__(self):
+        return self.number
+
+    @property
+    def number(self):
+        return f"CF-{self.pk:06d}"
+
+
+class CountLine(models.Model):
+    """Lo contado de un producto, en unidad base, y la hora en que se contó."""
+
+    count = models.ForeignKey(PhysicalCount, on_delete=models.CASCADE, related_name="lines")
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="+")
+    counted = models.DecimalField(**QTY, null=True, blank=True, help_text="En unidad base; vacío si no se ha contado.")
+    counted_at = models.DateTimeField(null=True, blank=True)
+    counted_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+", null=True, blank=True)
+    marked_zero = models.BooleanField(default=False, help_text="No se contó y el aprobador lo marcó en 0.")
+    expected = models.DecimalField(**QTY, null=True, blank=True, help_text="Lo que decía el sistema a la hora del conteo (al aprobar).")
+    difference = models.DecimalField(**QTY, null=True, blank=True)
+
+    class Meta:
+        ordering = ["product__name"]
+        constraints = [models.UniqueConstraint(fields=["count", "product"], name="unique_count_product")]
+        verbose_name = "línea de conteo"

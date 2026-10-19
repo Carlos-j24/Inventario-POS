@@ -90,14 +90,18 @@ def approve_adjustment(*, adjustment, user):
     with transaction.atomic():
         adjustment = _lock_pending(adjustment)
         reference = f"{adjustment.number} {adjustment.get_reason_display()}"
+        # El conteo físico corrige a lo que hay en el estante: puede dejar negativo (ventas sin conexión
+        # que llegaron después) y un sobrante entra al promedio aunque sea 0 (spec 006, T5).
+        counting = adjustment.reason == Reason.PHYSICAL_COUNT
         for line in adjustment.lines.select_related("product"):
-            if line.base_quantity > 0 and line.unit_cost is None:
+            if line.base_quantity > 0 and line.unit_cost is None and not counting:
                 level = StockLevel.objects.filter(product=line.product, warehouse=adjustment.warehouse).first()
                 if level is None or level.average_cost == 0:
                     raise ValidationError(f"{line.product.sku} no tiene costo todavía: indica el costo del sobrante.")
             line.movement, _ = record_movement(
                 kind=StockMovement.Kind.ADJUSTMENT, product=line.product, warehouse=adjustment.warehouse,
                 quantity=line.base_quantity, unit_cost=line.unit_cost, user=user, reference=reference,
+                allow_negative=counting,
             )
             line.save(update_fields=["movement"])
         adjustment.status = Status.APPROVED
