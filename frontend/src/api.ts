@@ -508,3 +508,40 @@ export interface PriceChange {
   user: string;
   at: string;
 }
+
+// --- Ajustes de inventario (spec 006) ---
+
+export type AdjustmentReason = "DAMAGE" | "LOSS" | "INTERNAL_USE" | "EXPIRED" | "RECORD_ERROR" | "SURPLUS" | "PHYSICAL_COUNT";
+export type AdjustmentStatus = "PENDING" | "APPROVED" | "REJECTED";
+
+export interface AdjustmentLine {
+  id: number;
+  product: number;
+  sku: string;
+  name: string;
+  unit: string;
+  quantity: string;
+  /** En unidad base, con signo: negativa sale. */
+  base_quantity: string;
+  base_unit: string;
+  /** Valor al costo; null si el usuario no tiene reports.costs. */
+  value: string | null;
+}
+
+export interface Adjustment {
+  id: number;
+  number: string;
+  client_uuid: string;
+  warehouse: string;
+  reason: AdjustmentReason;
+  reason_label: string;
+  note: string;
+  status: AdjustmentStatus;
+  status_label: string;
+  requested_by: string;
+  created_at: string;
+  decided_by: string | null;
+  decided_at: string | null;
+  rejection_note: string;
+  lines: AdjustmentLine[];
+}

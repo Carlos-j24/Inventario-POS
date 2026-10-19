@@ -6,7 +6,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - **Spec 002 (pedidos vendedor → caja)** completa: el vendedor arma el pedido con un código de 4 dígitos y la caja lo cobra; la venta guarda quién vendió y quién cobró.
 - **Spec 003 (supervisor y administrador)** completa: pantallas Ventas (buscar, anular, devolver), Usuarios, Roles, cambiar mi contraseña y contraseña temporal con cambio obligatorio (la API bloquea hasta cambiarla).
 - **Spec 004 (reportes)** completa: costo promedio ponderado guardado en cada salida, pantalla Reportes (ventas, productos, arqueos; inventario valorizado y márgenes con `reports.costs`) y CSV para Excel.
-- **Spec 006 (catálogo e inventario en la app)** aprobada (PR #44) y en curso: T1 (API del catálogo con historial de precios y producto pendiente de precio) T2 (pantalla Productos) y T3 (ajustes en el backend) hechas.
+- **Spec 006 (catálogo e inventario en la app)** aprobada (PR #44) y en curso: T1 (API del catálogo con historial de precios y producto pendiente de precio) T2 (pantalla Productos) T3 (ajustes en el backend) y T4 (pantalla Ajustes) hechas.
 - Repositorio público Carlos-j24/Inventario-POS. main exige 5 checks: pytest 3.12 y 3.14, pytest-postgres, frontend y docker (`scripts/smoke-test.sh`).
 
 ## Decisiones (y por qué)
