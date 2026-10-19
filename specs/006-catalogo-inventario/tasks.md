@@ -1,0 +1,13 @@
+# Tareas — Spec 006
+
+> 📝 **Borrador (2026-10-18).** No se programa nada hasta que el equipo apruebe la spec y responda las decisiones abiertas en el PR. Las tareas pueden cambiar según esas respuestas.
+
+- [ ] **T1** Catálogo en el backend: `catalog/services.py` (crear y editar productos, presentaciones y categorías), historial de precios (`PriceChange`), validaciones (SKU y unidad base fijos con movimientos, factor de presentación usada, código de barras único entre productos y presentaciones, excluido solo con 0 %), regla del precio según la decisión 2 y API `/api/catalog/admin/…`, `categories`, `units` y `price-history` con `catalog.edit` / `catalog.edit_prices`. Precio de solo lectura en el admin de Django.
+- [ ] **T2** Pantalla **Productos**: lista con búsqueda (SKU, nombre, código) y filtros, formulario con presentaciones y códigos, precio bloqueado sin `catalog.edit_prices`, activar/desactivar e historial de precios.
+- [ ] **T3** **Ajustes** en el backend: `Adjustment` y líneas con número `AJ-…`, motivos (decisión 8), flujo borrador → pendiente → aprobado/rechazado (decisión 1), aprobación en una transacción con bloqueo, bajas sin negativo y sobrantes con costo cuando no hay promedio. Prueba de dos aprobaciones a la vez en `pytest-postgres`.
+- [ ] **T4** Pantalla **Ajustes**: crear con líneas, motivo y nota; bandeja de pendientes para aprobar o rechazar.
+- [ ] **T5** **Conteos** en el backend: `PhysicalCount` y líneas (`CF-…`) por bodega y categoría, conteo ciego (la API no devuelve el esperado sin `inventory.adjust`), cálculo de la diferencia (decisión 3), productos sin contar (decisión 7) y aprobación que genera los `ADJUSTMENT`. Un solo conteo abierto por bodega y producto.
+- [ ] **T6** Pantalla **Conteos**: abrir, contar a ciegas con búsqueda y lector de código de barras, y aprobar viendo diferencias (valor solo con `reports.costs`).
+- [ ] **T7** **Traslados**: permiso (decisión 5, migración de datos si es nuevo), `Transfer` y líneas (`TR-…`) en uno o dos pasos (decisión 4), salida al promedio del origen y entrada con ese mismo costo; pantalla **Traslados**.
+- [ ] **T8** Venta sin conexión de un producto desactivado (decisión 6) y marca `needs_review` para ventas que llegan con fecha anterior a un conteo aprobado (decisión 3).
+- [ ] **T9** Prueba de punta a punta con los usuarios de demostración: crear un producto con rollo de 100 m desde bodega y ponerle precio el administrador; baja por daño; conteo ciego con ventas en medio; traslado; comprobar kardex = existencias e inventario valorizado antes y después. Actualizar `docs/arquitectura.md`, `AGENTS.md` (si cambian reglas) y `MEMORY.md`.
