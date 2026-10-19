@@ -5,6 +5,7 @@ import { promptInstall, useCanInstall } from "./install";
 import Adjustments from "./pages/Adjustments";
 import ChangePassword from "./pages/ChangePassword";
 import Counts from "./pages/Counts";
+import Transfers from "./pages/Transfers";
 import FiscalInbox from "./pages/FiscalInbox";
 import Login from "./pages/Login";
 import Orders from "./pages/Orders";
@@ -28,6 +29,7 @@ const PAGES: { id: string; label: string; permission: string | string[]; Compone
   { id: "products", label: "Productos", permission: "catalog.edit", Component: Products },
   { id: "counts", label: "Conteos", permission: ["inventory.count", "inventory.adjust"], Component: Counts },
   { id: "adjustments", label: "Ajustes", permission: ["inventory.receive", "inventory.count", "inventory.adjust"], Component: Adjustments },
+  { id: "transfers", label: "Traslados", permission: "inventory.transfer", Component: Transfers },
   { id: "sales", label: "Ventas", permission: ["sales.void", "reports.view"], Component: Sales },
   { id: "review", label: "Revisión", permission: "reports.view", Component: Review },
   { id: "reports", label: "Reportes", permission: "reports.view", Component: Reports },

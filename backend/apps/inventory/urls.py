@@ -4,6 +4,7 @@ from .adjustment_api import AdjustmentApproveView, AdjustmentDetailView, Adjustm
 from .count_api import (
     CountApproveView, CountDetailView, CountLineView, CountListView, CountSubmitView, CountVoidView,
 )
+from .transfer_api import TransferDetailView, TransferListView
 from .views import KardexView, ReceiptView, StockLevelListView, WarehouseListView
 
 urlpatterns = [
@@ -23,4 +24,7 @@ urlpatterns = [
     path("counts/<int:pk>/submit/", CountSubmitView.as_view(), name="count-submit"),
     path("counts/<int:pk>/approve/", CountApproveView.as_view(), name="count-approve"),
     path("counts/<int:pk>/void/", CountVoidView.as_view(), name="count-void"),
+    # Traslados (spec 006, T7)
+    path("transfers/", TransferListView.as_view(), name="transfer-list"),
+    path("transfers/<int:pk>/", TransferDetailView.as_view(), name="transfer-detail"),
 ]
