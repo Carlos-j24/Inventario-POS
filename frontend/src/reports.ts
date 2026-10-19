@@ -45,8 +45,16 @@ export function presetPeriod(preset: Preset, today: string): Period {
   }
 }
 
-/** El acceso rápido que corresponde a un período, para resaltar su botón. */
-export function matchPreset(period: Period, today: string): Preset | null {
+/**
+ * El acceso rápido que corresponde a un período, para resaltar su botón. Si el usuario pulsó uno
+ * (`chosen`) y el período sigue siendo el suyo, gana ese: el lunes "Hoy" y "Esta semana" son el
+ * mismo período, y el día 1 lo son "Hoy" y "Este mes".
+ */
+export function matchPreset(period: Period, today: string, chosen: Preset | null = null): Preset | null {
+  if (chosen) {
+    const p = presetPeriod(chosen, today);
+    if (p.from === period.from && p.to === period.to) return chosen;
+  }
   return PRESETS.find((p) => {
     const q = presetPeriod(p.id, today);
     return q.from === period.from && q.to === period.to;
