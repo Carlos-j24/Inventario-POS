@@ -16,7 +16,7 @@ import { useCan } from "../auth";
 import { downloadCsv } from "../csv";
 import { formatMoney, formatQty, toCents } from "../money";
 import { reportCsv } from "../reportCsv";
-import { formatDay, formatPct, matchPreset, PRESETS, presetPeriod, reportUrl, type Period } from "../reports";
+import { formatDay, formatPct, matchPreset, PRESETS, presetPeriod, reportUrl, type Period, type Preset } from "../reports";
 import { todayIso } from "./Sales";
 
 const money = (value: string) => formatMoney(toCents(value));
@@ -49,7 +49,8 @@ export default function Reports() {
 
   const tabs = TABS.filter((t) => !t.costs || can("reports.costs"));
   const url = reportUrl(tab, period, register);
-  const preset = matchPreset(period, today);
+  const [chosen, setChosen] = useState<Preset | null>(null);
+  const preset = matchPreset(period, today, chosen);
 
   useEffect(() => {
     api<Register[]>("/api/cash/registers/").then(setRegisters).catch(() => setRegisters([]));
@@ -85,7 +86,7 @@ export default function Reports() {
             key={p.id}
             className={p.id === preset ? "tab active" : "tab"}
             aria-pressed={p.id === preset}
-            onClick={() => setPeriod(presetPeriod(p.id, today))}
+            onClick={() => { setChosen(p.id); setPeriod(presetPeriod(p.id, today)); }}
           >
             {p.label}
           </button>
