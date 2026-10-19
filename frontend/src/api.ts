@@ -456,3 +456,55 @@ export interface TicketData {
   resolution: string | null;
   notes: string[];
 }
+
+// --- Administración del catálogo (spec 006) ---
+
+export interface Category {
+  id: number;
+  name: string;
+  products: number;
+}
+
+export interface UnitOption {
+  id: number;
+  code: string;
+  name: string;
+}
+
+export interface Presentation {
+  id: number;
+  unit: string;
+  factor: string;
+  barcode: string | null;
+  is_active: boolean;
+  /** Ya se usó en ventas o pedidos: su factor no cambia y no se puede borrar. */
+  in_use: boolean;
+}
+
+export interface AdminProduct {
+  id: number;
+  sku: string;
+  name: string;
+  category: number;
+  category_name: string;
+  base_unit: string;
+  barcode: string | null;
+  sale_price: string;
+  tax_rate: "0" | "5" | "19";
+  vat_excluded: boolean;
+  allows_fractions: boolean;
+  min_stock: string;
+  is_active: boolean;
+  /** Lo creó alguien sin permiso de precios: inactivo hasta que le pongan precio. */
+  price_pending: boolean;
+  /** Tiene kardex: el SKU y la unidad base ya no cambian. */
+  has_movements: boolean;
+  units: Presentation[];
+}
+
+export interface PriceChange {
+  old_price: string | null;
+  new_price: string;
+  user: string;
+  at: string;
+}
