@@ -4,6 +4,7 @@ import { useAuth } from "./auth";
 import { promptInstall, useCanInstall } from "./install";
 import Adjustments from "./pages/Adjustments";
 import ChangePassword from "./pages/ChangePassword";
+import Counts from "./pages/Counts";
 import FiscalInbox from "./pages/FiscalInbox";
 import Login from "./pages/Login";
 import Orders from "./pages/Orders";
@@ -25,6 +26,7 @@ const PAGES: { id: string; label: string; permission: string | string[]; Compone
   { id: "receipts", label: "Entradas", permission: "inventory.receive", Component: Receipts },
   { id: "stock", label: "Existencias", permission: "inventory.view", Component: Stock },
   { id: "products", label: "Productos", permission: "catalog.edit", Component: Products },
+  { id: "counts", label: "Conteos", permission: ["inventory.count", "inventory.adjust"], Component: Counts },
   { id: "adjustments", label: "Ajustes", permission: ["inventory.receive", "inventory.count", "inventory.adjust"], Component: Adjustments },
   { id: "sales", label: "Ventas", permission: ["sales.void", "reports.view"], Component: Sales },
   { id: "review", label: "Revisión", permission: "reports.view", Component: Review },

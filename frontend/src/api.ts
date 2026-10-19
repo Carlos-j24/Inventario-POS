@@ -545,3 +545,46 @@ export interface Adjustment {
   rejection_note: string;
   lines: AdjustmentLine[];
 }
+
+// --- Conteos físicos (spec 006) ---
+
+export type CountStatus = "OPEN" | "SUBMITTED" | "APPROVED" | "VOIDED";
+
+export interface CountLine {
+  id: number;
+  product: number;
+  sku: string;
+  name: string;
+  barcode: string | null;
+  base_unit: string;
+  units: { unit: string; factor: string; barcode: string | null }[];
+  /** En unidad base; null si no se ha contado. */
+  counted: string | null;
+  counted_at: string | null;
+  counted_by: string | null;
+  marked_zero: boolean;
+  /** Solo para quien aprueba (inventory.adjust); null en el conteo ciego. */
+  expected: string | null;
+  difference: string | null;
+  /** Solo con reports.costs. */
+  value: string | null;
+}
+
+export interface PhysicalCount {
+  id: number;
+  number: string;
+  warehouse: string;
+  category: string | null;
+  status: CountStatus;
+  status_label: string;
+  opened_by: string;
+  created_at: string;
+  submitted_at: string | null;
+  decided_by: string | null;
+  decided_at: string | null;
+  void_note: string;
+  adjustment: string | null;
+  total: number;
+  counted: number;
+  lines?: CountLine[];
+}
