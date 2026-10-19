@@ -8,6 +8,7 @@ from django.utils import timezone
 from apps.cash.models import Shift
 from apps.cash.services import apply_payments
 from apps.catalog.models import ProductUnit
+from apps.inventory.counts import counted_after
 from apps.inventory.models import StockMovement
 from apps.inventory.services import record_movement
 from apps.invoicing.documents import issue_for_sale
@@ -139,6 +140,11 @@ def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, ord
             quantity = Decimal(line["quantity"])
             if quantity <= 0:
                 raise ValidationError("Las cantidades deben ser positivas.")
+            # Un producto desactivado ya no se vende en línea; sin conexión la venta ya ocurrió y el
+            # cliente se llevó la mercancía: se acepta para revisión (spec 006, decisión 6).
+            inactive = not product.is_active and line.get("agreed_price") is None
+            if inactive and not offline:
+                raise ValidationError(f"{product.sku} está desactivado: ya no se vende.")
             listed = catalog_price(product, unit)
             charged = listed
             if line.get("agreed_price") is not None:
@@ -158,7 +164,11 @@ def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, ord
                 unit_price=charged, catalog_price=listed, tax_rate=rate, vat_excluded=product.vat_excluded,
                 subtotal=subtotal, tax=tax, total=total, movement=movement,
             )
-            review = review or movement.needs_review or charged != listed
+            review = (
+                review or movement.needs_review or charged != listed or inactive
+                # Llega con fecha anterior a un conteo ya aprobado: el ajuste no la tuvo en cuenta (decisión 3).
+                or counted_after(product, warehouse, occurred_at)
+            )
             sale.subtotal += subtotal
             sale.tax += tax
             sale.total += total

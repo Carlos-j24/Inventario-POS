@@ -11,7 +11,9 @@ from .models import Order, OrderLine, Sale, SaleLine, SaleReturn, SaleReturnLine
 
 
 class SaleLineInputSerializer(serializers.Serializer):
-    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.filter(is_active=True))
+    # También los desactivados: una venta sin conexión de antes de desactivarlo se acepta para revisión
+    # (spec 006, decisión 6); el servicio rechaza la venta en línea.
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
     quantity = serializers.DecimalField(**QTY)
     unit = serializers.SlugRelatedField(
         slug_field="code", queryset=Unit.objects.all(), required=False, allow_null=True

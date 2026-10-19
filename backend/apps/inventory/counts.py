@@ -104,6 +104,19 @@ def expected_at(product, warehouse, moment):
     return total or Decimal(0)
 
 
+def counted_after(product, warehouse, moment):
+    """¿Hay un conteo aprobado de ese producto y bodega contado después de ese momento?
+
+    Una venta sin conexión con esa fecha que llega ahora no entró en lo esperado del conteo, pero la
+    mercancía ya no estaba en el estante cuando se contó: el ajuste la descontó y la venta la vuelve
+    a descontar. Quien la recibe la marca para revisión (spec 006, decisión 3).
+    """
+    # Una línea sin contar no tiene counted_at (no se ajustó); una marcada en 0 sí, la del aprobado.
+    return CountLine.objects.filter(
+        count__status=Status.APPROVED, count__warehouse=warehouse, product=product, counted_at__gte=moment,
+    ).exists()
+
+
 def approve_count(*, count, user, zero_uncounted=()):
     """Calcula las diferencias y las aplica con un ajuste "Conteo físico". zero_uncounted: "all" o ids."""
     with transaction.atomic():
