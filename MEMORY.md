@@ -35,7 +35,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - El inicio de sesión admite 5 intentos por minuto (`LOGIN_RATE`): una prueba que cambia de usuario varias veces seguidas recibe 429.
 - `gh pr merge --auto` sin checks obligatorios fusiona AL INSTANTE (pasó con el PR #8). Ahora main exige los checks, pero GitHub a veces no dispara la fusión al quedar todo en verde (PR #9, #10, #27): revisar y fusionar a mano.
 - Los tests de concurrencia (dos cajas a la vez) no corren en SQLite: el job `pytest-postgres` del CI corre la suite contra PostgreSQL. Llevan `django_db(transaction=True, serialized_rollback=True)`: sin lo segundo vacían la base, incluidos los datos de las migraciones (unidades, roles), y rompen el test transaccional siguiente (pasó en el PR #38).
-- SQLite ignora `select_for_update`: los errores de bloqueo solo salen en el job `pytest-postgres` (PR #39: no se puede bloquear el lado opcional de un `select_related`; usar `of=("self",)`).
+- SQLite ignora `select_for_update`: los errores de bloqueo solo salen en el job `pytest-postgres` (PR #39: no se puede bloquear el lado opcional de un `select_related`; usar `of=("self",)`). Tampoco reinicia los id entre tests: no asumir números como `AJ-000001` (PR #48).
 - Bases de desarrollo con ventas anteriores a la T5 no migran (las ventas exigen turno): borrar `db.sqlite3` y volver a migrar.
 - El BOM del CSV se escribe con `String.fromCharCode(0xfeff)`: el escape `\uFEFF` puede acabar guardado como carácter invisible. Para comprobarlo, leer los bytes: `Blob.text()` quita el BOM.
 

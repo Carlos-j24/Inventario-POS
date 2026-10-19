@@ -61,7 +61,9 @@ def test_helper_reports_damage_and_boss_approves(helper, boss, warehouse, hammer
     before = Decimal(inventory_report()["totals"]["value"])
     res = api(helper).post(URL, body(warehouse, line(hammer, 3)), format="json")
     assert res.status_code == 201, res.data
-    assert (res.data["number"], res.data["status"], res.data["requested_by"]) == ("AJ-000001", "PENDING", "pedro")
+    number = res.data["number"]  # en PostgreSQL los id no vuelven a 1 entre tests: no se asume
+    assert number == f"AJ-{res.data['id']:06d}"
+    assert (res.data["status"], res.data["requested_by"]) == ("PENDING", "pedro")
     assert stock(hammer, warehouse) == 10  # pendiente: no mueve nada
     assert api(helper).post(f"{URL}{res.data['id']}/approve/").status_code == 403
 
@@ -70,7 +72,7 @@ def test_helper_reports_damage_and_boss_approves(helper, boss, warehouse, hammer
     assert stock(hammer, warehouse) == 7
     movement = Adjustment.objects.get().lines.get().movement
     assert (movement.kind, movement.quantity, movement.unit_cost, movement.reference) == (
-        "ADJUSTMENT", Decimal("-3.000"), Decimal("20000.0000"), "AJ-000001 Daño",
+        "ADJUSTMENT", Decimal("-3.000"), Decimal("20000.0000"), f"{number} Daño",
     )
     # Criterio de la spec: 3 martillos a $20.000 bajan el inventario valorizado en $60.000.
     assert before - Decimal(inventory_report()["totals"]["value"]) == Decimal("60000.00")
@@ -215,16 +217,16 @@ def test_same_client_uuid_creates_one_adjustment(helper, warehouse, hammer):
 @pytest.mark.usefixtures("stocked")
 def test_list_filter_and_value_only_with_costs_permission(boss, make_user, warehouse, hammer):
     first = api(boss).post(URL, body(warehouse, line(hammer, 3)), format="json").data
-    api(boss).post(URL, body(warehouse, line(hammer, 1)), format="json")
+    second = api(boss).post(URL, body(warehouse, line(hammer, 1)), format="json").data
     api(boss).post(f"{URL}{first['id']}/approve/")
-    assert [a["number"] for a in api(boss).get(URL).data] == ["AJ-000002", "AJ-000001"]
-    assert [a["number"] for a in api(boss).get(URL, {"status": "PENDING"}).data] == ["AJ-000002"]
+    assert [a["number"] for a in api(boss).get(URL).data] == [second["number"], first["number"]]  # recientes primero
+    assert [a["number"] for a in api(boss).get(URL, {"status": "PENDING"}).data] == [second["number"]]
     assert api(boss).get(f"{URL}{first['id']}/").data["lines"][0]["value"] is None  # sin reports.costs
 
     owner = make_user("dueno", "Administrador")
     rows = {a["number"]: a for a in api(owner).get(URL).data}
-    assert rows["AJ-000001"]["lines"][0]["value"] == "-60000.00"  # aprobado: costo del movimiento
-    assert rows["AJ-000002"]["lines"][0]["value"] == "-20000.00"  # pendiente: promedio vigente
+    assert rows[first["number"]]["lines"][0]["value"] == "-60000.00"  # aprobado: costo del movimiento
+    assert rows[second["number"]]["lines"][0]["value"] == "-20000.00"  # pendiente: promedio vigente
 
 
 def test_permissions(make_user, warehouse, hammer):
