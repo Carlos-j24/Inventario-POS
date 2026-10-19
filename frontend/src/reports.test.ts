@@ -32,8 +32,17 @@ describe("matchPreset", () => {
     expect(matchPreset({ from: "2026-10-12", to: "2026-10-14" }, "2026-10-16")).toBeNull(); // lunes a miércoles
   });
 
-  it("el lunes, hoy y esta semana coinciden: gana hoy", () => {
-    expect(matchPreset({ from: "2026-10-12", to: "2026-10-12" }, "2026-10-12")).toBe("today");
+  it("el lunes, hoy y esta semana coinciden: gana el que se pulsó", () => {
+    const monday = { from: "2026-10-12", to: "2026-10-12" };
+    expect(matchPreset(monday, "2026-10-12")).toBe("today");
+    expect(matchPreset(monday, "2026-10-12", "week")).toBe("week");
+    expect(matchPreset(monday, "2026-10-12", "today")).toBe("today");
+    expect(matchPreset({ from: "2026-11-01", to: "2026-11-01" }, "2026-11-01", "month")).toBe("month"); // día 1
+  });
+
+  it("si el período ya no es el del botón pulsado, se reconoce por las fechas", () => {
+    expect(matchPreset({ from: "2026-10-15", to: "2026-10-15" }, "2026-10-16", "week")).toBe("yesterday");
+    expect(matchPreset({ from: "2026-10-02", to: "2026-10-05" }, "2026-10-16", "week")).toBeNull();
   });
 });
 
