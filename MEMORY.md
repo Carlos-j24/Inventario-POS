@@ -6,7 +6,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - **Spec 002 (pedidos vendedor → caja)** completa: el vendedor arma el pedido con un código de 4 dígitos y la caja lo cobra; la venta guarda quién vendió y quién cobró.
 - **Spec 003 (supervisor y administrador)** completa: pantallas Ventas (buscar, anular, devolver), Usuarios, Roles, cambiar mi contraseña y contraseña temporal con cambio obligatorio (la API bloquea hasta cambiarla).
 - **Spec 004 (reportes)** completa: costo promedio ponderado guardado en cada salida, pantalla Reportes (ventas, productos, arqueos; inventario valorizado y márgenes con `reports.costs`) y CSV para Excel.
-- **Spec 006 (catálogo e inventario en la app)** aprobada (PR #44) y en curso: T1 (API del catálogo con historial de precios y producto pendiente de precio) T2 (pantalla Productos) T3 (ajustes en el backend) T4 (pantalla Ajustes) y T5 (conteos físicos en el backend) hechas.
+- **Spec 006 (catálogo e inventario en la app)** aprobada (PR #44) y en curso: T1 (API del catálogo con historial de precios y producto pendiente de precio) T2 (pantalla Productos) T3 (ajustes en el backend) T4 (pantalla Ajustes) T5 (conteos físicos en el backend) y T6 (pantalla Conteos) hechas.
 - Repositorio público Carlos-j24/Inventario-POS. main exige 5 checks: pytest 3.12 y 3.14, pytest-postgres, frontend y docker (`scripts/smoke-test.sh`).
 
 ## Decisiones (y por qué)
@@ -22,6 +22,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - Pago mixto permitido (decisión del equipo) → tarjeta y transferencia no pueden pasarse del total; el efectivo da vueltas.
 
 ## Aprendizajes y errores a evitar
+- Pasar el foco tras escanear con `setTimeout` deja colar la tecla siguiente (lo destapó la prueba en el navegador de la T6 de la spec 006): usar `flushSync` y enfocar en el acto.
 - Tests con pytest-django: `manage.py test` no los encuentra (DevForge Init lo propone por defecto al detectar Django).
 - Al meter fallos a propósito: quitar la consulta previa de `client_uuid` no rompe nada, porque la restricción única de la base de datos ya protege contra duplicados.
 - Un test de redondeo con precios "redondos" (3.200) no prueba nada: el centavo perdido solo aparece con precios con centavos (3.199,99).

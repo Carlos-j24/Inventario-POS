@@ -8,7 +8,7 @@ from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
-from apps.accounts.drf import require
+from apps.accounts.drf import require, require_any
 
 from . import services
 from .models import Category, PriceChange, Product, ProductUnit, Unit
@@ -105,7 +105,12 @@ class PresentationDetailView(APIView):
 
 
 class CategoryListView(APIView):
-    permission_classes = [CAN_EDIT]
+    """Ver la lista también sirve a quien cuenta inventario (conteo por categoría, spec 006 T6); crear exige catalog.edit."""
+
+    def get_permissions(self):
+        if self.request.method == "GET":
+            return [require_any("catalog.edit", "inventory.count", "inventory.adjust")()]
+        return [CAN_EDIT()]
 
     def get(self, request):
         return Response(CategorySerializer(Category.objects.all(), many=True).data)

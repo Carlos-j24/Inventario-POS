@@ -215,5 +215,8 @@ def test_permissions(make_user, hammer):
     assert api(cashier).get(URL).status_code == 403
     assert api(cashier).patch(f"{URL}{hammer.pk}/", {"name": "x"}, format="json").status_code == 403
     assert api(cashier).get("/api/catalog/categories/").status_code == 403
+    counter = make_user("cuenta", "Auxiliar de bodega")  # cuenta inventario: ve las categorías, no las crea
+    assert api(counter).get("/api/catalog/categories/").status_code == 200
+    assert api(counter).post("/api/catalog/categories/", {"name": "Nueva"}, format="json").status_code == 403
     assert api(cashier).get("/api/catalog/products/").status_code == 200  # el catálogo del POS sigue igual
     assert APIClient().get(URL).status_code == 403
