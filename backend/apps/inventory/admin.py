@@ -1,6 +1,8 @@
 from django.contrib import admin
 
-from .models import Adjustment, AdjustmentLine, CountLine, PhysicalCount, StockLevel, StockMovement, Warehouse
+from .models import (
+    Adjustment, AdjustmentLine, CountLine, PhysicalCount, StockLevel, StockMovement, Transfer, TransferLine, Warehouse,
+)
 
 admin.site.register(Warehouse)
 
@@ -79,6 +81,34 @@ class PhysicalCountAdmin(admin.ModelAdmin):
     list_display = ("number", "warehouse", "category", "status", "opened_by", "decided_by", "created_at")
     list_filter = ("status", "warehouse")
     inlines = [CountLineInline]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class TransferLineInline(admin.TabularInline):
+    model = TransferLine
+    extra = 0
+    can_delete = False
+    readonly_fields = ("product", "unit", "quantity", "base_quantity", "out_movement", "in_movement")
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(Transfer)
+class TransferAdmin(admin.ModelAdmin):
+    """Solo consulta: los traslados se hacen en la app (spec 006)."""
+
+    list_display = ("number", "origin", "destination", "created_by", "created_at")
+    list_filter = ("origin", "destination")
+    inlines = [TransferLineInline]
 
     def has_add_permission(self, request):
         return False

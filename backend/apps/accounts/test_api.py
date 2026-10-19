@@ -101,7 +101,7 @@ def test_admin_creates_user_with_roles(make_user):
     assert "password" not in res.data
     pedro = User.objects.get(username="pedro")
     assert pedro.check_password("Ferreteria-2026!")
-    assert pedro.permission_codes() == {"inventory.view", "inventory.receive", "inventory.count"}
+    assert pedro.permission_codes() == {"inventory.view", "inventory.receive", "inventory.count", "inventory.transfer"}
 
 
 def test_weak_password_is_rejected(make_user):

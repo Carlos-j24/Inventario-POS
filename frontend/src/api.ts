@@ -588,3 +588,31 @@ export interface PhysicalCount {
   counted: number;
   lines?: CountLine[];
 }
+
+// --- Traslados entre bodegas (spec 006) ---
+
+export interface TransferLine {
+  id: number;
+  product: number;
+  sku: string;
+  name: string;
+  unit: string;
+  quantity: string;
+  /** En unidad base, positiva. */
+  base_quantity: string;
+  base_unit: string;
+  /** Valor movido al costo; null si el usuario no tiene reports.costs. */
+  value: string | null;
+}
+
+export interface Transfer {
+  id: number;
+  number: string;
+  client_uuid: string;
+  origin: string;
+  destination: string;
+  note: string;
+  created_by: string;
+  created_at: string;
+  lines: TransferLine[];
+}

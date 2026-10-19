@@ -208,3 +208,45 @@ class CountLine(models.Model):
         ordering = ["product__name"]
         constraints = [models.UniqueConstraint(fields=["count", "product"], name="unique_count_product")]
         verbose_name = "línea de conteo"
+
+
+class Transfer(models.Model):
+    """Traslado entre bodegas en un solo paso (spec 006, T7, decisión 4).
+
+    Se registra ya aplicado: la salida del origen y la entrada al destino van juntas, así no hay
+    mercancía "en tránsito". No se edita ni se anula; un error se corrige con otro traslado al revés.
+    """
+
+    client_uuid = models.UUIDField(unique=True, help_text="Un doble clic o un reintento no lo duplica.")
+    origin = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name="transfers_out", verbose_name="origen")
+    destination = models.ForeignKey(Warehouse, on_delete=models.PROTECT, related_name="transfers_in", verbose_name="destino")
+    note = models.CharField("nota", max_length=200, blank=True)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+", verbose_name="hizo")
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        verbose_name = "traslado"
+        verbose_name_plural = "traslados"
+
+    def __str__(self):
+        return self.number
+
+    @property
+    def number(self):
+        return f"TR-{self.pk:06d}"
+
+
+class TransferLine(models.Model):
+    """Lo que se movió de un producto: sale del origen y entra al destino al mismo costo."""
+
+    transfer = models.ForeignKey(Transfer, on_delete=models.CASCADE, related_name="lines")
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="+")
+    unit = models.ForeignKey("catalog.Unit", on_delete=models.PROTECT, related_name="+", help_text="La que eligió quien trasladó.")
+    quantity = models.DecimalField(**QTY, help_text="En la unidad elegida.")
+    base_quantity = models.DecimalField(**QTY, help_text="En unidad base, positiva.")
+    out_movement = models.OneToOneField(StockMovement, on_delete=models.PROTECT, related_name="transfer_out_line")
+    in_movement = models.OneToOneField(StockMovement, on_delete=models.PROTECT, related_name="transfer_in_line")
+
+    class Meta:
+        verbose_name = "línea de traslado"
