@@ -17,6 +17,16 @@ Admin en http://127.0.0.1:8000/admin/. Tests: `.venv\Scripts\python -m pytest`.
 
 Antes de vender, crea en el admin al menos una **bodega** y una **caja** (Caja → Cajas), y asigna roles a los usuarios.
 
+### Datos de demostración
+
+Para mostrar la app: una ferretería con dos semanas de ventas, arqueos (uno con faltante), una anulación, una devolución, un pedido por cobrar, una venta sin conexión para revisión, una baja por aprobar, un conteo, un traslado y un producto pendiente de precio. Usuarios: `admin.demo` (también entra al admin de Django), `marta.jefe`, `pedro.bodega`, `laura.caja`, `maria.caja`, `andres.ventas` y `sofia.super`.
+
+```bash
+.venv\Scripts\python manage.py seed_demo --fresh
+```
+
+`--fresh` borra `db.sqlite3` y la crea de nuevo (cierra antes el `runserver`); sin él, llena una base recién migrada. Las contraseñas salen una sola vez en la consola (una al azar por usuario) o, con `--password <clave>`, la misma para todos. Solo corre con `DEBUG`: nunca en producción.
+
 ## Arrancar el frontend (PWA)
 
 Con el backend corriendo en el puerto 8000:

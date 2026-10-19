@@ -13,6 +13,7 @@ Inventario y punto de venta para ferreterías: entradas a bodega, ventas que des
 - Tests: `.venv\Scripts\python -m pytest` (pytest-django; **no** `manage.py test`, que no ve los tests de pytest).
 - Migraciones: `.venv\Scripts\python manage.py makemigrations` y `migrate`. Servidor: `manage.py runserver`.
 - PostgreSQL: variables `DB_ENGINE=postgres`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`, `DB_HOST`, `DB_PORT`.
+- Datos de demostración: `manage.py seed_demo --fresh` (borra `db.sqlite3`, migra y la llena; solo con `DEBUG`). Las contraseñas salen en la consola y no se guardan: nunca las pongas en el repo.
 
 ## Comandos del frontend (desde `frontend/`)
 - `npm install`, `npm run dev` (puerto 5173, reenvía `/api` a Django en el 8000), `npm test` (Vitest), `npm run typecheck`, `npm run build`.
