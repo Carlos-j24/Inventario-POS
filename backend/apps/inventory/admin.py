@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Adjustment, AdjustmentLine, StockLevel, StockMovement, Warehouse
+from .models import Adjustment, AdjustmentLine, CountLine, PhysicalCount, StockLevel, StockMovement, Warehouse
 
 admin.site.register(Warehouse)
 
@@ -51,6 +51,34 @@ class AdjustmentAdmin(admin.ModelAdmin):
     list_display = ("number", "warehouse", "reason", "status", "requested_by", "decided_by", "created_at")
     list_filter = ("status", "reason", "warehouse")
     inlines = [AdjustmentLineInline]
+
+    def has_add_permission(self, request):
+        return False
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+class CountLineInline(admin.TabularInline):
+    model = CountLine
+    extra = 0
+    can_delete = False
+    readonly_fields = ("product", "counted", "counted_at", "counted_by", "marked_zero", "expected", "difference")
+
+    def has_add_permission(self, request, obj=None):
+        return False
+
+
+@admin.register(PhysicalCount)
+class PhysicalCountAdmin(admin.ModelAdmin):
+    """Solo consulta: los conteos se hacen en la app (spec 006)."""
+
+    list_display = ("number", "warehouse", "category", "status", "opened_by", "decided_by", "created_at")
+    list_filter = ("status", "warehouse")
+    inlines = [CountLineInline]
 
     def has_add_permission(self, request):
         return False
