@@ -53,6 +53,7 @@
 
 ## Catálogo e inventario en la app (spec 006)
 - **Catálogo** (`catalog/services.py`, API `/api/catalog/admin/…` con `catalog.edit`): crear y editar productos, presentaciones y categorías. El SKU y la unidad base no cambian si el producto tiene movimientos; el factor de una presentación usada en ventas o pedidos no cambia ni se borra (se desactiva, y la caja deja de ofrecerla). Los códigos de barras son únicos entre productos y presentaciones juntos. Precio, tarifa de IVA y excluido exigen `catalog.edit_prices` (403 sin él); cada cambio de precio queda en `PriceChange`, que no se edita. Quien no tiene ese permiso crea el producto **inactivo y pendiente de precio** (`price_pending`), y no se puede activar hasta que alguien le pone precio. En el admin de Django el precio es de solo lectura al editar.
+- **Pantalla Productos** (`pages/Products.tsx`, `catalog.edit`): lista con búsqueda en el servidor y filtros, formulario que solo envía los campos que cambiaron (`productForm.ts`), precio e IVA bloqueados sin `catalog.edit_prices`, SKU y unidad base bloqueados con movimientos, presentaciones (agregar, desactivar, borrar las no usadas) e historial de precios.
 
 ## Roles y permisos
 - `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones.

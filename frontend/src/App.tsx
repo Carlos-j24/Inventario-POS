@@ -7,6 +7,7 @@ import FiscalInbox from "./pages/FiscalInbox";
 import Login from "./pages/Login";
 import Orders from "./pages/Orders";
 import Pos from "./pages/Pos";
+import Products from "./pages/Products";
 import Receipts from "./pages/Receipts";
 import Review from "./pages/Review";
 import Reports from "./pages/Reports";
@@ -22,6 +23,7 @@ const PAGES: { id: string; label: string; permission: string | string[]; Compone
   { id: "orders", label: "Pedidos", permission: "sales.create", Component: Orders },
   { id: "receipts", label: "Entradas", permission: "inventory.receive", Component: Receipts },
   { id: "stock", label: "Existencias", permission: "inventory.view", Component: Stock },
+  { id: "products", label: "Productos", permission: "catalog.edit", Component: Products },
   { id: "sales", label: "Ventas", permission: ["sales.void", "reports.view"], Component: Sales },
   { id: "review", label: "Revisión", permission: "reports.view", Component: Review },
   { id: "reports", label: "Reportes", permission: "reports.view", Component: Reports },
