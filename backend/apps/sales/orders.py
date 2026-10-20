@@ -30,7 +30,8 @@ def _random_code():
 def create_order(*, user, lines, client_uuid):
     """Crea un pedido pendiente y devuelve (pedido, creado). Reenviar el mismo client_uuid no lo duplica.
 
-    lines: dicts con product, quantity y opcionalmente unit (la base si falta).
+    lines: dicts con product, quantity y opcionalmente unit (la base si falta). Al convertir una cotización
+    (spec 007) cada línea trae además unit_price (el cotizado) y quote_line; la API de pedidos no los acepta.
     """
     existing = Order.objects.filter(client_uuid=client_uuid).first()
     if existing:
@@ -46,8 +47,8 @@ def create_order(*, user, lines, client_uuid):
         if quantity <= 0:
             raise ValidationError("Las cantidades deben ser positivas.")
         to_base_quantity(product, quantity, unit)  # valida la unidad y las fracciones
-        price = catalog_price(product, unit)
-        priced.append((product, unit, quantity, price, money(price * quantity)))
+        price = line["unit_price"] if line.get("unit_price") is not None else catalog_price(product, unit)
+        priced.append((product, unit, quantity, price, money(price * quantity), line.get("quote_line")))
     total = sum((p[4] for p in priced), Decimal(0))
 
     # El código es aleatorio para que no se adivine el siguiente; si choca con otro del día, se reintenta.
@@ -58,8 +59,8 @@ def create_order(*, user, lines, client_uuid):
                     code=_random_code(), client_uuid=client_uuid, salesperson=user, total=total,
                 )
                 OrderLine.objects.bulk_create(
-                    OrderLine(order=order, product=p, unit=u, quantity=q, unit_price=price, total=t)
-                    for p, u, q, price, t in priced
+                    OrderLine(order=order, product=p, unit=u, quantity=q, unit_price=price, total=t, quote_line=ql)
+                    for p, u, q, price, t, ql in priced
                 )
             return order, True
         except IntegrityError:
