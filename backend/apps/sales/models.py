@@ -187,7 +187,94 @@ class OrderLine(models.Model):
     quantity = models.DecimalField(**QTY, validators=[MinValueValidator(Decimal("0.001"))])
     unit_price = models.DecimalField(**MONEY, help_text="Precio por unidad pedida, IVA incluido.")
     total = models.DecimalField(**MONEY)
+    quote_line = models.ForeignKey(
+        "QuoteLine", on_delete=models.PROTECT, related_name="order_lines", null=True, blank=True,
+        help_text="La línea de cotización de la que sale (spec 007), si salió de una.",
+    )
 
     class Meta:
         verbose_name = "línea de pedido"
         verbose_name_plural = "líneas de pedido"
+
+
+class Quote(models.Model):
+    """Cotización (spec 007): lo que se le cotizó a un cliente, con vigencia. No mueve inventario.
+
+    No se edita: para cambiarla se duplica y se anula la anterior, así lo guardado es lo que el cliente
+    tiene impreso. Se convierte en pedidos, por partes, mientras esté vigente.
+    """
+
+    class Status(models.TextChoices):
+        VALID = "VALID", "Vigente"
+        CONVERTED = "CONVERTED", "Convertida"
+        VOIDED = "VOIDED", "Anulada"
+        EXPIRED = "EXPIRED", "Vencida"  # no se guarda: es VALID con valid_until pasado (effective_status)
+
+    client_uuid = models.UUIDField(unique=True, help_text="Un doble clic o un reintento no la duplica.")
+    customer = models.ForeignKey(
+        "customers.Customer", on_delete=models.PROTECT, related_name="quotes", null=True, blank=True,
+        verbose_name="cliente registrado",
+    )
+    customer_name = models.CharField("a nombre de", max_length=120, blank=True)
+    customer_phone = models.CharField("teléfono", max_length=30, blank=True)
+    note = models.CharField("nota", max_length=300, blank=True)
+    valid_until = models.DateField("vigente hasta")
+    status = models.CharField("estado", max_length=10, choices=Status.choices, default=Status.VALID)
+    total = models.DecimalField(**MONEY, help_text="Suma de las líneas, IVA incluido.")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="quotes", verbose_name="hizo")
+    created_at = models.DateTimeField(auto_now_add=True)
+    voided_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="+", null=True, blank=True, verbose_name="anuló",
+    )
+    voided_at = models.DateTimeField(null=True, blank=True)
+    void_note = models.CharField("motivo de la anulación", max_length=200, blank=True)
+    duplicated_from = models.ForeignKey(
+        "self", on_delete=models.PROTECT, related_name="duplicates", null=True, blank=True, verbose_name="duplicada de",
+    )
+
+    class Meta:
+        ordering = ["-created_at", "-pk"]
+        constraints = [
+            # Siempre a nombre de alguien: escrito a mano o un cliente registrado.
+            models.CheckConstraint(
+                condition=~Q(customer_name="") | Q(customer__isnull=False), name="quote_has_customer",
+            ),
+            models.CheckConstraint(condition=~Q(status="EXPIRED"), name="quote_expired_is_not_stored"),
+        ]
+        verbose_name = "cotización"
+        verbose_name_plural = "cotizaciones"
+
+    def __str__(self):
+        return f"{self.number} · {self.customer_label}"
+
+    @property
+    def number(self):
+        return f"COT-{self.pk:06d}"
+
+    @property
+    def customer_label(self):
+        return self.customer_name or (self.customer.name if self.customer_id else "")
+
+    def effective_status(self, today=None):
+        """Una cotización vigente cuya fecha ya pasó está vencida, aunque nadie haya cambiado su estado."""
+        if self.status == self.Status.VALID and self.valid_until < (today or business_date()):
+            return self.Status.EXPIRED
+        return self.status
+
+
+class QuoteLine(models.Model):
+    """Línea cotizada con el precio y la tarifa de IVA de ese momento: es lo que se le dijo al cliente."""
+
+    quote = models.ForeignKey(Quote, on_delete=models.CASCADE, related_name="lines")
+    product = models.ForeignKey(Product, on_delete=models.PROTECT, related_name="+")
+    unit = models.ForeignKey(Unit, on_delete=models.PROTECT, related_name="+")
+    quantity = models.DecimalField(**QTY, validators=[MinValueValidator(Decimal("0.001"))])
+    unit_price = models.DecimalField(**MONEY, help_text="Precio por unidad cotizada, IVA incluido.")
+    tax_rate = models.CharField(max_length=2, help_text="Tarifa de IVA al cotizar (19, 5 o 0).")
+    vat_excluded = models.BooleanField(default=False, help_text="Excluido de IVA al cotizar.")
+    total = models.DecimalField(**MONEY)
+
+    class Meta:
+        ordering = ["pk"]
+        verbose_name = "línea de cotización"
+        verbose_name_plural = "líneas de cotización"

@@ -1,6 +1,6 @@
 # Spec 007 — Cotizaciones
 
-> Estado: **borrador con decisiones cerradas por el equipo (2026-10-19)**; pendiente aprobar el PR para empezar a programar. Tareas en tasks.md.
+> Estado: **aprobada (PR #56, 2026-10-19)**. Tareas en tasks.md.
 
 ## Problema
 En una ferretería se cotiza todo el tiempo: el maestro de obra o el cliente llega con una lista de materiales ("20 bultos de cemento, 6 de arena, 50 m de cable…"), pide precios, se lleva la cotización impresa o por WhatsApp, la compara con otras ferreterías y vuelve días después a comprar, a veces por partes, a medida que avanza la obra.

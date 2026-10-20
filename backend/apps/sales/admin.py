@@ -1,6 +1,6 @@
 from django.contrib import admin
 
-from .models import Order, OrderLine, Sale, SaleLine, SaleReturn, SaleReturnLine
+from .models import Order, OrderLine, Quote, QuoteLine, Sale, SaleLine, SaleReturn, SaleReturnLine
 
 
 class ReadOnlyAdmin(admin.ModelAdmin):
@@ -72,3 +72,25 @@ class OrderAdmin(ReadOnlyAdmin):
     @admin.display(description="estado")
     def shown_status(self, obj):
         return Order.Status(obj.effective_status()).label  # un pendiente de ayer sale como vencido
+
+
+class QuoteLineInline(admin.TabularInline):
+    model = QuoteLine
+    extra = 0
+    can_delete = False
+    readonly_fields = [f.name for f in QuoteLine._meta.fields]
+
+
+@admin.register(Quote)
+class QuoteAdmin(ReadOnlyAdmin):
+    """Cotizaciones (spec 007): se crean, anulan y convierten desde la app, no desde el admin."""
+
+    list_display = ("__str__", "created_at", "valid_until", "created_by", "total", "shown_status")
+    list_filter = ("status", "created_by")
+    search_fields = ("customer_name", "customer_phone", "customer__name")
+    list_select_related = ("created_by", "customer")
+    inlines = [QuoteLineInline]
+
+    @admin.display(description="estado")
+    def shown_status(self, obj):
+        return Quote.Status(obj.effective_status()).label  # una vigente con la fecha pasada sale como vencida
