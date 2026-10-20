@@ -52,3 +52,19 @@ def test_fresh_only_deletes_sqlite(settings, monkeypatch):
     monkeypatch.setattr(connection, "vendor", "postgresql")
     with pytest.raises(CommandError, match="--fresh solo borra bases SQLite"):
         call_command("seed_demo", fresh=True)
+
+
+@pytest.mark.parametrize("offset", range(7))
+def test_the_special_cases_land_on_working_days_whatever_today_is(offset):
+    """Con el PR #55 la devolución caía "hace 2 días": un martes eso es domingo y se perdía."""
+    from datetime import datetime, timedelta
+
+    from django.utils import timezone
+
+    from .seed import DAYS, _worked_days
+
+    now = timezone.make_aware(datetime(2026, 10, 19, 15, 0)) + timedelta(days=offset)  # lunes + offset
+    worked, special = _worked_days(now)
+    assert all(day.weekday() != 6 for day in worked)
+    assert len(worked) == DAYS - 2  # dos domingos en dos semanas
+    assert len(set(special)) == 4 and set(special) <= set(worked)

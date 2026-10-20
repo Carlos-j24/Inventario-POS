@@ -139,24 +139,32 @@ def _sale(rng, products, cashier, shift, when):
     return sale
 
 
+def _worked_days(now):
+    """Los días de historia en que abre la caja (los domingos no) y en cuáles van los casos especiales.
+
+    Devuelve (días, (anulación, devolución, faltante, entrada a otro precio)). Los casos se cuentan sobre
+    los días trabajados, no "hace N días", para que no se pierdan cuando ese día cae en domingo.
+    """
+    worked = [day for day in (now - timedelta(days=back) for back in range(DAYS, 0, -1)) if day.weekday() != 6]
+    return worked, (worked[-3], worked[-2], worked[-5], worked[len(worked) // 2])
+
+
 def _history(rng, now, users, warehouse, registers, products):
     """Dos semanas de turnos cerrados en la caja 1, con una anulación, una devolución y un faltante."""
     laura, sofia = users["laura.caja"][0], users["sofia.super"][0]
-    for back in range(DAYS, 0, -1):
-        day = now - timedelta(days=back)
-        if day.weekday() == 6:
-            continue  # los domingos no abre
+    worked, (void_day, return_day, short_day, restock_day) = _worked_days(now)
+    for day in worked:
         shift = open_shift(register=registers["CAJA1"], user=laura, opening_float=Decimal(150000))
         sales = [
             _sale(rng, products, laura, shift, _at(day, hour, rng.randint(0, 59)))
             for hour in sorted(rng.sample(range(8, 18), rng.randint(4, 8)))
         ]
         sales = [s for s in sales if s]
-        if back == 3:
+        if day == void_day:
             void_sale(sale=sales[0], user=sofia, reason="El cliente se arrepintió antes de salir")
             Sale.objects.filter(pk=sales[0].pk).update(voided_at=_at(day, 17, 30))
             StockMovement.objects.filter(reference=f"Anulación {sales[0].number}").update(occurred_at=_at(day, 17, 30))
-        if back == 2:
+        if day == return_day:
             line = sales[-1].lines.first()
             sale_return, _ = create_return(
                 sale=sales[-1], user=sofia, shift=shift, lines=[{"sale_line": line, "quantity": line.quantity}],
@@ -167,10 +175,10 @@ def _history(rng, now, users, warehouse, registers, products):
                 occurred_at=_at(day, 17, 45),
             )
         expected = shift_summary(shift)["expected_cash"]
-        short = Decimal(2000) if back == 5 else Decimal(0)
+        short = Decimal(2000) if day == short_day else Decimal(0)
         close_shift(shift=shift, user=laura, counted_cash=expected - short, notes="Faltan 2.000" if short else "")
         Shift.objects.filter(pk=shift.pk).update(opened_at=_at(day, 7, 50), closed_at=_at(day, 18, 10))
-        if back == 7:  # llega mercancía a otro precio: el costo promedio se mueve (spec 004)
+        if day == restock_day:  # llega mercancía a otro precio: el costo promedio se mueve (spec 004)
             for sku, quantity, cost in (("MAR-16", 12, 21000), ("CEM-50", 40, 28500)):
                 record_movement(
                     kind=StockMovement.Kind.RECEIPT, product=products[sku], warehouse=warehouse, quantity=quantity,
