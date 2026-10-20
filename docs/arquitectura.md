@@ -60,6 +60,11 @@
 - **Pantalla Conteos** (`pages/Counts.tsx`, lógica en `counting.ts`): abrir por bodega y categoría (la lista de categorías la ve también quien cuenta); contar a ciegas con el lector (código del producto, de una presentación —que fija la unidad— o SKU) o filtrando por nombre, y Enter guarda la línea. Quien tiene `inventory.adjust` ve las diferencias (y el valor con `reports.costs`), marca en 0 lo no contado y aprueba, o anula con motivo.
 - **Traslados** (`inventory/transfers.py`, `/api/inventory/transfers/`, permiso `inventory.transfer`): de una bodega activa a otra, en un solo paso (`TR-000001`): cada línea registra un `TRANSFER_OUT` al costo promedio del origen y un `TRANSFER_IN` con ese mismo costo en el destino, todo en una transacción, así el inventario valorizado total no cambia. No puede dejar negativo el origen. No tiene estados ni se anula: un error se corrige con otro traslado al revés. Pantalla `pages/Transfers.tsx` (lógica en `transfer.ts`); el valor solo con `reports.costs`.
 
+## Cotizaciones (spec 007)
+- `Quote` y `QuoteLine` (`COT-000001`, `apps/sales/quotes.py`): a nombre de alguien (nombre y teléfono escritos, o un `Customer`), con vigencia (`valid_until`, 8 días por defecto, de 1 a 30) y el precio y la tarifa de IVA del catálogo congelados en cada línea. No mueve inventario ni se edita: se duplica con los precios de hoy y se anula la anterior.
+- Estados `VALID` → `CONVERTED` | `VOIDED`; "vencida" (`EXPIRED`) no se guarda: es una vigente con la fecha pasada (`effective_status`, como los pedidos de ayer).
+- Se convierte en pedidos por partes (T2): `OrderLine.quote_line` dice de qué línea sale cada parte. Lo que queda por convertir descuenta los pedidos pendientes de hoy y lo cobrado de los pagados; lo de un pedido cancelado o vencido vuelve a quedar disponible.
+
 ## Roles y permisos
 - `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones. `inventory.transfer` (spec 006) lo tienen por defecto Administrador, Jefe de bodega y Auxiliar de bodega.
 - `Role`: conjunto editable de permisos. Por defecto: Administrador, Supervisor, Jefe de bodega, Auxiliar de bodega, Ventas, Caja.
