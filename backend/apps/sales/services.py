@@ -98,7 +98,8 @@ def _order_lines(order, lines):
     if not chosen:
         raise ValidationError("No hay nada que cobrar del pedido.")
     return [
-        {"product": line.product, "unit": line.unit, "quantity": quantity, "agreed_price": line.unit_price}
+        {"product": line.product, "unit": line.unit, "quantity": quantity, "agreed_price": line.unit_price,
+         "quoted": line.quote_line_id is not None}
         for line, quantity in chosen
     ]
 
@@ -165,7 +166,9 @@ def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, ord
                 subtotal=subtotal, tax=tax, total=total, movement=movement,
             )
             review = (
-                review or movement.needs_review or charged != listed or inactive
+                review or movement.needs_review or inactive
+                # El precio de una cotización vigente ya lo dio el negocio (spec 007, decisión 1).
+                or (charged != listed and not line.get("quoted"))
                 # Llega con fecha anterior a un conteo ya aprobado: el ajuste no la tuvo en cuenta (decisión 3).
                 or counted_after(product, warehouse, occurred_at)
             )
@@ -181,4 +184,9 @@ def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, ord
             order.status = Order.Status.PAID
             order.sale = sale
             order.save(update_fields=["status", "sale"])
+            quote_ids = set(order.lines.filter(quote_line__isnull=False).values_list("quote_line__quote", flat=True))
+            if quote_ids:
+                from .quotes import mark_converted  # quotes importa este módulo
+
+                mark_converted(quote_ids)
     return sale

@@ -63,7 +63,8 @@
 ## Cotizaciones (spec 007)
 - `Quote` y `QuoteLine` (`COT-000001`, `apps/sales/quotes.py`): a nombre de alguien (nombre y teléfono escritos, o un `Customer`), con vigencia (`valid_until`, 8 días por defecto, de 1 a 30) y el precio y la tarifa de IVA del catálogo congelados en cada línea. No mueve inventario ni se edita: se duplica con los precios de hoy y se anula la anterior.
 - Estados `VALID` → `CONVERTED` | `VOIDED`; "vencida" (`EXPIRED`) no se guarda: es una vigente con la fecha pasada (`effective_status`, como los pedidos de ayer).
-- Se convierte en pedidos por partes (T2): `OrderLine.quote_line` dice de qué línea sale cada parte. Lo que queda por convertir descuenta los pedidos pendientes de hoy y lo cobrado de los pagados; lo de un pedido cancelado o vencido vuelve a quedar disponible.
+- Se convierte en pedidos por partes (`quotes.convert_quote`, con la cotización bloqueada): cada línea del pedido lleva el precio cotizado y `OrderLine.quote_line` dice de qué línea sale. Lo que queda por convertir descuenta los pedidos pendientes de hoy y lo cobrado de los pagados; lo de un pedido cancelado o vencido vuelve a quedar disponible.
+- Al cobrar un pedido de cotización, la diferencia con el catálogo **no** manda la venta a revisión (el precio lo dio el negocio, decisión 1), y la cotización queda `CONVERTED` cuando lo cobrado cubre todo lo cotizado (`quotes.mark_converted`).
 
 ## Roles y permisos
 - `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones. `inventory.transfer` (spec 006) lo tienen por defecto Administrador, Jefe de bodega y Auxiliar de bodega.
