@@ -128,7 +128,7 @@ def duplicate_quote(*, quote, user, client_uuid, valid_days=DEFAULT_VALID_DAYS):
     return new, created, skipped
 
 
-def _in_orders(line, today=None):
+def in_orders(line, today=None):
     """(en pedidos pendientes de hoy, cobrado en pedidos pagados) de la línea.
 
     Lo de un pedido cancelado o vencido no cuenta: vuelve a quedar disponible (decisión 4). De un pedido
@@ -149,12 +149,12 @@ def _in_orders(line, today=None):
 
 def committed(line, today=None):
     """Cuánto de la línea va en pedidos: lo de los pendientes de hoy y lo cobrado de los pagados."""
-    return sum(_in_orders(line, today))
+    return sum(in_orders(line, today))
 
 
 def charged(line, today=None):
     """Cuánto de la línea ya se cobró."""
-    return _in_orders(line, today)[1]
+    return in_orders(line, today)[1]
 
 
 def remaining(line, today=None):
