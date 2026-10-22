@@ -65,6 +65,7 @@
 - Estados `VALID` → `CONVERTED` | `VOIDED`; "vencida" (`EXPIRED`) no se guarda: es una vigente con la fecha pasada (`effective_status`, como los pedidos de ayer).
 - Se convierte en pedidos por partes (`quotes.convert_quote`, con la cotización bloqueada): cada línea del pedido lleva el precio cotizado y `OrderLine.quote_line` dice de qué línea sale. Lo que queda por convertir descuenta los pedidos pendientes de hoy y lo cobrado de los pagados; lo de un pedido cancelado o vencido vuelve a quedar disponible.
 - API `/api/quotes/` (`quote_api.py`): la lista muestra las propias (todas con `sales.void` o `reports.view`), pero con el número exacto cualquier vendedor encuentra la de otro, porque el cliente puede volver y lo atiende otro; detalle, duplicar y convertir (`…/<id>/order/`) exigen `sales.create`. El detalle trae los datos del negocio y el IVA por tarifa para imprimirla.
+- Pantalla **Cotizaciones** (`pages/Quotes.tsx`, lógica en `quote.ts`): lista con búsqueda y estado; nueva con el buscador de productos, cliente escrito o registrado, vigencia y nota; detalle que convierte por partes (precarga lo que queda) y muestra el código del pedido, duplica y anula.
 - Al cobrar un pedido de cotización, la diferencia con el catálogo **no** manda la venta a revisión (el precio lo dio el negocio, decisión 1), y la cotización queda `CONVERTED` cuando lo cobrado cubre todo lo cotizado (`quotes.mark_converted`).
 
 ## Roles y permisos

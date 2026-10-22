@@ -9,6 +9,7 @@ import Transfers from "./pages/Transfers";
 import FiscalInbox from "./pages/FiscalInbox";
 import Login from "./pages/Login";
 import Orders from "./pages/Orders";
+import Quotes from "./pages/Quotes";
 import Pos from "./pages/Pos";
 import Products from "./pages/Products";
 import Receipts from "./pages/Receipts";
@@ -24,6 +25,7 @@ import { useSync } from "./sync";
 const PAGES: { id: string; label: string; permission: string | string[]; Component: ComponentType }[] = [
   { id: "pos", label: "Caja", permission: "cash.operate", Component: Pos },
   { id: "orders", label: "Pedidos", permission: "sales.create", Component: Orders },
+  { id: "quotes", label: "Cotizaciones", permission: ["sales.create", "sales.void", "reports.view"], Component: Quotes },
   { id: "receipts", label: "Entradas", permission: "inventory.receive", Component: Receipts },
   { id: "stock", label: "Existencias", permission: "inventory.view", Component: Stock },
   { id: "products", label: "Productos", permission: "catalog.edit", Component: Products },
