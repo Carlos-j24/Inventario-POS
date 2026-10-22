@@ -57,6 +57,10 @@ describe("reportUrl", () => {
   it("el inventario es una foto de hoy: sin período ni caja", () => {
     expect(reportUrl("inventory", period, "2")).toBe("/api/reports/inventory/");
   });
+
+  it("las cotizaciones llevan el período pero no la caja (no pasan por caja)", () => {
+    expect(reportUrl("quotes", period, "2")).toBe("/api/reports/quotes/?from=2026-10-01&to=2026-10-16");
+  });
 });
 
 describe("formatos", () => {

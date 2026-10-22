@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { inventory, margins, products, sales, shifts } from "./pages/reportFixtures";
+import { inventory, margins, products, quotes, sales, shifts } from "./pages/reportFixtures";
 import { csvDateTime, reportCsv } from "./reportCsv";
 
 const week = { from: "2026-10-12", to: "2026-10-17" };
@@ -44,6 +44,19 @@ describe("reportCsv", () => {
     );
     expect(l).toContain("Faltantes;2000,00");
     expect(l).toContain("Diferencia neta;-2000,00");
+  });
+
+  it("cotizaciones: detalle, por vendedor y totales con la tasa", () => {
+    const { filename, content } = reportCsv("quotes", quotes, week, "2026-10-17");
+    expect(filename).toBe("reporte-cotizaciones_2026-10-12_2026-10-17.csv");
+    const l = lines(content);
+    expect(l).toContain("COT-000005;2026-10-22 15:00;Constructora Los Pinos;camilo;Vigente;320000,00;0,00");
+    expect(l).toContain("COT-000001;2026-10-22 09:30;Don Jorge;andres;Convertida;56000,00;56000,00");
+    expect(l).toContain("Vendedor;Cotizaciones;Con venta;Cotizado;Convertido;Tasa %");
+    expect(l).toContain("andres;4;2;256000,00;84000,00;32,8");
+    expect(l).toContain("Tasa de conversión %;14,6");
+    expect(l).toContain("Con alguna venta;2");
+    expect(l).toEqual(expect.arrayContaining(["Vigentes;2", "Convertidas;1", "Vencidas;2", "Anuladas;0"]));
   });
 
   it("inventario: foto de hoy, sin costo cuando no hay existencias positivas, y fila de total", () => {

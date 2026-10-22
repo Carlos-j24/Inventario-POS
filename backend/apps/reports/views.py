@@ -5,6 +5,7 @@ from apps.accounts.drf import require
 
 from .costs import inventory_report, margins_report
 from .period import parse_period
+from .quotes import quotes_report
 from .services import products_report, sales_report
 from .shifts import shifts_report
 
@@ -61,3 +62,13 @@ class ShiftsReportView(APIView):
     def get(self, request):
         start, end = parse_period(request.query_params)
         return Response(shifts_report(start, end, register=request.query_params.get("register")))
+
+
+class QuotesReportView(APIView):
+    """Cotizaciones creadas en el período: cotizado, convertido en venta y tasa, por vendedor (?from, ?to, ?salesperson)."""
+
+    permission_classes = [require("reports.view")]
+
+    def get(self, request):
+        start, end = parse_period(request.query_params)
+        return Response(quotes_report(start, end, salesperson=request.query_params.get("salesperson")))

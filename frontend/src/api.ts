@@ -673,3 +673,22 @@ export interface QuoteDetail extends QuoteRow {
   /** Solo al duplicar: SKU que quedaron por fuera porque ya no están a la venta. */
   skipped?: string[];
 }
+
+/** Reporte de cotizaciones (spec 007, T6): las creadas en el período y cuánto se convirtió en venta. */
+export interface QuotesReport {
+  from: string;
+  to: string;
+  totals: {
+    quotes: number;
+    quoted: string;
+    converted: string;
+    /** Porcentaje del valor cotizado que ya se cobró, con un decimal ("14.6"). */
+    rate: string;
+    with_sales: number;
+    by_status: Record<QuoteStatus, number>;
+  };
+  by_salesperson: { salesperson: string; quotes: number; with_sales: number; quoted: string; converted: string; rate: string }[];
+  rows: { id: number; number: string; created_at: string; customer: string; created_by: string; status: QuoteStatus; status_label: string; total: string; converted: string }[];
+  /** Hay más de las que trae el detalle (los totales sí las cuentan todas). */
+  truncated: boolean;
+}

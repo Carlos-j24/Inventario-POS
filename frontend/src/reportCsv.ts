@@ -4,6 +4,7 @@ import type {
   MarginsReport,
   ProductReportRow,
   ProductsReport,
+  QuotesReport,
   ReportRow,
   SalesReport,
   ShiftsReport,
@@ -105,6 +106,37 @@ function shiftsCsv(r: ShiftsReport): Section[] {
   ];
 }
 
+function quotesCsv(r: QuotesReport): Section[] {
+  const t = r.totals;
+  return [
+    {
+      title: "Cotizaciones",
+      head: ["Número", "Fecha", "Cliente", "Vendedor", "Estado", "Total", "Convertido"],
+      rows: r.rows.map((q) => [q.number, csvDateTime(q.created_at), q.customer, q.created_by, q.status_label, num(q.total), num(q.converted)]),
+    },
+    {
+      title: "Por vendedor",
+      head: ["Vendedor", "Cotizaciones", "Con venta", "Cotizado", "Convertido", "Tasa %"],
+      rows: r.by_salesperson.map((p) => [p.salesperson, p.quotes, p.with_sales, num(p.quoted), num(p.converted), num(p.rate)]),
+    },
+    {
+      title: "Totales",
+      head: ["Concepto", "Valor"],
+      rows: [
+        ["Cotizaciones", t.quotes],
+        ["Con alguna venta", t.with_sales],
+        ["Cotizado", num(t.quoted)],
+        ["Convertido en venta", num(t.converted)],
+        ["Tasa de conversión %", num(t.rate)],
+        ["Vigentes", t.by_status.VALID],
+        ["Convertidas", t.by_status.CONVERTED],
+        ["Vencidas", t.by_status.EXPIRED],
+        ["Anuladas", t.by_status.VOIDED],
+      ],
+    },
+  ];
+}
+
 function inventoryCsv(r: InventoryReport): Section[] {
   return [{
     head: ["SKU", "Producto", "Unidad", "Existencias", "Mínimo", "Costo promedio", "Valor", "Bajo el mínimo", "Negativo"],
@@ -136,6 +168,7 @@ const BUILDERS: Record<string, { name: string; build: (data: never) => Section[]
   sales: { name: "ventas", build: salesCsv },
   products: { name: "productos", build: productsCsv },
   shifts: { name: "arqueos", build: shiftsCsv },
+  quotes: { name: "cotizaciones", build: quotesCsv },
   inventory: { name: "inventario", build: inventoryCsv },
   margins: { name: "margenes", build: marginsCsv },
 };

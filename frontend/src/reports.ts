@@ -62,13 +62,16 @@ export function matchPreset(period: Period, today: string, chosen: Preset | null
 }
 
 /** URL de un reporte. El inventario es una foto de hoy: no lleva período. */
+/** Reportes que no se filtran por caja: el inventario es una foto y las cotizaciones no pasan por caja. */
+export const NO_REGISTER = ["inventory", "quotes"];
+
 export function reportUrl(name: string, period: Period, register = ""): string {
   const q = new URLSearchParams();
   if (name !== "inventory") {
     q.set("from", period.from);
     q.set("to", period.to);
   }
-  if (register && name !== "inventory") q.set("register", register);
+  if (register && !NO_REGISTER.includes(name)) q.set("register", register);
   const s = q.toString();
   return `/api/reports/${name}/${s ? `?${s}` : ""}`;
 }
