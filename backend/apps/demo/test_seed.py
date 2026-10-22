@@ -12,7 +12,10 @@ from apps.cash.models import Shift
 from apps.catalog.models import Product
 from apps.inventory.models import Adjustment, PhysicalCount, StockLevel, StockMovement, Transfer
 from apps.reports.costs import inventory_report
-from apps.sales.models import Order, Sale, SaleReturn
+from apps.invoicing.models import Business
+from apps.reports.quotes import quotes_report
+from apps.sales import quotes as quote_service
+from apps.sales.models import Order, Quote, Sale, SaleReturn, business_date
 
 from .seed import DAYS, USERS, seed
 
@@ -65,7 +68,8 @@ def test_the_cases_worth_showing_are_there():
     review = Sale.objects.get(needs_review=True)  # solo la venta sin conexión con el precio viejo
     assert (review.offline, review.lines.get().product.sku) == (True, "PIN-VIN-B")
     assert set(Sale.objects.values_list("payments__method", flat=True)) == {"CASH", "CARD", "TRANSFER"}
-    assert Order.objects.get().status == "PENDING"
+    pending = Order.objects.filter(status="PENDING")
+    assert (pending.count(), pending.get().salesperson.username) == (1, "andres.ventas")  # el pedido por cobrar
     assert set(Adjustment.objects.values_list("reason", "status")) == {
         ("DAMAGE", "PENDING"), ("INTERNAL_USE", "APPROVED"), ("PHYSICAL_COUNT", "APPROVED"),
     }
@@ -102,3 +106,31 @@ def test_void_and_return_are_dated_with_their_sale():
     assert timezone.localtime(sale_return.created_at).date() == day
     movement = StockMovement.objects.get(reference=f"Devolución {sale_return.number} de {sale_return.sale.number}")
     assert timezone.localtime(movement.occurred_at).date() == day
+
+
+def test_business_data_and_quotes_in_every_state():
+    business = Business.load()
+    assert (business.trade_name, business.nit, business.check_digit) == ("El Tornillo", "900555111", "6")
+    assert business.name != Business._meta.get_field("name").default  # ya no dice "configura los datos en el admin"
+
+    by_status = {}
+    for quote in Quote.objects.all():
+        by_status.setdefault(quote.effective_status(), []).append(quote)
+    assert {status: len(quotes) for status, quotes in by_status.items()} == {"VALID": 2, "CONVERTED": 1, "EXPIRED": 1, "VOIDED": 1}
+
+    partial = next(q for q in by_status["VALID"] if q.customer_id)
+    assert partial.customer.name == "Constructora Los Pinos S.A.S."
+    assert {line.product.sku: str(quote_service.remaining(line)) for line in partial.lines.all()} == {
+        "CHA-8": "1.000", "CIN-TEF": "0.000", "TUB-PVC-12": "6.000",
+    }
+    assert all(order.status == "PAID" for order in Order.objects.filter(lines__quote_line__quote=partial))
+    expired = by_status["EXPIRED"][0]
+    assert timezone.localtime(expired.created_at).date() == business_date() - timedelta(days=12)
+    assert expired.valid_until == business_date() - timedelta(days=4)  # 8 días desde que se hizo
+
+    # Las ventas de lo convertido se cobran al precio cotizado y no van a revisión.
+    assert not Sale.objects.filter(order__lines__quote_line__isnull=False, needs_review=True).exists()
+    report = quotes_report(business_date() - timedelta(days=14), business_date())
+    assert report["totals"]["by_status"] == {"VALID": 2, "CONVERTED": 1, "EXPIRED": 1, "VOIDED": 1}
+    assert report["totals"]["with_sales"] == 2
+    assert Decimal(report["totals"]["converted"]) > 0

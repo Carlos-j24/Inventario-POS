@@ -19,7 +19,7 @@ Antes de vender, crea en el admin al menos una **bodega** y una **caja** (Caja �
 
 ### Datos de demostración
 
-Para mostrar la app: una ferretería con dos semanas de ventas, arqueos (uno con faltante), una anulación, una devolución, un pedido por cobrar, una venta sin conexión para revisión, una baja por aprobar, un conteo, un traslado y un producto pendiente de precio. Usuarios: `admin.demo` (también entra al admin de Django), `marta.jefe`, `pedro.bodega`, `laura.caja`, `maria.caja`, `andres.ventas` y `sofia.super`.
+Para mostrar la app: una ferretería con dos semanas de ventas, arqueos (uno con faltante), una anulación, una devolución, un pedido por cobrar, una venta sin conexión para revisión, una baja por aprobar, un conteo, un traslado, un producto pendiente de precio, los datos del negocio (ficticios) y cotizaciones en todos sus estados. Usuarios: `admin.demo` (también entra al admin de Django), `marta.jefe`, `pedro.bodega`, `laura.caja`, `maria.caja`, `andres.ventas` y `sofia.super`.
 
 ```bash
 .venv\Scripts\python manage.py seed_demo --fresh
