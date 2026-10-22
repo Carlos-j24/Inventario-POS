@@ -7,7 +7,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - **Spec 003 (supervisor y administrador)** completa: pantallas Ventas (buscar, anular, devolver), Usuarios, Roles, cambiar mi contraseña y contraseña temporal con cambio obligatorio (la API bloquea hasta cambiarla).
 - **Spec 004 (reportes)** completa: costo promedio ponderado guardado en cada salida, pantalla Reportes (ventas, productos, arqueos; inventario valorizado y márgenes con `reports.costs`) y CSV para Excel.
 - **Spec 006 (catálogo e inventario en la app)** completa (2026-10-19): pantallas Productos (historial de precios; sin `catalog.edit_prices` el producto queda pendiente de precio), Ajustes (los aprueba `inventory.adjust`), Conteos ciegos (esperado a la hora de cada línea) y Traslados en un paso (`inventory.transfer`); ventas sin conexión de productos desactivados o con fecha anterior a un conteo aprobado quedan con `needs_review`.
-- **Spec 007 (cotizaciones)** aprobada (PR #56): precio cotizado mientras esté vigente, 8 días, sin descuentos, compra por partes. T1 (modelos y servicio) T2 (convertir en pedido por partes y cobrar al precio cotizado) T3 (API `/api/quotes/`) y T4 (pantalla Cotizaciones) hechas.
+- **Spec 007 (cotizaciones)** aprobada (PR #56): precio cotizado mientras esté vigente, 8 días, sin descuentos, compra por partes. T1 (modelos y servicio) T2 (convertir en pedido por partes y cobrar al precio cotizado) T3 (API `/api/quotes/`) T4 (pantalla Cotizaciones) y T5 (hoja carta para imprimir o PDF) hechas.
 - Datos de demostración en el repo: `manage.py seed_demo` (app `apps/demo`), dos semanas de historia con semilla fija para mostrar la app a clientes potenciales. Todavía no hay cliente (2026-10-19): no se despliega a un dominio hasta tenerlo.
 - Repositorio público Carlos-j24/Inventario-POS. main exige 5 checks: pytest 3.12 y 3.14, pytest-postgres, frontend y docker (`scripts/smoke-test.sh`).
 
@@ -24,6 +24,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - Pago mixto permitido (decisión del equipo) → tarjeta y transferencia no pueden pasarse del total; el efectivo da vueltas.
 
 ## Aprendizajes y errores a evitar
+- Lo impreso se comprueba imprimiendo a PDF con Chrome sin ventana (`chrome --headless=new --print-to-pdf`) y leyendo el PDF: los tests no ven la página impresa (en la T5 de la spec 007 salía angosta y con hojas en blanco).
 - Pasar el foco tras escanear con `setTimeout` deja colar la tecla siguiente (lo destapó la prueba en el navegador de la T6 de la spec 006): usar `flushSync` y enfocar en el acto.
 - Tests con pytest-django: `manage.py test` no los encuentra (DevForge Init lo propone por defecto al detectar Django).
 - Al meter fallos a propósito: quitar la consulta previa de `client_uuid` no rompe nada, porque la restricción única de la base de datos ya protege contra duplicados.
