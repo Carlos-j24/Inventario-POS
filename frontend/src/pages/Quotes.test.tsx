@@ -216,6 +216,22 @@ describe("pantalla Cotizaciones", () => {
     expect(screen.getByLabelText("Motivo de la anulación")).toBeInTheDocument(); // anular sí puede
   });
 
+  it("abre la hoja para imprimir o guardar como PDF", async () => {
+    mockApi(["reports.view"]); // también quien solo ve
+    const print = vi.fn();
+    vi.stubGlobal("print", print);
+    renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: "COT-000045" }));
+    await userEvent.click(await screen.findByRole("button", { name: "Imprimir o guardar PDF" }));
+    const dialog = screen.getByRole("dialog", { name: "Imprimir cotización" });
+    expect(dialog.parentElement).toBe(document.body); // en un portal: al imprimir se oculta todo lo demás (sin hojas en blanco)
+    expect(within(dialog).getByRole("article", { name: "Hoja de la cotización" })).toHaveTextContent(/Ferretería.*COT-000045.*Don Jorge/);
+    await userEvent.click(within(dialog).getByRole("button", { name: "Imprimir" }));
+    expect(print).toHaveBeenCalledOnce();
+    await userEvent.click(within(dialog).getByRole("button", { name: "Cerrar" }));
+    expect(screen.queryByRole("dialog", { name: "Imprimir cotización" })).not.toBeInTheDocument();
+  });
+
   it("los errores al crear se ven", async () => {
     mockApi(vendor, { "POST /api/quotes/": () => json(["MAR-16 no está a la venta: no se puede cotizar."], 400) });
     renderPage();

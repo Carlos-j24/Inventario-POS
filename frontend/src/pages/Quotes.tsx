@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
+import { createPortal } from "react-dom";
 
 import { api, type Customer, type Order, type Product, type QuoteDetail, type QuoteRow, type QuoteStatus } from "../api";
 import { useCan } from "../auth";
 import { addToCart, cartTotalCents, type CartLine } from "../cart";
 import CartTable from "../components/CartTable";
 import CustomerPicker from "../components/CustomerPicker";
+import QuotePrint from "../components/QuotePrint";
 import ProductSearch from "../components/ProductSearch";
 import { formatMoney, formatQty, toCents } from "../money";
 import { convertBody, defaultPicks, DEFAULT_VALID_DAYS, MAX_VALID_DAYS, plainQuantity, quoteBody } from "../quote";
@@ -151,6 +153,7 @@ function QuoteView({ id, onChanged, onOpen }: { id: number; onChanged: () => voi
   const [quote, setQuote] = useState<QuoteDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [order, setOrder] = useState<Order | null>(null);
+  const [printing, setPrinting] = useState(false);
 
   const reload = useCallback(() => {
     api<QuoteDetail>(`${URL}${id}/`).then(setQuote).catch((e: Error) => setError(e.message));
@@ -204,7 +207,24 @@ function QuoteView({ id, onChanged, onOpen }: { id: number; onChanged: () => voi
         </>
       )}
 
-      {can("sales.create") && <button type="button" onClick={duplicate}>Duplicar con los precios de hoy</button>}
+      <div className="row">
+        <button type="button" onClick={() => setPrinting(true)}>Imprimir o guardar PDF</button>
+        {can("sales.create") && <button type="button" onClick={duplicate}>Duplicar con los precios de hoy</button>}
+      </div>
+      {/* En un portal directo en <body>: al imprimir se oculta todo lo demás y no salen hojas en blanco. */}
+      {printing && createPortal(
+        <div className="overlay print-portal" role="dialog" aria-label="Imprimir cotización">
+          <div className="card modal quote-modal">
+            <QuotePrint quote={quote} />
+            <div className="row no-print">
+              <button type="button" className="primary" onClick={() => window.print()}>Imprimir</button>
+              <button type="button" onClick={() => setPrinting(false)}>Cerrar</button>
+            </div>
+            <p className="muted small no-print">Para el PDF, elige "Guardar como PDF" en la impresora.</p>
+          </div>
+        </div>,
+        document.body,
+      )}
       {quote.status === "VALID" && <VoidQuote id={quote.id} onVoided={() => { reload(); onChanged(); }} />}
       {error && <p className="error" role="alert">{error}</p>}
     </div>
