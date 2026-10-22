@@ -16,7 +16,12 @@ const describe = (c: Customer) => `${c.id_type_label} ${c.id_number}${c.check_di
  * Cliente del documento (spec 005, T6): consumidor final por defecto; se busca por número o
  * nombre, o se registra rápido. Sin conexión solo queda el consumidor final o el ya elegido.
  */
-export default function CustomerPicker({ value, onChange }: { value: Customer | null; onChange: (c: Customer | null) => void }) {
+export default function CustomerPicker({ value, onChange, emptyLabel = "Consumidor final" }: {
+  value: Customer | null;
+  onChange: (c: Customer | null) => void;
+  /** Lo que se muestra sin cliente elegido (en una cotización no hay "consumidor final"). */
+  emptyLabel?: string;
+}) {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
   const [q, setQ] = useState("");
@@ -46,10 +51,10 @@ export default function CustomerPicker({ value, onChange }: { value: Customer | 
   if (!open) {
     return (
       <div className="row spread customer-picker">
-        <span>Cliente: <strong>{value ? value.name : "Consumidor final"}</strong>{value && <span className="muted small"> · {describe(value)}</span>}</span>
+        <span>Cliente: <strong>{value ? value.name : emptyLabel}</strong>{value && <span className="muted small"> · {describe(value)}</span>}</span>
         <span>
           <button type="button" className="link" onClick={() => setOpen(true)}>{value ? "Cambiar" : "Identificar cliente"}</button>
-          {value && <button type="button" className="link" onClick={() => choose(null)}>Consumidor final</button>}
+          {value && <button type="button" className="link" onClick={() => choose(null)}>{emptyLabel}</button>}
         </span>
       </div>
     );

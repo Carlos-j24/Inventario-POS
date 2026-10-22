@@ -616,3 +616,60 @@ export interface Transfer {
   created_at: string;
   lines: TransferLine[];
 }
+
+// --- Cotizaciones (spec 007) ---
+
+export type QuoteStatus = "VALID" | "EXPIRED" | "CONVERTED" | "VOIDED";
+
+export interface QuoteRow {
+  id: number;
+  number: string;
+  customer: string;
+  customer_phone: string;
+  status: QuoteStatus;
+  status_label: string;
+  valid_until: string;
+  total: string;
+  created_by: string;
+  created_at: string;
+  lines_count: number;
+}
+
+export interface QuoteLine {
+  id: number;
+  product: number;
+  sku: string;
+  name: string;
+  unit: string;
+  quantity: string;
+  unit_price: string;
+  tax_rate: string;
+  vat_excluded: boolean;
+  total: string;
+  subtotal: string;
+  tax: string;
+  /** El producto sigue a la venta (si no, esa línea ya no se convierte). */
+  active: boolean;
+  /** En pedidos pendientes de hoy, cobrado y lo que falta por convertir (3 decimales). */
+  in_orders: string;
+  charged: string;
+  remaining: string;
+}
+
+export interface QuoteDetail extends QuoteRow {
+  customer_id: number | null;
+  customer_document: string | null;
+  note: string;
+  void_note: string;
+  voided_by: string | null;
+  duplicated_from: string | null;
+  lines: QuoteLine[];
+  subtotal: string;
+  tax: string;
+  taxes: { rate: string; base: string; tax: string }[];
+  orders: { id: number; code: number; status: Order["status"]; total: string; sale_number: string | null; created_at: string }[];
+  can_convert: boolean;
+  business: Business;
+  /** Solo al duplicar: SKU que quedaron por fuera porque ya no están a la venta. */
+  skipped?: string[];
+}
