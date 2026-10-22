@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AuthProvider } from "../auth";
 import { presetPeriod } from "../reports";
-import { inventory, margins, products, sales, shifts } from "./reportFixtures";
+import { inventory, margins, products, quotes, sales, shifts } from "./reportFixtures";
 import Reports from "./Reports";
 import { todayIso } from "./Sales";
 
@@ -32,6 +32,7 @@ const base = {
   "/api/reports/shifts/": () => json(shifts),
   "/api/reports/inventory/": () => json(inventory),
   "/api/reports/margins/": () => json(margins),
+  "/api/reports/quotes/": () => json(quotes),
 };
 
 const today = todayIso();
@@ -99,6 +100,29 @@ describe("pantalla Reportes", () => {
     expect(shift).toHaveTextContent(/124\.100.*200\.000.*274\.100.*272\.100.*-\s?\$?\s?2\.000/);
     expect(shift).toHaveTextContent("Faltó un billete");
     expect(screen.getByText("Faltantes").parentElement).toHaveTextContent(/2\.000/);
+  });
+
+  it("cotizaciones: cotizado, convertido y tasa por vendedor, sin filtro de caja", async () => {
+    const fetch = mockApi(base);
+    render(<Reports />);
+    await screen.findByRole("option", { name: "Caja 2" });
+    await userEvent.selectOptions(screen.getByLabelText("Caja"), "2");
+    await userEvent.click(screen.getByRole("button", { name: "Cotizaciones" }));
+    expect(await screen.findByRole("table", { name: "Por vendedor" })).toHaveTextContent(/andres.*4.*2.*256\.000.*84\.000.*32,8 %/);
+    expect(screen.getByText("Tasa de conversión").parentElement).toHaveTextContent("14,6 %");
+    expect(screen.getByText("Convertido en venta").parentElement).toHaveTextContent("84.000");
+    expect(screen.getByText(/2 con alguna venta · 2 vigentes · 1 convertidas · 2 vencidas · 0 anuladas/)).toBeInTheDocument();
+    expect(screen.getByRole("table", { name: "Cotizaciones" })).toHaveTextContent(/COT-000001.*Don Jorge.*andres.*Convertida.*56\.000.*56\.000/);
+    expect(screen.getByLabelText("Caja")).toBeDisabled();
+    expect(urls(fetch).filter((u) => u.startsWith("/api/reports/quotes/"))).toEqual([`/api/reports/quotes/?from=${today}&to=${today}`]);
+    expect(screen.queryByText(/El detalle muestra las/)).not.toBeInTheDocument();
+  });
+
+  it("cotizaciones: avisa cuando el detalle no las trae todas", async () => {
+    mockApi({ ...base, "/api/reports/quotes/": () => json({ ...quotes, truncated: true }) });
+    render(<Reports />);
+    await userEvent.click(screen.getByRole("button", { name: "Cotizaciones" }));
+    expect(await screen.findByText("El detalle muestra las 2 más recientes; los totales las cuentan todas.")).toBeInTheDocument();
   });
 
   it("sin reports.costs no aparecen inventario valorizado ni márgenes", async () => {

@@ -7,6 +7,7 @@ import {
   type PaymentMethod,
   type ProductReportRow,
   type ProductsReport,
+  type QuotesReport,
   type Register,
   type ReportRow,
   type SalesReport,
@@ -16,7 +17,7 @@ import { useCan } from "../auth";
 import { downloadCsv } from "../csv";
 import { formatMoney, formatQty, toCents } from "../money";
 import { reportCsv } from "../reportCsv";
-import { formatDay, formatPct, matchPreset, PRESETS, presetPeriod, reportUrl, type Period, type Preset } from "../reports";
+import { formatDay, formatPct, matchPreset, NO_REGISTER, PRESETS, presetPeriod, reportUrl, type Period, type Preset } from "../reports";
 import { todayIso } from "./Sales";
 
 const money = (value: string) => formatMoney(toCents(value));
@@ -26,6 +27,7 @@ const TABS: { id: string; label: string; costs?: boolean }[] = [
   { id: "sales", label: "Ventas" },
   { id: "products", label: "Productos" },
   { id: "shifts", label: "Arqueos" },
+  { id: "quotes", label: "Cotizaciones" },
   { id: "inventory", label: "Inventario valorizado", costs: true },
   { id: "margins", label: "Márgenes", costs: true },
 ];
@@ -94,7 +96,7 @@ export default function Reports() {
         <input type="date" aria-label="Desde" value={period.from} max={today} onChange={(e) => changeFrom(e.target.value)} />
         <input type="date" aria-label="Hasta" value={period.to} max={today} onChange={(e) => changeTo(e.target.value)} />
         {registers.length > 0 && (
-          <select value={register} onChange={(e) => setRegister(e.target.value)} aria-label="Caja" disabled={tab === "inventory"}>
+          <select value={register} onChange={(e) => setRegister(e.target.value)} aria-label="Caja" disabled={NO_REGISTER.includes(tab)}>
             <option value="">Todas las cajas</option>
             {registers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
@@ -124,6 +126,7 @@ export default function Reports() {
           {tab === "sales" && <SalesView report={data as SalesReport} />}
           {tab === "products" && <ProductsView report={data as ProductsReport} />}
           {tab === "shifts" && <ShiftsView report={data as ShiftsReport} />}
+          {tab === "quotes" && <QuotesView report={data as QuotesReport} />}
           {tab === "inventory" && <InventoryView report={data as InventoryReport} />}
           {tab === "margins" && <MarginsView report={data as MarginsReport} />}
         </>
@@ -313,6 +316,53 @@ function ShiftsView({ report }: { report: ShiftsReport }) {
           </tr>
         ))}
       </Table>
+    </>
+  );
+}
+
+// --- cotizaciones (spec 007) -----------------------------------------------
+
+function QuotesView({ report }: { report: QuotesReport }) {
+  const t = report.totals;
+  return (
+    <>
+      <Kpis
+        items={[
+          ["Cotizaciones", t.quotes],
+          ["Cotizado", money(t.quoted)],
+          ["Convertido en venta", money(t.converted)],
+          ["Tasa de conversión", formatPct(t.rate)],
+        ]}
+      />
+      <p className="muted small">
+        Las creadas en el período. Convertido es lo ya cobrado de sus pedidos, al precio cotizado, aunque se haya cobrado después.
+        {" "}{t.with_sales} con alguna venta · {t.by_status.VALID} vigentes · {t.by_status.CONVERTED} convertidas · {t.by_status.EXPIRED} vencidas · {t.by_status.VOIDED} anuladas.
+      </p>
+      <Table
+        title="Por vendedor"
+        empty="No se hizo ninguna cotización en el período."
+        head={<tr><th>Vendedor</th><th className="num">Cotizaciones</th><th className="num">Con venta</th><th className="num">Cotizado</th><th className="num">Convertido</th><th className="num">Tasa</th></tr>}
+      >
+        {report.by_salesperson.map((p) => (
+          <tr key={p.salesperson}>
+            <td>{p.salesperson}</td><td className="num">{p.quotes}</td><td className="num">{p.with_sales}</td>
+            <td className="num">{money(p.quoted)}</td><td className="num">{money(p.converted)}</td><td className="num">{formatPct(p.rate)}</td>
+          </tr>
+        ))}
+      </Table>
+      <Table
+        title="Cotizaciones"
+        empty="No se hizo ninguna cotización en el período."
+        head={<tr><th>Número</th><th>Fecha</th><th>Cliente</th><th>Vendedor</th><th>Estado</th><th className="num">Total</th><th className="num">Convertido</th></tr>}
+      >
+        {report.rows.map((q) => (
+          <tr key={q.id}>
+            <td>{q.number}</td><td>{dateTime(q.created_at)}</td><td>{q.customer}</td><td>{q.created_by}</td><td>{q.status_label}</td>
+            <td className="num">{money(q.total)}</td><td className="num">{money(q.converted)}</td>
+          </tr>
+        ))}
+      </Table>
+      {report.truncated && <p className="muted small">El detalle muestra las {report.rows.length} más recientes; los totales las cuentan todas.</p>}
     </>
   );
 }

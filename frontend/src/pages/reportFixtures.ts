@@ -1,5 +1,5 @@
 // Reportes de ejemplo (cifras de la base de demostración) para los tests de la pantalla y del CSV.
-import type { InventoryReport, MarginsReport, ProductsReport, SalesReport, ShiftsReport } from "../api";
+import type { InventoryReport, MarginsReport, ProductsReport, QuotesReport, SalesReport, ShiftsReport } from "../api";
 
 const row = (sales_count: number, total: string, returns: string, net: string) => ({ sales_count, total, returns, net });
 
@@ -51,3 +51,20 @@ export const margins: MarginsReport = {
   rows: [{ product: 2, sku: "MAR-16", name: "Martillo 16 oz", net_sales: "188235.28", cost: "152000.00", margin: "36235.28", margin_pct: "19.2", cost_estimated: true }],
 };
 
+
+export const quotes: QuotesReport = {
+  from: "2026-10-16", to: "2026-10-22",
+  totals: {
+    quotes: 5, quoted: "576000.00", converted: "84000.00", rate: "14.6", with_sales: 2,
+    by_status: { VALID: 2, CONVERTED: 1, VOIDED: 0, EXPIRED: 2 }, // todas distintas: un estado no se confunde con otro
+  },
+  by_salesperson: [
+    { salesperson: "camilo", quotes: 1, with_sales: 0, quoted: "320000.00", converted: "0.00", rate: "0.0" },
+    { salesperson: "andres", quotes: 4, with_sales: 2, quoted: "256000.00", converted: "84000.00", rate: "32.8" },
+  ],
+  rows: [
+    { id: 5, number: "COT-000005", created_at: "2026-10-22T20:00:00Z", customer: "Constructora Los Pinos", created_by: "camilo", status: "VALID", status_label: "Vigente", total: "320000.00", converted: "0.00" },
+    { id: 1, number: "COT-000001", created_at: "2026-10-22T14:30:00Z", customer: "Don Jorge", created_by: "andres", status: "CONVERTED", status_label: "Convertida", total: "56000.00", converted: "56000.00" },
+  ],
+  truncated: false,
+};
