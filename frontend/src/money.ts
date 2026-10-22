@@ -11,15 +11,12 @@ export function centsToApi(cents: number): string {
   return (cents / 100).toFixed(2);
 }
 
-const cop = new Intl.NumberFormat("es-CO", {
-  style: "currency",
-  currency: "COP",
-  minimumFractionDigits: 0,
-  maximumFractionDigits: 2,
-});
+const copWhole = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", maximumFractionDigits: 0 });
+const copCents = new Intl.NumberFormat("es-CO", { style: "currency", currency: "COP", minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
+/** Pesos enteros sin decimales ($ 34.500); con centavos, siempre dos ($ 327.731,10 y no "327.731,1"). */
 export function formatMoney(cents: number): string {
-  return cop.format(cents / 100);
+  return cents % 100 === 0 ? copWhole.format(cents / 100) : copCents.format(cents / 100);
 }
 
 const qty = new Intl.NumberFormat("es-CO", { maximumFractionDigits: 3 });

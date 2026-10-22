@@ -2,8 +2,8 @@
 
 Una ferretería con dos semanas de historia: turnos cerrados con ventas en efectivo, tarjeta y
 transferencia, una anulación, una devolución, el arqueo con un faltante, un pedido por cobrar, una
-venta sin conexión para revisión, una baja por aprobar, un conteo aprobado, un traslado y un producto
-pendiente de precio. Todo pasa por los mismos servicios que usa la app, así el kardex cuadra.
+venta sin conexión para revisión, una baja por aprobar, un conteo aprobado, un traslado, un producto
+pendiente de precio, los datos del negocio y cotizaciones en todos sus estados (spec 007). Todo pasa por los mismos servicios que usa la app, así el kardex cuadra.
 
 Las fechas se corren hacia atrás después de crear cada documento (los modelos ponen la hora actual).
 El azar usa una semilla fija: dos bases sembradas el mismo día quedan iguales.
@@ -22,13 +22,17 @@ from apps.accounts.models import Role, User
 from apps.cash.models import CashRegister, Shift
 from apps.cash.services import close_shift, open_shift, shift_summary
 from apps.catalog.models import Category, Product, ProductUnit, Unit
+from apps.customers.models import Customer
+from apps.customers.rules import check_digit
 from apps.inventory.adjustments import approve_adjustment, create_adjustment
 from apps.inventory.counts import approve_count, open_count, record_line, submit_count
 from apps.inventory.models import StockMovement, Warehouse
 from apps.inventory.services import record_movement
 from apps.inventory.transfers import create_transfer
-from apps.sales.models import Sale, SaleReturn
+from apps.invoicing.models import Business
+from apps.sales.models import Quote, Sale, SaleReturn
 from apps.sales.orders import create_order
+from apps.sales.quotes import convert_quote, create_quote, void_quote
 from apps.sales.returns import create_return, void_sale
 from apps.sales.services import catalog_price, create_sale, money
 
@@ -187,6 +191,69 @@ def _history(rng, now, users, warehouse, registers, products):
                 )
 
 
+def _business():
+    """Datos del negocio (ficticios) para el tiquete y la hoja de la cotización."""
+    business = Business.load()
+    business.name, business.trade_name = "Ferretería El Tornillo S.A.S.", "El Tornillo"
+    business.nit = "900555111"
+    business.check_digit = check_digit(business.nit)
+    business.address, business.city = "Calle 16 # 12-34", "Florencia, Caquetá"
+    business.phone, business.email = "608 435 1234", "ventas@ferreteria.example"
+    business.tax_regime = "Responsable de IVA"
+    business.save()
+
+
+def _quotes(now, users, products, shift):
+    """Cotizaciones de la spec 007: una de cada caso, para mostrar la pantalla, la hoja y el reporte.
+
+    Sin pinturas: las ventas de lo convertido van antes del conteo de pinturas del día.
+    """
+    andres, laura = users["andres.ventas"][0], users["laura.caja"][0]
+    units = {u.code: u for u in Unit.objects.filter(code__in=["caja", "bolsa", "rollo"])}
+    builder = Customer.objects.create(
+        id_type="31", person_type="1", id_number="901234567", check_digit=check_digit("901234567"),
+        name="Constructora Los Pinos S.A.S.", phone="3105550101",
+    )
+
+    def quote(lines, *, back=0, **who):
+        q, _ = create_quote(user=andres, client_uuid=uuid.uuid4(), lines=[
+            {"product": products[sku], "quantity": Decimal(qty), **({"unit": units[unit]} if unit else {})}
+            for sku, qty, unit in lines
+        ], **who)
+        if back:  # se hizo hace unos días: la vigencia corre desde entonces
+            Quote.objects.filter(pk=q.pk).update(
+                created_at=_at(now - timedelta(days=back), 10), valid_until=q.valid_until - timedelta(days=back),
+            )
+            q.refresh_from_db()
+        return q
+
+    def charge(q, parts=None):
+        """Convierte (todo lo que queda o las partes dadas) y la caja cobra el pedido."""
+        lines = None if parts is None else [
+            {"quote_line": q.lines.get(product=products[sku]), "quantity": Decimal(qty)} for sku, qty in parts
+        ]
+        order, _ = convert_quote(quote=q, user=andres, client_uuid=uuid.uuid4(), lines=lines)
+        sale, _ = create_sale(user=laura, shift=shift, order=order, lines=None, client_uuid=uuid.uuid4(),
+                              payments=[{"method": "CASH", "amount": order.total}])
+        Sale.objects.filter(pk=sale.pk).update(created_at=sale.occurred_at)  # como las demás ventas de la demo
+
+    # Vigente, sin tocar: la lista de materiales de un maestro de obra.
+    quote([("CEM-50", 20, None), ("ARE-B", 10, None), ("ALA-18", 5, None), ("CAB-12", 1, "rollo")],
+          customer_name="Don Jorge (maestro de obra)", customer_phone="3001234567", note="Entrega en obra, barrio La Estrella")
+    # De la constructora: se llevó una parte (y queda por convertir).
+    partial = quote([("CHA-8", 3, "bolsa"), ("CIN-TEF", 10, None), ("TUB-PVC-12", 6, None)], back=2,
+                    customer=builder, note="Remodelación de baños, bloque B")
+    charge(partial, [("CHA-8", 2), ("CIN-TEF", 10)])
+    # Convertida del todo.
+    charge(quote([("CAB-14", 50, None), ("TOR-1/4", 2, "caja"), ("INT-SEN", 4, None)], back=1,
+                 customer_name="Electricista Ramiro", customer_phone="3209876543"))
+    # Vencida: tiene más de 8 días.
+    quote([("MAR-16", 2, None), ("LLA-10", 3, None)], back=12, customer_name="Sra. Gloria")
+    # Anulada.
+    void_quote(quote=quote([("FLE-5", 1, None)], customer_name="Cliente de paso"), user=andres,
+               note="El cliente compró en otro lado")
+
+
 def _today(rng, now, users, warehouses, registers, products):
     """Hoy: caja abierta con ventas, una venta para revisión, el inventario del día y un pedido por cobrar.
 
@@ -205,6 +272,7 @@ def _today(rng, now, users, warehouses, registers, products):
         lines=[{"product": products["PIN-VIN-B"], "quantity": 1, "unit_price": Decimal(60000)}],
         payments=[{"method": "CASH", "amount": Decimal(60000)}],
     )
+    _quotes(now, users, products, shift)
     # Baja por aprobar: la pidió bodega y la aprueba el jefe.
     create_adjustment(
         user=pedro, client_uuid=uuid.uuid4(), warehouse=warehouses["PRAL"], reason="DAMAGE",
@@ -246,6 +314,7 @@ def seed(*, password=None, now=None, rng_seed=2026):
     rng = random.Random(rng_seed)
     with transaction.atomic():
         users = _users(password)
+        _business()
         warehouses = {
             "PRAL": Warehouse.objects.create(code="PRAL", name="Bodega principal"),
             "VIT": Warehouse.objects.create(code="VIT", name="Vitrina del local"),
