@@ -10,7 +10,7 @@ from django.utils import timezone
 from apps.accounts.models import User
 from apps.cash.models import Shift
 from apps.catalog.models import Product
-from apps.inventory.models import Adjustment, PhysicalCount, StockLevel, StockMovement, Transfer
+from apps.inventory.models import Adjustment, PhysicalCount, StockLevel, StockMovement, Transfer, Warehouse
 from apps.reports.costs import inventory_report
 from apps.invoicing.models import Business
 from apps.reports.quotes import quotes_report
@@ -112,6 +112,7 @@ def test_business_data_and_quotes_in_every_state():
     business = Business.load()
     assert (business.trade_name, business.nit, business.check_digit) == ("El Tornillo", "900555111", "6")
     assert business.name != Business._meta.get_field("name").default  # ya no dice "configura los datos en el admin"
+    assert list(Warehouse.objects.filter(is_default=True).values_list("code", flat=True)) == ["PRAL"]  # spec 008
 
     by_status = {}
     for quote in Quote.objects.all():

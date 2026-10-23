@@ -316,7 +316,7 @@ def seed(*, password=None, now=None, rng_seed=2026):
         users = _users(password)
         _business()
         warehouses = {
-            "PRAL": Warehouse.objects.create(code="PRAL", name="Bodega principal"),
+            "PRAL": Warehouse.objects.create(code="PRAL", name="Bodega principal", is_default=True),
             "VIT": Warehouse.objects.create(code="VIT", name="Vitrina del local"),
         }
         registers = {

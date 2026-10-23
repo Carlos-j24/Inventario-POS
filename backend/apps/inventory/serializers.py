@@ -8,7 +8,7 @@ from .models import StockLevel, StockMovement, Warehouse
 class WarehouseSerializer(serializers.ModelSerializer):
     class Meta:
         model = Warehouse
-        fields = ["id", "code", "name"]
+        fields = ["id", "code", "name", "is_default"]
 
 
 class ReceiptSerializer(serializers.Serializer):
