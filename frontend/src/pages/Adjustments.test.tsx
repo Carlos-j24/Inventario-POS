@@ -45,13 +45,27 @@ function mockApi(permissions: string[], routes: Record<string, (body: unknown) =
   return calls;
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  localStorage.clear();
+});
 
 const renderPage = () => render(<AuthProvider><Adjustments /></AuthProvider>);
 const helper = ["inventory.receive", "inventory.count"];
 const boss = ["inventory.receive", "inventory.count", "inventory.adjust"];
 
 describe("pantalla Ajustes", () => {
+  it("propone la bodega que recuerda este usuario y recuerda la que elige (spec 008)", async () => {
+    localStorage.setItem("inventario.bodega.u", "2");
+    mockApi(helper, { "GET /api/inventory/warehouses/": () => json([{ id: 1, code: "PRAL", name: "Bodega principal", is_default: true }, { id: 2, code: "LOC", name: "Local", is_default: false }]) });
+    renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: "Nuevo ajuste" }));
+    const form = screen.getByRole("form", { name: "Nuevo ajuste" });
+    await vi.waitFor(() => expect(within(form).getByLabelText("Bodega")).toHaveValue("2"));
+    await userEvent.selectOptions(within(form).getByLabelText("Bodega"), "1");
+    expect(localStorage.getItem("inventario.bodega.u")).toBe("1");
+  });
+
   it("bodega reporta una baja en rollos y queda pendiente", async () => {
     const created = { ...pending, id: 6, number: "AJ-000006" };
     let list = [pending];

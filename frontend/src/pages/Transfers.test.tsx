@@ -19,7 +19,7 @@ const done: Transfer = {
   created_by: "pedro", created_at: "2026-10-19T15:00:00Z",
   lines: [{ id: 9, product: 1, sku: "CAB-12", name: "Cable THHN", unit: "rollo", quantity: "2.000", base_quantity: "200.000", base_unit: "m", value: null }],
 };
-const warehouses = [{ id: 1, code: "PRAL", name: "Bodega principal" }, { id: 2, code: "LOC", name: "Local" }];
+const warehouses = [{ id: 1, code: "PRAL", name: "Bodega principal", is_default: true }, { id: 2, code: "LOC", name: "Local", is_default: false }];
 
 type Call = { method: string; url: string; body: unknown };
 
@@ -44,7 +44,10 @@ function mockApi(routes: Record<string, (body: unknown) => Response> = {}) {
   return calls;
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  localStorage.clear();
+});
 
 const renderPage = () => render(<AuthProvider><Transfers /></AuthProvider>);
 
@@ -107,6 +110,28 @@ describe("pantalla Traslados", () => {
     await userEvent.type(within(form).getByLabelText("Cantidad de Martillo 16 oz"), "3");
     await userEvent.click(within(form).getByRole("button", { name: "Trasladar" }));
     expect(await within(form).findByRole("alert")).toHaveTextContent("Stock insuficiente de MAR-16");
+  });
+
+  it("propone de la bodega que este usuario usa hacia la principal, y no cambia lo recordado", async () => {
+    localStorage.setItem("inventario.bodega.u", "2"); // en Entradas eligió el Local
+    mockApi({ "GET /api/inventory/warehouses/": () => json([...warehouses, { id: 3, code: "VIT", name: "Vitrina", is_default: false }]) });
+    renderPage();
+    const form = await openForm();
+    await vi.waitFor(() => expect(within(form).getByLabelText("Sale de")).toHaveValue("2"));
+    expect(within(form).getByLabelText("Entra a")).toHaveValue("1");
+    await userEvent.selectOptions(within(form).getByLabelText("Sale de"), "3");
+    expect(localStorage.getItem("inventario.bodega.u")).toBe("2"); // un traslado es la excepción
+  });
+
+  it("espera a saber quién es antes de proponer el origen", async () => {
+    localStorage.setItem("inventario.bodega.u", "2");
+    const me = { id: 1, username: "u", first_name: "", last_name: "", roles: [], permissions: ["inventory.transfer", "inventory.view"], must_change_password: false };
+    const late = () => new Promise<Response>((resolve) => setTimeout(() => resolve(json(me)), 60)); // el usuario llega después que las bodegas
+    mockApi({ "GET /api/auth/me/": late as unknown as () => Response });
+    renderPage();
+    const form = await openForm();
+    await vi.waitFor(() => expect(within(form).getByLabelText("Sale de")).toHaveValue("2"));
+    expect(within(form).getByLabelText("Entra a")).toHaveValue("1");
   });
 
   it("con una sola bodega avisa que hace falta otra", async () => {
