@@ -1,7 +1,7 @@
 import uuid
 
 from django.conf import settings
-from django.db import models
+from django.db import models, transaction
 
 from apps.catalog.models import QTY, Product
 
@@ -13,13 +13,33 @@ class Warehouse(models.Model):
     code = models.CharField(max_length=10, unique=True)
     name = models.CharField(max_length=80)
     is_active = models.BooleanField(default=True)
+    is_default = models.BooleanField(
+        "principal", default=False,
+        help_text="La que proponen las pantallas de inventario (spec 008). Solo una; marcar otra desmarca esta.",
+    )
 
     class Meta:
         ordering = ["code"]
         verbose_name = "bodega"
+        constraints = [
+            models.UniqueConstraint(fields=["is_default"], condition=models.Q(is_default=True), name="one_default_warehouse"),
+            models.CheckConstraint(condition=models.Q(is_default=False) | models.Q(is_active=True), name="default_warehouse_is_active"),
+        ]
 
     def __str__(self):
         return f"{self.code} · {self.name}"
+
+    def save(self, *args, **kwargs):
+        """Una inactiva no puede ser la principal, y marcar una principal desmarca la anterior."""
+        if not self.is_active and self.is_default:
+            self.is_default = False
+            update_fields = kwargs.get("update_fields")
+            if update_fields is not None:
+                kwargs["update_fields"] = {*update_fields, "is_default"}
+        with transaction.atomic():
+            if self.is_default:
+                Warehouse.objects.filter(is_default=True).exclude(pk=self.pk).update(is_default=False)
+            super().save(*args, **kwargs)
 
 
 class StockMovement(models.Model):

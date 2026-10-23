@@ -1,13 +1,13 @@
 # MEMORY.md — Inventario-POS
 Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo que ya no aporte.
 
-## Estado actual (2026-10-17)
+## Estado actual (2026-10-22)
 - **Spec 001 (MVP)** completa: backend (roles, catálogo, kardex, ventas con IVA incluido, caja con pago mixto y arqueo, devoluciones, sesión en cookie), frontend React con modo sin conexión e instalable, y despliegue Docker + PostgreSQL.
-- **Spec 002 (pedidos vendedor → caja)** completa: el vendedor arma el pedido con un código de 4 dígitos y la caja lo cobra; la venta guarda quién vendió y quién cobró.
-- **Spec 003 (supervisor y administrador)** completa: pantallas Ventas (buscar, anular, devolver), Usuarios, Roles, cambiar mi contraseña y contraseña temporal con cambio obligatorio (la API bloquea hasta cambiarla).
+- **Specs 002 y 003** completas: pedidos vendedor → caja (código de 4 dígitos; la venta guarda quién vendió y quién cobró) y pantallas de supervisor y administrador (ventas, usuarios, roles, contraseña temporal obligatoria).
 - **Spec 004 (reportes)** completa: costo promedio ponderado guardado en cada salida, pantalla Reportes (ventas, productos, arqueos; inventario valorizado y márgenes con `reports.costs`) y CSV para Excel.
 - **Spec 006 (catálogo e inventario en la app)** completa (2026-10-19): pantallas Productos (historial de precios; sin `catalog.edit_prices` el producto queda pendiente de precio), Ajustes (los aprueba `inventory.adjust`), Conteos ciegos (esperado a la hora de cada línea) y Traslados en un paso (`inventory.transfer`); ventas sin conexión de productos desactivados o con fecha anterior a un conteo aprobado quedan con `needs_review`.
 - **Spec 007 (cotizaciones)** completa (2026-10-22): cotizar con vigencia (8 días), imprimir en hoja carta o PDF, convertir en pedidos por partes cobrados al precio cotizado (sin revisión) y reporte de conversión por vendedor.
+- **Spec 008 (bodega por defecto)** aprobada (PR #64): bodega principal en el admin y la última elegida por usuario en cada equipo. T1 (backend) hecha.
 - Datos de demostración en el repo: `manage.py seed_demo` (app `apps/demo`), dos semanas de historia con semilla fija para mostrar la app a clientes potenciales. Todavía no hay cliente (2026-10-19): no se despliega a un dominio hasta tenerlo.
 - Repositorio público Carlos-j24/Inventario-POS. main exige 5 checks: pytest 3.12 y 3.14, pytest-postgres, frontend y docker (`scripts/smoke-test.sh`).
 

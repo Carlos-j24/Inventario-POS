@@ -162,5 +162,5 @@ def test_catalog_requires_login(cable):
 
 def test_warehouses_are_listed_for_inventory_staff(make_user, warehouse):
     res = api(make_user("aux", "Auxiliar de bodega")).get("/api/inventory/warehouses/")
-    assert res.data == [{"id": warehouse.pk, "code": "PRAL", "name": "Bodega principal"}]
+    assert res.data == [{"id": warehouse.pk, "code": "PRAL", "name": "Bodega principal", "is_default": False}]
     assert api(make_user("cajero", "Caja")).get("/api/inventory/warehouses/").status_code == 403

@@ -16,7 +16,7 @@ from .services import record_movement
 class WarehouseListView(generics.ListAPIView):
     permission_classes = [require("inventory.view")]
     serializer_class = WarehouseSerializer
-    queryset = Warehouse.objects.filter(is_active=True)
+    queryset = Warehouse.objects.filter(is_active=True).order_by("-is_default", "code")  # la principal primero (spec 008)
 
 
 class ReceiptView(APIView):

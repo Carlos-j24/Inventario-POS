@@ -4,7 +4,13 @@ from .models import (
     Adjustment, AdjustmentLine, CountLine, PhysicalCount, StockLevel, StockMovement, Transfer, TransferLine, Warehouse,
 )
 
-admin.site.register(Warehouse)
+
+@admin.register(Warehouse)
+class WarehouseAdmin(admin.ModelAdmin):
+    """Marcar una como principal desmarca la anterior; una inactiva deja de serlo (Warehouse.save)."""
+
+    list_display = ("code", "name", "is_active", "is_default")
+    list_filter = ("is_active",)
 
 
 @admin.register(StockLevel)
