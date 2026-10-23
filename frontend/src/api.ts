@@ -128,6 +128,8 @@ export interface Warehouse {
   id: number;
   code: string;
   name: string;
+  /** La bodega principal (spec 008): la API la trae primero. */
+  is_default: boolean;
 }
 
 export interface StockLevel {

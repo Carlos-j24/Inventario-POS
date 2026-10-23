@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useRef, useState, type FormEvent } from "react";
 import { flushSync } from "react-dom";
 
-import { api, type Category, type CountLine, type CountStatus, type PhysicalCount, type Warehouse } from "../api";
+import { api, type Category, type CountLine, type CountStatus, type PhysicalCount } from "../api";
 import { useCan } from "../auth";
 import { filterLines, findLine, parseCount } from "../counting";
 import { formatMoney, formatQty, toCents } from "../money";
+import { useWarehouseChoice } from "../useWarehouseChoice";
 
 const URL = "/api/inventory/counts/";
 const FILTERS: { id: "" | CountStatus; label: string }[] = [
@@ -78,15 +79,13 @@ function StatusBadge({ status }: { status: CountStatus }) {
 }
 
 function NewCount({ onOpened, onCancel }: { onOpened: (c: PhysicalCount) => void; onCancel: () => void }) {
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
-  const [warehouse, setWarehouse] = useState<number | null>(null);
   const [category, setCategory] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const { warehouses, warehouse, choose } = useWarehouseChoice(setError);
   const [clientUuid] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
-    api<Warehouse[]>("/api/inventory/warehouses/").then((ws) => { setWarehouses(ws); setWarehouse(ws[0]?.id ?? null); }).catch((e: Error) => setError(e.message));
     api<Category[]>("/api/catalog/categories/").then(setCategories).catch(() => setCategories([]));
   }, []);
 
@@ -105,7 +104,7 @@ function NewCount({ onOpened, onCancel }: { onOpened: (c: PhysicalCount) => void
       <h2>Nuevo conteo</h2>
       <label>
         Bodega
-        <select value={warehouse ?? ""} onChange={(e) => setWarehouse(Number(e.target.value))}>
+        <select value={warehouse ?? ""} onChange={(e) => choose(Number(e.target.value))}>
           {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
         </select>
       </label>

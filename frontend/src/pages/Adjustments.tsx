@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 
-import { api, type Adjustment, type AdjustmentStatus, type Product, type Warehouse } from "../api";
+import { api, type Adjustment, type AdjustmentStatus, type Product } from "../api";
 import { adjustmentBody, directionFor, newLine, REASONS, type DraftLine } from "../adjustment";
 import { useCan } from "../auth";
 import { fetchWithCache } from "../cache";
 import ProductSearch from "../components/ProductSearch";
 import { formatMoney, formatQty, toCents } from "../money";
+import { useWarehouseChoice } from "../useWarehouseChoice";
 
 const URL = "/api/inventory/adjustments/";
 const FILTERS: { id: "" | AdjustmentStatus; label: string }[] = [
@@ -84,22 +85,18 @@ function StatusBadge({ status }: { status: AdjustmentStatus }) {
 }
 
 function NewAdjustment({ onCreated, onCancel }: { onCreated: (a: Adjustment) => void; onCancel: () => void }) {
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [warehouse, setWarehouse] = useState<number | null>(null);
   const [reason, setReason] = useState("DAMAGE");
   const [note, setNote] = useState("");
   const [lines, setLines] = useState<DraftLine[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const { warehouses, warehouse, choose } = useWarehouseChoice(setError);
   const [busy, setBusy] = useState(false);
   // Un UUID por ajuste: un doble clic o un reintento no lo duplica.
   const [clientUuid] = useState(() => crypto.randomUUID());
   const bothWays = REASONS.find((r) => r.id === reason)?.direction === "BOTH";
 
   useEffect(() => {
-    api<Warehouse[]>("/api/inventory/warehouses/")
-      .then((ws) => { setWarehouses(ws); setWarehouse((w) => w ?? ws[0]?.id ?? null); })
-      .catch((e: Error) => setError(e.message));
     fetchWithCache<Product[]>("/api/catalog/products/").then((r) => setProducts(r.data)).catch((e: Error) => setError(e.message));
   }, []);
 
@@ -126,7 +123,7 @@ function NewAdjustment({ onCreated, onCancel }: { onCreated: (a: Adjustment) => 
       <div className="row">
         <label>
           Bodega
-          <select value={warehouse ?? ""} onChange={(e) => setWarehouse(Number(e.target.value))}>
+          <select value={warehouse ?? ""} onChange={(e) => choose(Number(e.target.value))}>
             {warehouses.map((w) => <option key={w.id} value={w.id}>{w.name}</option>)}
           </select>
         </label>

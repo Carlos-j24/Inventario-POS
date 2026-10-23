@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
-import { api, type Product, type StockMovement, type Warehouse } from "../api";
+import { api, type Product, type StockMovement } from "../api";
 import { searchProducts } from "../cart";
 import { centsToApi, formatQty, toCents } from "../money";
+import { useWarehouseChoice } from "../useWarehouseChoice";
 
 interface Done {
   product: Product;
@@ -12,9 +13,7 @@ interface Done {
 }
 
 export default function Receipts() {
-  const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
-  const [warehouseId, setWarehouseId] = useState<number | null>(null);
   const [query, setQuery] = useState("");
   const [product, setProduct] = useState<Product | null>(null);
   const [unit, setUnit] = useState("");
@@ -24,11 +23,9 @@ export default function Receipts() {
   const [error, setError] = useState<string | null>(null);
   const [done, setDone] = useState<Done[]>([]);
   const [clientUuid, setClientUuid] = useState(() => crypto.randomUUID());
+  const { warehouses, warehouse: warehouseId, choose: setWarehouseId } = useWarehouseChoice(setError);
 
   useEffect(() => {
-    api<Warehouse[]>("/api/inventory/warehouses/")
-      .then((ws) => { setWarehouses(ws); setWarehouseId(ws[0]?.id ?? null); })
-      .catch((e) => setError(e.message));
     api<Product[]>("/api/catalog/products/").then(setProducts).catch((e) => setError(e.message));
   }, []);
 

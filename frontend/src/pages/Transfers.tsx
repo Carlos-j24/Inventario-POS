@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState } from "react";
 
 import { api, type Product, type Transfer, type Warehouse } from "../api";
+import { useAuth } from "../auth";
 import { fetchWithCache } from "../cache";
 import ProductSearch from "../components/ProductSearch";
 import { formatMoney, formatQty, toCents } from "../money";
 import { newTransferLine, transferBody, type TransferDraftLine } from "../transfer";
+import { proposeTransfer, rememberedWarehouse } from "../warehouse";
 
 const URL = "/api/inventory/transfers/";
 const when = (iso: string) => new Date(iso).toLocaleString("es-CO", { day: "numeric", month: "short", hour: "2-digit", minute: "2-digit" });
@@ -57,6 +59,7 @@ export default function Transfers() {
 }
 
 function NewTransfer({ onCreated, onCancel }: { onCreated: (t: Transfer) => void; onCancel: () => void }) {
+  const { user, loading } = useAuth();
   const [warehouses, setWarehouses] = useState<Warehouse[]>([]);
   const [products, setProducts] = useState<Product[]>([]);
   const [origin, setOrigin] = useState<number | null>(null);
@@ -69,11 +72,18 @@ function NewTransfer({ onCreated, onCancel }: { onCreated: (t: Transfer) => void
   const [clientUuid] = useState(() => crypto.randomUUID());
 
   useEffect(() => {
-    api<Warehouse[]>("/api/inventory/warehouses/")
-      .then((ws) => { setWarehouses(ws); setOrigin(ws[0]?.id ?? null); setDestination(ws[1]?.id ?? null); })
-      .catch((e: Error) => setError(e.message));
+    api<Warehouse[]>("/api/inventory/warehouses/").then(setWarehouses).catch((e: Error) => setError(e.message));
     fetchWithCache<Product[]>("/api/catalog/products/").then((r) => setProducts(r.data)).catch((e: Error) => setError(e.message));
   }, []);
+
+  // Origen: la que este usuario usa en las demás pantallas o la principal; destino: la principal u otra (spec 008).
+  // El traslado es una excepción: lo que se elige aquí no se recuerda.
+  useEffect(() => {
+    if (!warehouses.length || loading) return;
+    const proposed = proposeTransfer(warehouses, rememberedWarehouse(user?.username));
+    setOrigin((current) => current ?? proposed.origin);
+    setDestination((current) => current ?? proposed.destination);
+  }, [warehouses, loading, user]);
 
   const update = (key: string, change: Partial<TransferDraftLine>) => setLines(lines.map((l) => (l.key === key ? { ...l, ...change } : l)));
 
