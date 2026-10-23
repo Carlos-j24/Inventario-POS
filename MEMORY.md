@@ -7,7 +7,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - **Spec 004 (reportes)** completa: costo promedio ponderado guardado en cada salida, pantalla Reportes (ventas, productos, arqueos; inventario valorizado y márgenes con `reports.costs`) y CSV para Excel.
 - **Spec 006 (catálogo e inventario en la app)** completa (2026-10-19): pantallas Productos (historial de precios; sin `catalog.edit_prices` el producto queda pendiente de precio), Ajustes (los aprueba `inventory.adjust`), Conteos ciegos (esperado a la hora de cada línea) y Traslados en un paso (`inventory.transfer`); ventas sin conexión de productos desactivados o con fecha anterior a un conteo aprobado quedan con `needs_review`.
 - **Spec 007 (cotizaciones)** completa (2026-10-22): cotizar con vigencia (8 días), imprimir en hoja carta o PDF, convertir en pedidos por partes cobrados al precio cotizado (sin revisión) y reporte de conversión por vendedor.
-- **Spec 008 (bodega por defecto)** aprobada (PR #64): bodega principal en el admin y la última elegida por usuario en cada equipo. T1 (backend) hecha.
+- **Spec 008 (bodega por defecto)** aprobada (PR #64): bodega principal en el admin y la última elegida por usuario en cada equipo. T1 (backend) y T2 (pantallas) hechas.
 - Datos de demostración en el repo: `manage.py seed_demo` (app `apps/demo`), dos semanas de historia con semilla fija para mostrar la app a clientes potenciales. Todavía no hay cliente (2026-10-19): no se despliega a un dominio hasta tenerlo.
 - Repositorio público Carlos-j24/Inventario-POS. main exige 5 checks: pytest 3.12 y 3.14, pytest-postgres, frontend y docker (`scripts/smoke-test.sh`).
 

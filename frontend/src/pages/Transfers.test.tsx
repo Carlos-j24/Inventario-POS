@@ -123,6 +123,17 @@ describe("pantalla Traslados", () => {
     expect(localStorage.getItem("inventario.bodega.u")).toBe("2"); // un traslado es la excepción
   });
 
+  it("espera a saber quién es antes de proponer el origen", async () => {
+    localStorage.setItem("inventario.bodega.u", "2");
+    const me = { id: 1, username: "u", first_name: "", last_name: "", roles: [], permissions: ["inventory.transfer", "inventory.view"], must_change_password: false };
+    const late = () => new Promise<Response>((resolve) => setTimeout(() => resolve(json(me)), 60)); // el usuario llega después que las bodegas
+    mockApi({ "GET /api/auth/me/": late as unknown as () => Response });
+    renderPage();
+    const form = await openForm();
+    await vi.waitFor(() => expect(within(form).getByLabelText("Sale de")).toHaveValue("2"));
+    expect(within(form).getByLabelText("Entra a")).toHaveValue("1");
+  });
+
   it("con una sola bodega avisa que hace falta otra", async () => {
     mockApi({ "GET /api/inventory/warehouses/": () => json([warehouses[0]]) });
     renderPage();

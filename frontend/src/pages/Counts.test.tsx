@@ -45,13 +45,32 @@ function mockApi(permissions: string[], routes: Record<string, (body: unknown) =
   return calls;
 }
 
-afterEach(() => vi.unstubAllGlobals());
+afterEach(() => {
+  vi.unstubAllGlobals();
+  localStorage.clear();
+});
 
 const renderPage = () => render(<AuthProvider><Counts /></AuthProvider>);
 const counter = ["inventory.count"];
 const boss = ["inventory.count", "inventory.adjust"];
 
 describe("pantalla Conteos", () => {
+  it("propone la bodega que recuerda este usuario y recuerda la que elige (spec 008)", async () => {
+    localStorage.setItem("inventario.bodega.u", "2");
+    const calls = mockApi(counter, {
+      "GET /api/inventory/warehouses/": () => json([{ id: 1, code: "PRAL", name: "Bodega principal", is_default: true }, { id: 2, code: "LOC", name: "Local", is_default: false }]),
+      "POST /api/inventory/counts/": () => json(open, 201),
+    });
+    renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: "Nuevo conteo" }));
+    const form = screen.getByRole("form", { name: "Nuevo conteo" });
+    await vi.waitFor(() => expect(within(form).getByLabelText("Bodega")).toHaveValue("2"));
+    await userEvent.selectOptions(within(form).getByLabelText("Bodega"), "1");
+    expect(localStorage.getItem("inventario.bodega.u")).toBe("1");
+    await userEvent.click(within(form).getByRole("button", { name: "Abrir conteo" }));
+    await vi.waitFor(() => expect(calls.find((c) => c.method === "POST")?.body).toMatchObject({ warehouse: 1 }));
+  });
+
   it("abre un conteo por categoría", async () => {
     const calls = mockApi(counter, {
       "POST /api/inventory/counts/": () => json({ ...open, id: 4, number: "CF-000004", category: "Eléctricos" }, 201),
