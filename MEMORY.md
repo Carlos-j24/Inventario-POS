@@ -7,7 +7,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - **Spec 004 (reportes)** completa: costo promedio ponderado guardado en cada salida, pantalla Reportes (ventas, productos, arqueos; inventario valorizado y márgenes con `reports.costs`) y CSV para Excel.
 - **Spec 006 (catálogo e inventario en la app)** completa (2026-10-19): pantallas Productos (historial de precios; sin `catalog.edit_prices` el producto queda pendiente de precio), Ajustes (los aprueba `inventory.adjust`), Conteos ciegos (esperado a la hora de cada línea) y Traslados en un paso (`inventory.transfer`); ventas sin conexión de productos desactivados o con fecha anterior a un conteo aprobado quedan con `needs_review`.
 - **Spec 007 (cotizaciones)** completa (2026-10-22): cotizar con vigencia (8 días), imprimir en hoja carta o PDF, convertir en pedidos por partes cobrados al precio cotizado (sin revisión) y reporte de conversión por vendedor.
-- **Spec 008 (bodega por defecto)** aprobada (PR #64): bodega principal en el admin y la última elegida por usuario en cada equipo. T1 (backend) y T2 (pantallas) hechas.
+- **Spec 008 (bodega por defecto)** completa (2026-10-22): bodega principal en el admin y la última elegida por usuario en cada equipo.
 - Datos de demostración en el repo: `manage.py seed_demo` (app `apps/demo`), dos semanas de historia con semilla fija para mostrar la app a clientes potenciales. Todavía no hay cliente (2026-10-19): no se despliega a un dominio hasta tenerlo.
 - Repositorio público Carlos-j24/Inventario-POS. main exige 5 checks: pytest 3.12 y 3.14, pytest-postgres, frontend y docker (`scripts/smoke-test.sh`).
 
@@ -27,7 +27,7 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - Lo impreso se comprueba imprimiendo a PDF con Chrome sin ventana (`chrome --headless=new --print-to-pdf`) y leyendo el PDF: los tests no ven la página impresa (en la T5 de la spec 007 salía angosta y con hojas en blanco).
 - Pasar el foco tras escanear con `setTimeout` deja colar la tecla siguiente (lo destapó la prueba en el navegador de la T6 de la spec 006): usar `flushSync` y enfocar en el acto.
 - Tests con pytest-django: `manage.py test` no los encuentra (DevForge Init lo propone por defecto al detectar Django).
-- Al meter fallos a propósito: quitar la consulta previa de `client_uuid` no rompe nada, porque la restricción única de la base de datos ya protege contra duplicados.
+- El admin de Django valida las restricciones de la base de datos antes de `save()`: una regla que `save()` arregla (marcar otra bodega principal) hay que sacarla de `validate_constraints` (spec 008 T3).
 - Un test de redondeo con precios "redondos" (3.200) no prueba nada: el centavo perdido solo aparece con precios con centavos (3.199,99).
 - El servidor de Vite (5173) es otro origen para Django: sin `CSRF_TRUSTED_ORIGINS` el login falla con 403 "Origin checking failed". Solo pasa en desarrollo.
 - Vitest sin `globals`: Testing Library no limpia el DOM entre tests; hace falta `afterEach(cleanup)` en `test-setup.ts`.

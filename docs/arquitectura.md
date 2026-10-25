@@ -21,7 +21,7 @@
 - `StockMovement` es el kardex: cada línea guarda el tipo, la cantidad con signo en unidad base, el costo, el saldo resultante, el usuario y la fecha real (`occurred_at`) además de la fecha de registro.
 - `StockLevel` es el saldo por producto y bodega. Solo lo toca `record_movement`, que bloquea la fila mientras escribe.
 - Unidades: cada producto tiene una unidad base y presentaciones con factor (1 rollo = 100 m). Se compra en rollos y se vende en metros.
-- Bodega principal (`Warehouse.is_default`, spec 008): una sola y activa (lo hacen cumplir `save` y dos restricciones de la base de datos); `/api/inventory/warehouses/` la trae primero con `is_default`. Es la que proponen las pantallas de inventario la primera vez; después, cada usuario recupera en su equipo la última que eligió (`warehouse.ts`, `useWarehouseChoice`, en `localStorage` por usuario). Traslados propone de esa bodega hacia la principal y no cambia lo recordado.
+- Bodega principal (`Warehouse.is_default`, spec 008): una sola y activa (lo hacen cumplir `save` y dos restricciones de la base de datos; `validate_constraints` las salta para que el admin deje marcar otra y `save` desmarque la anterior); `/api/inventory/warehouses/` la trae primero con `is_default`. Es la que proponen las pantallas de inventario la primera vez; después, cada usuario recupera en su equipo la última que eligió (`warehouse.ts`, `useWarehouseChoice`, en `localStorage` por usuario). Traslados propone de esa bodega hacia la principal y no cambia lo recordado.
 
 ## Pedidos (spec 002)
 - El vendedor arma un `Order` con precio congelado por línea y recibe un código de 4 dígitos, único en el día de negocio (hora de Bogotá). El pedido **no mueve inventario**.

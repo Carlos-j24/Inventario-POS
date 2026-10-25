@@ -1,6 +1,6 @@
 # Spec 008 — Bodega por defecto
 
-> Estado: **aprobada (PR #64, 2026-10-22)**. Tareas en tasks.md.
+> Estado: **✅ completada (2026-10-22)**: aprobada en el PR #64, hecha en los PRs #65 a #67. Tareas en tasks.md.
 
 ## Problema
 Con más de una bodega, todas las pantallas de inventario proponen **la primera por código**: Entradas, Ajustes, Conteos y Traslados toman `ws[0]` de `/api/inventory/warehouses/`, que viene ordenada por código. En la base de demostración, con `PRAL` (Bodega principal) y `LOC` (Local), cada pantalla proponía "Local" y había que elegir la principal a mano cada vez. Lo encontró la prueba de punta a punta de la spec 006 (T9).

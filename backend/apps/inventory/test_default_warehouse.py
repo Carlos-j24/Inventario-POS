@@ -70,3 +70,30 @@ def test_the_migration_marks_pral_or_the_first_active(existing, expected):
     migration = importlib.import_module("apps.inventory.migrations.0007_default_warehouse")
     migration.mark_default(django_apps, None)
     assert defaults() == ([expected] if expected else [])
+
+
+def test_from_the_django_admin(make_user):
+    """El admin valida las restricciones antes de guardar: marcar otra principal no puede ser un error."""
+    from django.test import Client
+
+    pral, loc = make("PRAL", is_default=True), make("LOC")
+    admin_user = make_user("jefe", "Administrador")
+    admin_user.is_staff = admin_user.is_superuser = True
+    admin_user.save()
+    client = Client()
+    client.force_login(admin_user)
+
+    def change(warehouse, **fields):
+        data = {"code": warehouse.code, "name": warehouse.name, **fields}
+        data = {k: ("on" if v is True else v) for k, v in data.items() if v is not False}
+        return client.post(f"/admin/inventory/warehouse/{warehouse.pk}/change/", data)
+
+    res = change(loc, is_active=True, is_default=True)
+    assert res.status_code == 302, res.content.decode()[:500]
+    assert defaults() == ["LOC"]
+    res = change(loc, is_active=False, is_default=True)  # desactivar la principal
+    assert res.status_code == 302
+    loc.refresh_from_db()
+    assert (loc.is_active, loc.is_default, defaults()) == (False, False, [])
+    pral.refresh_from_db()
+    assert pral.is_default is False

@@ -29,6 +29,14 @@ class Warehouse(models.Model):
     def __str__(self):
         return f"{self.code} · {self.name}"
 
+    def validate_constraints(self, exclude=None):
+        """Las dos reglas de la principal no son un error de formulario: save() las resuelve.
+
+        El admin valida las restricciones antes de guardar; sin esto, marcar otra bodega como principal
+        fallaría porque la anterior todavía lo es. Las restricciones de la base de datos siguen ahí.
+        """
+        super().validate_constraints(exclude={*(exclude or ()), "is_default"})
+
     def save(self, *args, **kwargs):
         """Una inactiva no puede ser la principal, y marcar una principal desmarca la anterior."""
         if not self.is_active and self.is_default:
