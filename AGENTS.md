@@ -3,7 +3,7 @@ Inventario y punto de venta para ferreterías: entradas a bodega, ventas que des
 
 ## Stack y estructura
 - Backend: Python 3.12+, Django + Django REST Framework, PostgreSQL en producción (SQLite en desarrollo y tests), en `backend/`.
-- `backend/apps/accounts` usuarios, roles y permisos · `apps/catalog` productos, unidades e historial de precios · `apps/inventory` bodegas, kardex, existencias, ajustes, conteos y traslados · `apps/sales` ventas · `apps/cash` cajas, turnos y pagos.
+- `backend/apps/accounts` usuarios, roles y permisos · `apps/catalog` productos, unidades e historial de precios · `apps/inventory` bodegas, kardex, existencias, ajustes, conteos y traslados · `apps/sales` ventas · `apps/cash` cajas, turnos y pagos · `apps/workshop` motos, dueños y kilometraje.
 - Frontend: React + Vite + TypeScript en `frontend/`. `src/api.ts` cliente y tipos · `src/cart.ts` lógica del carrito y cobro (sin React) · `src/pages/` pantallas.
 - `docs/` arquitectura, constitución y despliegue · `specs/NNN-nombre/` specs.
 - Producción: `Dockerfile` multi-etapa (compila el frontend y lo sirve Django con WhiteNoise; gunicorn) + `docker-compose.yml` con PostgreSQL. Prueba de humo: `scripts/smoke-test.sh` (el CI la ejecuta).

@@ -72,9 +72,15 @@
 - Dinero en pantalla (`money.ts`, `formatMoney`): pesos enteros sin decimales y, si hay centavos, siempre dos ("$ 327.731,10").
 - Al cobrar un pedido de cotización, la diferencia con el catálogo **no** manda la venta a revisión (el precio lo dio el negocio, decisión 1), y la cotización queda `CONVERTED` cuando lo cobrado cubre todo lo cotizado (`quotes.mark_converted`).
 
+## Taller: clientes y motos (spec 009)
+- Es un **módulo**: `Business.workshop_enabled` ("Módulo de taller" en los datos del negocio, apagado por defecto). Un solo software y una instalación por cliente (decisión 1 de la spec 009); la multiempresa real queda para cuando haya varios clientes en mensualidad.
+- `apps/workshop`: `Motorcycle` (placa o chasis, marca, modelo, año, cilindraje, color, kilometraje, dueño actual), `Ownership` (dueño desde/hasta; el abierto es el actual) y `MileageReading` (cada lectura, con la anterior y la nota). Las motos no se borran.
+- El dueño es el mismo `Customer` de la caja, con teléfono; nunca el consumidor final. `Motorcycle.owner` y el `Ownership` abierto los mantiene juntos `services.change_owner`; el admin no deja cambiar el dueño ni el kilometraje.
+- Placa y chasis se normalizan (`rules.normalize_code`) antes de validar el largo, y son únicos sin contar los vacíos. El kilometraje solo sube; bajarlo exige nota (`services.update_mileage`).
+
 ## Roles y permisos
-- `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones. `inventory.transfer` (spec 006) lo tienen por defecto Administrador, Jefe de bodega y Auxiliar de bodega.
-- `Role`: conjunto editable de permisos. Por defecto: Administrador, Supervisor, Jefe de bodega, Auxiliar de bodega, Ventas, Caja.
+- `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones. `inventory.transfer` (spec 006) lo tienen por defecto Administrador, Jefe de bodega y Auxiliar de bodega. `workshop.receive` (spec 009) lo tienen Administrador y Recepción de taller.
+- `Role`: conjunto editable de permisos. Por defecto: Administrador, Supervisor, Jefe de bodega, Auxiliar de bodega, Ventas, Caja y Recepción de taller (`workshop.receive` y `sales.create`).
 - `User.roles`: un usuario puede tener varios roles y sus permisos se suman.
 
 ## Modo sin conexión (T9)

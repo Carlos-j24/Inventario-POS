@@ -226,6 +226,10 @@ class Business(models.Model):
     tax_regime = models.CharField(
         "régimen", max_length=120, blank=True, help_text="Como debe aparecer en el tiquete, p. ej. «Responsable de IVA».",
     )
+    workshop_enabled = models.BooleanField(
+        "módulo de taller", default=False,
+        help_text="Motos, dueños y órdenes de trabajo (spec 009). Apagado, la app no muestra nada del taller.",
+    )
 
     class Meta:
         verbose_name = "datos del negocio"
