@@ -80,6 +80,7 @@
 - API `/api/workshop/motorcycles/` (`api.py`, con `workshop.receive` y el módulo activo; apagado, 404 para todos): buscar (`?q=`: placa, chasis o documento que empiezan por; teléfono o nombre del dueño que contienen), registrar con un cliente existente (`owner`) o nuevo (`customer`, con teléfono), ficha (`<id>/`, con dueños y las últimas 20 lecturas), corregir (`PATCH`, sin dueño ni kilometraje), `<id>/mileage/` y `<id>/owner/`. `/api/auth/me/` trae `workshop_enabled`.
 - Los teléfonos se buscan sin espacios, guiones, puntos ni paréntesis (`customers/queries.py`); la búsqueda de clientes también encuentra por teléfono y la puede usar recepción.
 - Pantalla **Motos** (`pages/Motorcycles.tsx`, lógica en `motorcycle.ts`): solo con `workshop.receive` y `me.workshop_enabled` (en `App.tsx`, `workshop: true`; una sesión guardada sin el dato lo toma como apagado). `CustomerPicker` con `requirePhone` exige el teléfono del dueño.
+- Demo: `seed_demo --taller` usa el perfil de `apps/demo/workshop.py` (un `Profile` de `seed.py`, con la misma historia que la ferretería) y agrega a recepción, clientes y motos. Recepción de taller tiene `workshop.receive` y `sales.create`, así que entra a Motos y puede cotizar, pero no ve la caja.
 
 ## Roles y permisos
 - `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones. `inventory.transfer` (spec 006) lo tienen por defecto Administrador, Jefe de bodega y Auxiliar de bodega. `workshop.receive` (spec 009) lo tienen Administrador y Recepción de taller.
