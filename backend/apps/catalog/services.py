@@ -6,6 +6,8 @@ Reglas:
 - Un código de barras es único entre productos y presentaciones juntos.
 - Precio, tarifa de IVA y excluido solo con catalog.edit_prices; cada cambio de precio queda en el
   historial. Quien no tiene ese permiso crea el producto inactivo y "pendiente de precio".
+- Un servicio (spec 010) no tiene stock mínimo, fracciones ni presentaciones, y producto y servicio
+  no se intercambian si ya hay movimientos o ventas (las reglas están en el modelo).
 """
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
@@ -16,7 +18,7 @@ from apps.sales.models import OrderLine, SaleLine
 from .models import Category, PriceChange, Product, ProductUnit
 
 PRICE_FIELDS = ("sale_price", "tax_rate", "vat_excluded")
-EDITABLE = ("sku", "name", "category", "base_unit", "barcode", "allows_fractions", "min_stock", "is_active", *PRICE_FIELDS)
+EDITABLE = ("sku", "name", "category", "base_unit", "barcode", "allows_fractions", "min_stock", "is_active", "is_service", *PRICE_FIELDS)
 
 
 def can_edit_prices(user):

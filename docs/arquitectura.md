@@ -82,6 +82,11 @@
 - Pantalla **Motos** (`pages/Motorcycles.tsx`, lógica en `motorcycle.ts`): solo con `workshop.receive` y `me.workshop_enabled` (en `App.tsx`, `workshop: true`; una sesión guardada sin el dato lo toma como apagado). `CustomerPicker` con `requirePhone` exige el teléfono del dueño.
 - Demo: `seed_demo --taller` usa el perfil de `apps/demo/workshop.py` (un `Profile` de `seed.py`, con la misma historia que la ferretería) y agrega a recepción, clientes y motos. Recepción de taller tiene `workshop.receive` y `sales.create`, así que entra a Motos y puede cotizar, pero no ve la caja.
 
+## Servicios (spec 010)
+- `Product.is_service`: se cobra en la caja como cualquier producto pero no mueve inventario. Sin fracciones, stock mínimo ni presentaciones; producto y servicio no se intercambian si ya hay movimientos, presentaciones o ventas (`Product.clean`, que también usa el admin de Django).
+- `SaleLine.is_service` se copia del producto al vender (como `vat_excluded`) y una restricción de la base de datos exige movimiento de inventario si y solo si la línea no es de servicio. `SaleReturnLine.movement` es opcional: va vacío al devolver un servicio.
+- No dependen del módulo de taller: cualquier negocio puede tener servicios.
+
 ## Roles y permisos
 - `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones. `inventory.transfer` (spec 006) lo tienen por defecto Administrador, Jefe de bodega y Auxiliar de bodega. `workshop.receive` (spec 009) lo tienen Administrador y Recepción de taller.
 - `Role`: conjunto editable de permisos. Por defecto: Administrador, Supervisor, Jefe de bodega, Auxiliar de bodega, Ventas, Caja y Recepción de taller (`workshop.receive` y `sales.create`).

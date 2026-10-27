@@ -10,8 +10,8 @@ class ProductUnitInline(admin.TabularInline):
 
 @admin.register(Product)
 class ProductAdmin(admin.ModelAdmin):
-    list_display = ("sku", "name", "category", "base_unit", "sale_price", "tax_rate", "vat_excluded", "is_active", "price_pending")
-    list_filter = ("category", "tax_rate", "vat_excluded", "is_active", "price_pending")
+    list_display = ("sku", "name", "category", "base_unit", "sale_price", "tax_rate", "vat_excluded", "is_service", "is_active", "price_pending")
+    list_filter = ("category", "tax_rate", "vat_excluded", "is_service", "is_active", "price_pending")
     search_fields = ("sku", "name", "barcode")
     inlines = [ProductUnitInline]
 
