@@ -7,7 +7,9 @@ from django.core.management.base import CommandError
 
 from apps.accounts.models import User
 from apps.catalog.models import Product
+from apps.invoicing.models import Business
 from apps.sales.models import Sale
+from apps.workshop.models import Motorcycle
 
 from .seed import USERS
 
@@ -27,6 +29,15 @@ def test_prints_a_different_random_password_per_user(settings):
         assert User.objects.get(username=username).check_password(row[1])
     assert len(set(secrets.values())) == len(USERS)
     assert Sale.objects.exists()
+
+
+def test_taller_seeds_the_workshop_demo(settings):
+    settings.DEBUG = True
+    out = StringIO()
+    call_command("seed_demo", "--taller", "--password", "Demo-clave-123", stdout=out)
+    assert "diana.recepcion" in out.getvalue()
+    assert Business.load().workshop_enabled is True
+    assert Motorcycle.objects.exists() and Product.objects.filter(sku="ACE-20W50").exists()
 
 
 def test_never_runs_without_debug(settings):

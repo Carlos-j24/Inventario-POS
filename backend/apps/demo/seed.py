@@ -1,6 +1,7 @@
 """Datos de demostración para mostrar la app a clientes potenciales.
 
-Una ferretería con dos semanas de historia: turnos cerrados con ventas en efectivo, tarjeta y
+Dos perfiles con la misma historia: la ferretería (por defecto) y el taller de motos (`workshop.py`,
+spec 009, con el módulo de taller activo, clientes y motos). La ferretería tiene dos semanas de historia: turnos cerrados con ventas en efectivo, tarjeta y
 transferencia, una anulación, una devolución, el arqueo con un faltante, un pedido por cobrar, una
 venta sin conexión para revisión, una baja por aprobar, un conteo aprobado, un traslado, un producto
 pendiente de precio, los datos del negocio y cotizaciones en todos sus estados (spec 007). Todo pasa por los mismos servicios que usa la app, así el kardex cuadra.
@@ -11,6 +12,8 @@ El azar usa una semilla fija: dos bases sembradas el mismo día quedan iguales.
 import random
 import secrets
 import uuid
+from dataclasses import dataclass, field
+from typing import Callable
 from datetime import timedelta
 from decimal import Decimal
 
@@ -70,13 +73,19 @@ PRODUCTS = [
     ("CIN-TEF", "Cinta de teflón", "Plomería", "und", 2500, False, 30, "7707000000234", ("caja", 20, "7707000000241"), (200, 1100)),
 ]
 
+# Creado desde bodega sin permiso de precios: espera a que el administrador se lo ponga (spec 006).
+PENDING = {"sku": "MAN-12", "name": "Manguera de jardín 1/2\"", "category": "Plomería", "unit": "m", "fractions": True, "minimum": 20}
+
+# Mercancía que llega a mitad de la historia a otro costo: mueve el costo promedio (spec 004).
+RESTOCK = (("MAR-16", 12, 21000), ("CEM-50", 40, 28500))
+
 EXTRA_UNITS = {"bolsa": "Bolsa"}  # presentaciones que no trae la migración de unidades
 
 
-def _users(password):
+def _users(password, users=USERS):
     """Crea los usuarios con su rol. Devuelve {usuario: (objeto, contraseña)}."""
     created = {}
-    for username, first_name, role in USERS:
+    for username, first_name, role in users:
         user = User.objects.create_user(username=username, first_name=first_name)
         secret = password or secrets.token_urlsafe(9)
         user.set_password(secret)
@@ -88,14 +97,14 @@ def _users(password):
     return created
 
 
-def _catalog():
+def _catalog(product_rows=PRODUCTS, pending=PENDING):
     units = {u.code: u for u in Unit.objects.all()}
     for code, name in EXTRA_UNITS.items():
         if code not in units:
             units[code] = Unit.objects.create(code=code, name=name)
     categories = {}
     products = {}
-    for sku, name, category, unit, price, fractions, minimum, barcode, presentation, _ in PRODUCTS:
+    for sku, name, category, unit, price, fractions, minimum, barcode, presentation, _ in product_rows:
         if category not in categories:
             categories[category] = Category.objects.create(name=category)
         product = Product.objects.create(
@@ -106,10 +115,10 @@ def _catalog():
             code, factor, unit_barcode = presentation
             ProductUnit.objects.create(product=product, unit=units[code], factor=Decimal(factor), barcode=unit_barcode)
         products[sku] = product
-    # Creado desde bodega sin permiso de precios: espera a que el administrador se lo ponga (spec 006).
     Product.objects.create(
-        sku="MAN-12", name="Manguera de jardín 1/2\"", category=categories["Plomería"], base_unit=units["m"],
-        sale_price=Decimal(0), allows_fractions=True, min_stock=Decimal(20), is_active=False, price_pending=True,
+        sku=pending["sku"], name=pending["name"], category=categories[pending["category"]], base_unit=units[pending["unit"]],
+        sale_price=Decimal(0), allows_fractions=pending["fractions"], min_stock=Decimal(pending["minimum"]),
+        is_active=False, price_pending=True,
     )
     return units, products
 
@@ -153,7 +162,7 @@ def _worked_days(now):
     return worked, (worked[-3], worked[-2], worked[-5], worked[len(worked) // 2])
 
 
-def _history(rng, now, users, warehouse, registers, products):
+def _history(rng, now, users, warehouse, registers, products, restock=RESTOCK):
     """Dos semanas de turnos cerrados en la caja 1, con una anulación, una devolución y un faltante."""
     laura, sofia = users["laura.caja"][0], users["sofia.super"][0]
     worked, (void_day, return_day, short_day, restock_day) = _worked_days(now)
@@ -183,7 +192,7 @@ def _history(rng, now, users, warehouse, registers, products):
         close_shift(shift=shift, user=laura, counted_cash=expected - short, notes="Faltan 2.000" if short else "")
         Shift.objects.filter(pk=shift.pk).update(opened_at=_at(day, 7, 50), closed_at=_at(day, 18, 10))
         if day == restock_day:  # llega mercancía a otro precio: el costo promedio se mueve (spec 004)
-            for sku, quantity, cost in (("MAR-16", 12, 21000), ("CEM-50", 40, 28500)):
+            for sku, quantity, cost in restock:
                 record_movement(
                     kind=StockMovement.Kind.RECEIPT, product=products[sku], warehouse=warehouse, quantity=quantity,
                     unit_cost=Decimal(cost), user=users["pedro.bodega"][0], reference="Factura proveedor FAC-2210",
@@ -306,30 +315,52 @@ def _today(rng, now, users, warehouses, registers, products):
     ])
 
 
-def seed(*, password=None, now=None, rng_seed=2026):
-    """Siembra una base recién migrada. Devuelve {usuario: contraseña}."""
+@dataclass(frozen=True)
+class Profile:
+    """Lo que cambia entre una demo y otra; la historia de turnos y ventas es la misma."""
+
+    products: tuple
+    pending: dict
+    restock: tuple
+    warehouses: tuple  # (código, nombre); PRAL es la principal
+    business: Callable
+    today: Callable  # (rng, now, users, warehouses, registers, products)
+    users: tuple = field(default=tuple(USERS))
+
+
+HARDWARE = Profile(
+    products=tuple(PRODUCTS), pending=PENDING, restock=RESTOCK,
+    warehouses=(("PRAL", "Bodega principal"), ("VIT", "Vitrina del local")), business=_business, today=_today,
+)
+
+
+def seed(*, password=None, now=None, rng_seed=2026, workshop=False):
+    """Siembra una base recién migrada (la ferretería o, con `workshop`, el taller). Devuelve {usuario: contraseña}."""
+    if workshop:
+        from .workshop import PROFILE as profile  # importa de aquí: se carga solo cuando hace falta
+    else:
+        profile = HARDWARE
     if Product.objects.exists() or Sale.objects.exists():
         raise ValidationError("La base ya tiene datos: usa --fresh para empezar de cero.")
     now = timezone.localtime(now or timezone.now())
     rng = random.Random(rng_seed)
     with transaction.atomic():
-        users = _users(password)
-        _business()
+        users = _users(password, profile.users)
+        profile.business()
         warehouses = {
-            "PRAL": Warehouse.objects.create(code="PRAL", name="Bodega principal", is_default=True),
-            "VIT": Warehouse.objects.create(code="VIT", name="Vitrina del local"),
+            code: Warehouse.objects.create(code=code, name=name, is_default=code == "PRAL") for code, name in profile.warehouses
         }
         registers = {
             code: CashRegister.objects.create(code=code, name=name, warehouse=warehouses["PRAL"])
             for code, name in (("CAJA1", "Caja 1"), ("CAJA2", "Caja 2"))
         }
-        _, products = _catalog()
+        _, products = _catalog(profile.products, profile.pending)
         start = _at(now - timedelta(days=DAYS + 1), 9)
-        for sku, *_rest, (quantity, cost) in PRODUCTS:
+        for sku, *_rest, (quantity, cost) in profile.products:
             record_movement(
                 kind=StockMovement.Kind.RECEIPT, product=products[sku], warehouse=warehouses["PRAL"], quantity=quantity,
                 unit_cost=Decimal(cost), user=users["pedro.bodega"][0], reference="Factura proveedor FAC-1043", occurred_at=start,
             )
-        _history(rng, now, users, warehouses["PRAL"], registers, products)
-        _today(rng, now, users, warehouses, registers, products)
+        _history(rng, now, users, warehouses["PRAL"], registers, products, profile.restock)
+        profile.today(rng, now, users, warehouses, registers, products)
     return {username: secret for username, (_, secret) in users.items()}

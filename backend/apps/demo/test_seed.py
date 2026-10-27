@@ -16,6 +16,7 @@ from apps.invoicing.models import Business
 from apps.reports.quotes import quotes_report
 from apps.sales import quotes as quote_service
 from apps.sales.models import Order, Quote, Sale, SaleReturn, business_date
+from apps.workshop.models import Motorcycle
 
 from .seed import DAYS, USERS, seed
 
@@ -113,6 +114,7 @@ def test_business_data_and_quotes_in_every_state():
     assert (business.trade_name, business.nit, business.check_digit) == ("El Tornillo", "900555111", "6")
     assert business.name != Business._meta.get_field("name").default  # ya no dice "configura los datos en el admin"
     assert list(Warehouse.objects.filter(is_default=True).values_list("code", flat=True)) == ["PRAL"]  # spec 008
+    assert business.workshop_enabled is False and not Motorcycle.objects.exists()  # la ferretería no ve el taller
 
     by_status = {}
     for quote in Quote.objects.all():
