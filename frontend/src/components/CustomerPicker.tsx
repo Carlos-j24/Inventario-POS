@@ -13,17 +13,21 @@ const ID_TYPES = [
 const describe = (c: Customer) => `${c.id_type_label} ${c.id_number}${c.check_digit ? `-${c.check_digit}` : ""}`;
 
 /**
- * Cliente del documento (spec 005, T6): consumidor final por defecto; se busca por número o
- * nombre, o se registra rápido. Sin conexión solo queda el consumidor final o el ya elegido.
+ * Cliente del documento (spec 005, T6): consumidor final por defecto; se busca por número,
+ * teléfono o nombre, o se registra rápido. Sin conexión solo queda el consumidor final o el ya elegido.
+ * Con `requirePhone` (el taller, spec 009) el cliente necesita teléfono: se pide al crearlo y, si
+ * uno ya registrado no lo tiene, se le agrega antes de elegirlo.
  */
-export default function CustomerPicker({ value, onChange, emptyLabel = "Consumidor final" }: {
+export default function CustomerPicker({ value, onChange, emptyLabel = "Consumidor final", requirePhone = false }: {
   value: Customer | null;
   onChange: (c: Customer | null) => void;
   /** Lo que se muestra sin cliente elegido (en una cotización no hay "consumidor final"). */
   emptyLabel?: string;
+  requirePhone?: boolean;
 }) {
   const [open, setOpen] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [missingPhone, setMissingPhone] = useState<Customer | null>(null);
   const [q, setQ] = useState("");
   const [results, setResults] = useState<Customer[]>([]);
   const [error, setError] = useState<string | null>(null);
@@ -42,9 +46,14 @@ export default function CustomerPicker({ value, onChange, emptyLabel = "Consumid
   }, [open, q]);
 
   function choose(c: Customer | null) {
+    if (c && requirePhone && !c.phone.trim()) {
+      setMissingPhone(c);
+      return;
+    }
     onChange(c);
     setOpen(false);
     setCreating(false);
+    setMissingPhone(null);
     setQ("");
   }
 
@@ -62,17 +71,19 @@ export default function CustomerPicker({ value, onChange, emptyLabel = "Consumid
 
   return (
     <div className="card nested customer-picker">
-      {creating ? (
-        <NewCustomer initialNumber={/^\d+$/.test(q.trim()) ? q.trim() : ""} onCreated={choose} onCancel={() => setCreating(false)} />
+      {missingPhone ? (
+        <AddPhone customer={missingPhone} onSaved={choose} onCancel={() => setMissingPhone(null)} />
+      ) : creating ? (
+        <NewCustomer initialNumber={/^\d+$/.test(q.trim()) ? q.trim() : ""} requirePhone={requirePhone} onCreated={choose} onCancel={() => setCreating(false)} />
       ) : (
         <>
-          <input autoFocus placeholder="Número de documento o nombre" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Buscar cliente" />
+          <input autoFocus placeholder="Documento, teléfono o nombre" value={q} onChange={(e) => setQ(e.target.value)} aria-label="Buscar cliente" />
           {error && <p className="error" role="alert">{error}</p>}
           <ul className="results">
             {results.map((c) => (
               <li key={c.id}>
                 <button type="button" onClick={() => choose(c)}>
-                  <span>{c.name}</span><span className="muted small">{describe(c)}</span>
+                  <span>{c.name}</span><span className="muted small">{describe(c)}{c.phone && ` · ${c.phone}`}</span>
                 </button>
               </li>
             ))}
@@ -87,10 +98,41 @@ export default function CustomerPicker({ value, onChange, emptyLabel = "Consumid
   );
 }
 
-function NewCustomer({ initialNumber, onCreated, onCancel }: { initialNumber: string; onCreated: (c: Customer) => void; onCancel: () => void }) {
+const PHONE_WHY = "El taller necesita un teléfono para avisar cuando la moto esté lista.";
+
+function AddPhone({ customer, onSaved, onCancel }: { customer: Customer; onSaved: (c: Customer) => void; onCancel: () => void }) {
+  const [phone, setPhone] = useState("");
+  const [error, setError] = useState<string | null>(null);
+
+  async function save() {
+    setError(null);
+    try {
+      onSaved(await api<Customer>(`/api/customers/${customer.id}/`, { method: "PATCH", body: { phone: phone.trim() } }));
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  }
+
+  return (
+    <div className="action-form" role="group" aria-label="Agregar teléfono">
+      <p><strong>{customer.name}</strong> no tiene teléfono. {PHONE_WHY}</p>
+      <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder="Teléfono" aria-label="Teléfono" autoFocus />
+      {error && <p className="error" role="alert">{error}</p>}
+      <div className="row">
+        <button type="button" className="primary" onClick={save} disabled={!phone.trim()}>Guardar teléfono</button>
+        <button type="button" className="link" onClick={onCancel}>Volver</button>
+      </div>
+    </div>
+  );
+}
+
+function NewCustomer({ initialNumber, requirePhone, onCreated, onCancel }: {
+  initialNumber: string; requirePhone: boolean; onCreated: (c: Customer) => void; onCancel: () => void;
+}) {
   const [idType, setIdType] = useState("13");
   const [number, setNumber] = useState(initialNumber);
   const [name, setName] = useState("");
+  const [phone, setPhone] = useState("");
   const [email, setEmail] = useState("");
   const [legal, setLegal] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -102,7 +144,10 @@ function NewCustomer({ initialNumber, onCreated, onCancel }: { initialNumber: st
     try {
       onCreated(await api<Customer>("/api/customers/", {
         method: "POST",
-        body: { id_type: idType, id_number: number, name, email, person_type: idType === "31" && legal ? "1" : "2" },
+        body: {
+          id_type: idType, id_number: number, name, email, person_type: idType === "31" && legal ? "1" : "2",
+          ...(phone.trim() ? { phone: phone.trim() } : {}),
+        },
       }));
     } catch (err) {
       setError((err as Error).message);
@@ -120,13 +165,15 @@ function NewCustomer({ initialNumber, onCreated, onCancel }: { initialNumber: st
         <input value={number} onChange={(e) => setNumber(e.target.value)} placeholder="Número" aria-label="Número de documento" />
       </div>
       <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Nombre o razón social" aria-label="Nombre o razón social" />
+      <input value={phone} onChange={(e) => setPhone(e.target.value)} placeholder={requirePhone ? "Teléfono" : "Teléfono (opcional)"} aria-label="Teléfono" />
+      {requirePhone && <p className="muted small">{PHONE_WHY}</p>}
       <input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="Correo (opcional)" aria-label="Correo" />
       {idType === "31" && (
         <label className="check"><input type="checkbox" checked={legal} onChange={(e) => setLegal(e.target.checked)} /> Empresa (persona jurídica)</label>
       )}
       {error && <p className="error" role="alert">{error}</p>}
       <div className="row">
-        <button type="button" className="primary" onClick={save} disabled={busy || !number.trim() || !name.trim()}>Guardar cliente</button>
+        <button type="button" className="primary" onClick={save} disabled={busy || !number.trim() || !name.trim() || (requirePhone && !phone.trim())}>Guardar cliente</button>
         <button type="button" className="link" onClick={onCancel}>Volver</button>
       </div>
     </div>

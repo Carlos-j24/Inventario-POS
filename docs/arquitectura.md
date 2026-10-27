@@ -79,6 +79,7 @@
 - Placa y chasis se normalizan (`rules.normalize_code`) antes de validar el largo, y son únicos sin contar los vacíos (`Motorcycle.clean` da el error en su campo). El kilometraje solo sube; bajarlo exige nota (`services.update_mileage`).
 - API `/api/workshop/motorcycles/` (`api.py`, con `workshop.receive` y el módulo activo; apagado, 404 para todos): buscar (`?q=`: placa, chasis o documento que empiezan por; teléfono o nombre del dueño que contienen), registrar con un cliente existente (`owner`) o nuevo (`customer`, con teléfono), ficha (`<id>/`, con dueños y las últimas 20 lecturas), corregir (`PATCH`, sin dueño ni kilometraje), `<id>/mileage/` y `<id>/owner/`. `/api/auth/me/` trae `workshop_enabled`.
 - Los teléfonos se buscan sin espacios, guiones, puntos ni paréntesis (`customers/queries.py`); la búsqueda de clientes también encuentra por teléfono y la puede usar recepción.
+- Pantalla **Motos** (`pages/Motorcycles.tsx`, lógica en `motorcycle.ts`): solo con `workshop.receive` y `me.workshop_enabled` (en `App.tsx`, `workshop: true`; una sesión guardada sin el dato lo toma como apagado). `CustomerPicker` con `requirePhone` exige el teléfono del dueño.
 
 ## Roles y permisos
 - `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones. `inventory.transfer` (spec 006) lo tienen por defecto Administrador, Jefe de bodega y Auxiliar de bodega. `workshop.receive` (spec 009) lo tienen Administrador y Recepción de taller.

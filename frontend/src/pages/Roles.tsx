@@ -10,6 +10,7 @@ const GROUPS: Record<string, string> = {
   sales: "Ventas",
   cash: "Caja",
   reports: "Reportes",
+  workshop: "Taller",
 };
 
 export function groupPermissions(perms: PermissionInfo[]): { group: string; items: PermissionInfo[] }[] {
