@@ -1,4 +1,5 @@
 from django.conf import settings
+from django.core.exceptions import ValidationError
 from django.db import models
 from django.db.models import Q
 
@@ -55,6 +56,16 @@ class Motorcycle(models.Model):
             "plate": self.plate, "vin": self.vin, "brand": self.brand, "model": self.model, "year": self.year,
         })
         self.plate, self.vin, self.brand, self.model = data["plate"], data["vin"], data["brand"], data["model"]
+        # Repetidas, con el error en su campo: la restricción de la base, con condición, lo daría sin campo.
+        # Django ya no revisa las restricciones de un campo que falló aquí.
+        others = Motorcycle.objects.exclude(pk=self.pk)
+        errors = {}
+        if self.plate and others.filter(plate=self.plate).exists():
+            errors["plate"] = "Ya existe una moto con esa placa."
+        if self.vin and others.filter(vin=self.vin).exists():
+            errors["vin"] = "Ya existe una moto con ese número de chasis."
+        if errors:
+            raise ValidationError(errors)
 
 
 class Ownership(models.Model):

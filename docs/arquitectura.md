@@ -76,7 +76,9 @@
 - Es un **módulo**: `Business.workshop_enabled` ("Módulo de taller" en los datos del negocio, apagado por defecto). Un solo software y una instalación por cliente (decisión 1 de la spec 009); la multiempresa real queda para cuando haya varios clientes en mensualidad.
 - `apps/workshop`: `Motorcycle` (placa o chasis, marca, modelo, año, cilindraje, color, kilometraje, dueño actual), `Ownership` (dueño desde/hasta; el abierto es el actual) y `MileageReading` (cada lectura, con la anterior y la nota). Las motos no se borran.
 - El dueño es el mismo `Customer` de la caja, con teléfono; nunca el consumidor final. `Motorcycle.owner` y el `Ownership` abierto los mantiene juntos `services.change_owner`; el admin no deja cambiar el dueño ni el kilometraje.
-- Placa y chasis se normalizan (`rules.normalize_code`) antes de validar el largo, y son únicos sin contar los vacíos. El kilometraje solo sube; bajarlo exige nota (`services.update_mileage`).
+- Placa y chasis se normalizan (`rules.normalize_code`) antes de validar el largo, y son únicos sin contar los vacíos (`Motorcycle.clean` da el error en su campo). El kilometraje solo sube; bajarlo exige nota (`services.update_mileage`).
+- API `/api/workshop/motorcycles/` (`api.py`, con `workshop.receive` y el módulo activo; apagado, 404 para todos): buscar (`?q=`: placa, chasis o documento que empiezan por; teléfono o nombre del dueño que contienen), registrar con un cliente existente (`owner`) o nuevo (`customer`, con teléfono), ficha (`<id>/`, con dueños y las últimas 20 lecturas), corregir (`PATCH`, sin dueño ni kilometraje), `<id>/mileage/` y `<id>/owner/`. `/api/auth/me/` trae `workshop_enabled`.
+- Los teléfonos se buscan sin espacios, guiones, puntos ni paréntesis (`customers/queries.py`); la búsqueda de clientes también encuentra por teléfono y la puede usar recepción.
 
 ## Roles y permisos
 - `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones. `inventory.transfer` (spec 006) lo tienen por defecto Administrador, Jefe de bodega y Auxiliar de bodega. `workshop.receive` (spec 009) lo tienen Administrador y Recepción de taller.

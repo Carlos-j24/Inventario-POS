@@ -2,6 +2,8 @@ from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError as DjangoValidationError
 from rest_framework import serializers
 
+from apps.invoicing.models import Business
+
 from .models import Permission, Role, User
 from .services import ensure_someone_can_manage
 
@@ -21,13 +23,18 @@ class LoginSerializer(serializers.Serializer):
 class MeSerializer(serializers.ModelSerializer):
     roles = serializers.SlugRelatedField(slug_field="name", many=True, read_only=True)
     permissions = serializers.SerializerMethodField()
+    workshop_enabled = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["id", "username", "first_name", "last_name", "roles", "permissions", "must_change_password"]
+        fields = ["id", "username", "first_name", "last_name", "roles", "permissions", "must_change_password", "workshop_enabled"]
 
     def get_permissions(self, obj):
         return sorted(obj.permission_codes())
+
+    def get_workshop_enabled(self, obj):
+        """Si la app muestra el taller (spec 009, regla 1)."""
+        return Business.load().workshop_enabled
 
 
 class PermissionSerializer(serializers.ModelSerializer):
