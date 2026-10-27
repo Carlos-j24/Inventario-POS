@@ -21,8 +21,11 @@ Antes de vender, crea en el admin al menos una **bodega** y una **caja** (Caja �
 
 Para mostrar la app: una ferretería con dos semanas de ventas, arqueos (uno con faltante), una anulación, una devolución, un pedido por cobrar, una venta sin conexión para revisión, una baja por aprobar, un conteo, un traslado, un producto pendiente de precio, los datos del negocio (ficticios) y cotizaciones en todos sus estados. Usuarios: `admin.demo` (también entra al admin de Django), `marta.jefe`, `pedro.bodega`, `laura.caja`, `maria.caja`, `andres.ventas` y `sofia.super`.
 
+Con `--taller`, la misma historia en un taller de motos con repuestos: el módulo de taller activo, `diana.recepcion` (Recepción de taller) y clientes con sus motos (una con dueño anterior, una sin placa).
+
 ```bash
 .venv\Scripts\python manage.py seed_demo --fresh
+.venv\Scripts\python manage.py seed_demo --fresh --taller   # un taller de motos con el módulo de taller (spec 009)
 ```
 
 `--fresh` borra `db.sqlite3` y la crea de nuevo (cierra antes el `runserver`); sin él, llena una base recién migrada. Las contraseñas salen una sola vez en la consola (una al azar por usuario) o, con `--password <clave>`, la misma para todos. Solo corre con `DEBUG`: nunca en producción.

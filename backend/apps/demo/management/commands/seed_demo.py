@@ -3,6 +3,7 @@
     python manage.py seed_demo              # base recién migrada y vacía
     python manage.py seed_demo --fresh      # borra la base SQLite, la vuelve a crear y la llena
     python manage.py seed_demo --password X # la misma contraseña para todos (si no, una al azar por usuario)
+    python manage.py seed_demo --taller     # un taller de motos con el módulo de taller (spec 009) en vez de la ferretería
 
 Solo con DEBUG: nunca en producción. Las contraseñas se muestran una vez y no se guardan.
 """
@@ -23,8 +24,9 @@ class Command(BaseCommand):
     def add_arguments(self, parser):
         parser.add_argument("--fresh", action="store_true", help="Borra la base SQLite y la crea de nuevo antes de llenarla.")
         parser.add_argument("--password", help="Contraseña para todos los usuarios de demostración.")
+        parser.add_argument("--taller", action="store_true", help="Un taller de motos (módulo de taller, clientes y motos).")
 
-    def handle(self, *args, fresh=False, password=None, **options):
+    def handle(self, *args, fresh=False, password=None, taller=False, **options):
         if not settings.DEBUG:
             raise CommandError("seed_demo solo corre con DEBUG: nunca en producción.")
         if password is not None and len(password) < 8:
@@ -32,12 +34,12 @@ class Command(BaseCommand):
         if fresh:
             self._recreate()
         try:
-            passwords = seed(password=password)
+            passwords = seed(password=password, workshop=taller)
         except ValidationError as exc:
             raise CommandError(" ".join(exc.messages)) from exc
         self.stdout.write(self.style.SUCCESS("Datos de demostración listos. Usuarios (guarda las contraseñas: no se guardan en ningún lado):"))
         for username, secret in passwords.items():
-            self.stdout.write(f"  {username:<15} {secret}")
+            self.stdout.write(f"  {username:<16} {secret}")
 
     def _recreate(self):
         if connection.vendor != "sqlite":
