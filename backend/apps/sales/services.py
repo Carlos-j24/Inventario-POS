@@ -155,18 +155,20 @@ def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, ord
             total = money(charged * quantity)
             rate = Decimal(product.tax_rate)
             subtotal, tax = split_tax(total, rate)
-            movement, _ = record_movement(
-                kind=StockMovement.Kind.SALE, product=product, warehouse=warehouse,
-                quantity=quantity, unit=unit, user=user, reference=f"Venta {client_uuid}",
-                occurred_at=occurred_at, allow_negative=offline,
-            )
+            movement = None
+            if not product.is_service:  # un servicio no tiene existencias: no mueve inventario (spec 010)
+                movement, _ = record_movement(
+                    kind=StockMovement.Kind.SALE, product=product, warehouse=warehouse,
+                    quantity=quantity, unit=unit, user=user, reference=f"Venta {client_uuid}",
+                    occurred_at=occurred_at, allow_negative=offline,
+                )
             SaleLine.objects.create(
                 sale=sale, product=product, unit=unit, quantity=quantity,
                 unit_price=charged, catalog_price=listed, tax_rate=rate, vat_excluded=product.vat_excluded,
-                subtotal=subtotal, tax=tax, total=total, movement=movement,
+                is_service=product.is_service, subtotal=subtotal, tax=tax, total=total, movement=movement,
             )
             review = (
-                review or movement.needs_review or inactive
+                review or (movement is not None and movement.needs_review) or inactive
                 # El precio de una cotización vigente ya lo dio el negocio (spec 007, decisión 1).
                 or (charged != listed and not line.get("quoted"))
                 # Llega con fecha anterior a un conteo ya aprobado: el ajuste no la tuvo en cuenta (decisión 3).

@@ -101,7 +101,7 @@ def stock_warnings(order):
     dicts: sku, name, kind ("sin_existencias" o "bajo_minimo"), available.
     """
     needed = {}
-    for line in order.lines.select_related("product", "unit"):
+    for line in order.lines.select_related("product", "unit").filter(product__is_service=False):  # un servicio no tiene stock
         base = to_base_quantity(line.product, line.quantity, line.unit)
         needed[line.product] = needed.get(line.product, Decimal(0)) + base
     warnings = []

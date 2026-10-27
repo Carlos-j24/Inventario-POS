@@ -85,6 +85,7 @@
 ## Servicios (spec 010)
 - `Product.is_service`: se cobra en la caja como cualquier producto pero no mueve inventario. Sin fracciones, stock mínimo ni presentaciones; producto y servicio no se intercambian si ya hay movimientos, presentaciones o ventas (`Product.clean`, que también usa el admin de Django).
 - `SaleLine.is_service` se copia del producto al vender (como `vat_excluded`) y una restricción de la base de datos exige movimiento de inventario si y solo si la línea no es de servicio. `SaleReturnLine.movement` es opcional: va vacío al devolver un servicio.
+- Caja (`sales/services.py` y `returns.py`): un servicio se vende sin movimiento ni revisión por stock, en línea y sin conexión; anular devuelve solo la mercancía y devolver un servicio reembolsa sin movimiento. Los avisos de stock de los pedidos (`orders.stock_warnings`) los saltan.
 - No dependen del módulo de taller: cualquier negocio puede tener servicios.
 
 ## Roles y permisos

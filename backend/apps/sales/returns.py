@@ -1,4 +1,5 @@
 """Anulaciones y devoluciones. Nada se borra: el stock vuelve con movimientos de devolución.
+Los servicios (spec 010) devuelven el dinero sin movimientos de inventario.
 
 - Anular: deshace la venta completa. Solo mientras su turno siga abierto, porque el arqueo
   de un turno cerrado ya no puede cambiar.
@@ -48,7 +49,8 @@ def void_sale(*, sale, user, reason):
         )
         if sale.returns.exists():
             raise ValidationError(f"La venta {sale.number} tiene devoluciones: no se puede anular.")
-        for line in sale.lines.select_related("product", "unit"):
+        # Los servicios no salieron de la bodega: solo vuelve la mercancía (spec 010).
+        for line in sale.lines.filter(is_service=False).select_related("product", "unit"):
             record_movement(
                 kind=RETURN, product=line.product, warehouse=sale.warehouse, quantity=line.quantity,
                 unit=line.unit, user=user, reference=f"Anulación {sale.number}",
@@ -110,11 +112,13 @@ def _create_return(sale, user, shift, lines, refund_method, reason, client_uuid)
             else:
                 total = money(line.total * qty / line.quantity)
             subtotal, tax = split_tax(total, line.tax_rate)
-            movement, _ = record_movement(
-                kind=RETURN, product=line.product, warehouse=sale.warehouse, quantity=qty,
-                unit=line.unit, user=user, reference=f"Devolución de {sale.number}",
-                unit_cost=line.movement.unit_cost,  # vuelve al costo con que salió (spec 004)
-            )
+            movement = None
+            if not line.is_service:  # de un servicio vuelve el dinero, no mercancía (spec 010)
+                movement, _ = record_movement(
+                    kind=RETURN, product=line.product, warehouse=sale.warehouse, quantity=qty,
+                    unit=line.unit, user=user, reference=f"Devolución de {sale.number}",
+                    unit_cost=line.movement.unit_cost,  # vuelve al costo con que salió (spec 004)
+                )
             SaleReturnLine.objects.create(
                 sale_return=sale_return, sale_line=line, quantity=qty,
                 subtotal=subtotal, tax=tax, total=total, movement=movement,

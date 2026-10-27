@@ -75,7 +75,7 @@ class SaleLineSerializer(serializers.ModelSerializer):
         model = SaleLine
         fields = [
             "id", "product", "unit", "quantity", "unit_price", "catalog_price",
-            "tax_rate", "vat_excluded", "subtotal", "tax", "total",
+            "tax_rate", "vat_excluded", "is_service", "subtotal", "tax", "total",
         ]
 
 
@@ -118,7 +118,7 @@ class ReviewItemSerializer(SaleSerializer):
         reasons = []
         if any(line.unit_price != line.catalog_price for line in obj.lines.all()):
             reasons.append("Precio distinto al del catálogo")
-        if any(line.movement.balance_after < 0 for line in obj.lines.all()):
+        if any(line.movement is not None and line.movement.balance_after < 0 for line in obj.lines.all()):
             reasons.append("Dejó stock negativo")
         if obj.shift.closed_at and obj.created_at > obj.shift.closed_at:
             reasons.append("Llegó con el turno cerrado")
