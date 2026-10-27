@@ -19,7 +19,8 @@ MONEY_PLACES = Decimal("0.01")
 
 
 class LineInputSerializer(serializers.Serializer):
-    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.all())
+    # Un ajuste se guarda como solicitud, sin movimiento: el servicio se rechaza aquí (spec 010).
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.filter(is_service=False))
     unit = serializers.SlugRelatedField(slug_field="code", queryset=Unit.objects.all(), required=False, allow_null=True)
     quantity = serializers.DecimalField(**QTY)
     direction = serializers.ChoiceField(choices=["IN", "OUT"])

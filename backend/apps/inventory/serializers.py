@@ -12,7 +12,7 @@ class WarehouseSerializer(serializers.ModelSerializer):
 
 
 class ReceiptSerializer(serializers.Serializer):
-    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.filter(is_active=True))
+    product = serializers.PrimaryKeyRelatedField(queryset=Product.objects.filter(is_active=True, is_service=False))
     warehouse = serializers.PrimaryKeyRelatedField(queryset=Warehouse.objects.filter(is_active=True))
     quantity = serializers.DecimalField(**QTY, min_value=0)
     unit = serializers.SlugRelatedField(

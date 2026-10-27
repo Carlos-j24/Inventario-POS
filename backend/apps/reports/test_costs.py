@@ -93,13 +93,14 @@ def test_sale_keeps_its_cost_when_later_receipts_change_the_average(world):
 def test_margins_by_product_and_total(world):
     data = report(world, "margins", **PERIOD)
     assert data["rows"] == [
-        {"product": data["rows"][0]["product"], "sku": "MAR-16", "name": "Martillo 16 oz",
+        {"product": data["rows"][0]["product"], "sku": "MAR-16", "name": "Martillo 16 oz", "is_service": False,
          "net_sales": "94117.65", "cost": "6000.00", "margin": "88117.65", "margin_pct": "93.6", "cost_estimated": False},
-        {"product": data["rows"][1]["product"], "sku": "CAB-12", "name": "Cable THHN calibre 12",
+        {"product": data["rows"][1]["product"], "sku": "CAB-12", "name": "Cable THHN calibre 12", "is_service": False,
          "net_sales": "26890.76", "cost": "18000.00", "margin": "8890.76", "margin_pct": "33.1", "cost_estimated": False},
     ]
     assert data["totals"] == {
         "net_sales": "121008.41", "cost": "24000.00", "margin": "97008.41", "margin_pct": "80.2", "cost_estimated": False,
+        "services_net_sales": "0.00",
     }
 
 
@@ -127,7 +128,8 @@ def test_sale_without_saved_cost_counts_zero_and_is_flagged(world):
 
 def test_empty_margins_have_no_percentage(world):
     data = report(world, "margins", **{"from": "2026-09-01"})
-    assert data["totals"] == {"net_sales": "0.00", "cost": "0.00", "margin": "0.00", "margin_pct": None, "cost_estimated": False}
+    assert data["totals"] == {"net_sales": "0.00", "cost": "0.00", "margin": "0.00", "margin_pct": None, "cost_estimated": False,
+                             "services_net_sales": "0.00"}
     assert data["rows"] == []
 
 
