@@ -72,14 +72,28 @@ class SaleLine(models.Model):
     catalog_price = models.DecimalField(**MONEY, help_text="Precio del catálogo al registrar la venta.")
     tax_rate = models.DecimalField(max_digits=5, decimal_places=2)
     vat_excluded = models.BooleanField(default=False, help_text="Copiado del producto al vender (spec 005).")
+    is_service = models.BooleanField(
+        default=False, help_text="Copiado del producto al vender (spec 010): un servicio no mueve inventario."
+    )
     subtotal = models.DecimalField(**MONEY)
     tax = models.DecimalField(**MONEY)
     total = models.DecimalField(**MONEY)
-    movement = models.OneToOneField(StockMovement, on_delete=models.PROTECT, related_name="sale_line")
+    movement = models.OneToOneField(
+        StockMovement, on_delete=models.PROTECT, related_name="sale_line", null=True, blank=True
+    )
 
     class Meta:
         verbose_name = "línea de venta"
         verbose_name_plural = "líneas de venta"
+        constraints = [
+            # Un producto siempre deja su salida en el kardex; un servicio nunca (spec 010).
+            models.CheckConstraint(
+                condition=models.Q(is_service=False, movement__isnull=False)
+                | models.Q(is_service=True, movement__isnull=True),
+                name="sale_line_movement_unless_service",
+                violation_error_message="Una línea de producto lleva su movimiento de inventario y una de servicio no.",
+            ),
+        ]
 
     def returned_quantity(self):
         return self.return_lines.aggregate(q=models.Sum("quantity"))["q"] or 0
@@ -116,7 +130,10 @@ class SaleReturnLine(models.Model):
     subtotal = models.DecimalField(**MONEY)
     tax = models.DecimalField(**MONEY)
     total = models.DecimalField(**MONEY)
-    movement = models.OneToOneField(StockMovement, on_delete=models.PROTECT, related_name="return_line")
+    # Vacío si la línea vendida es un servicio (spec 010): el dinero vuelve, el inventario no se toca.
+    movement = models.OneToOneField(
+        StockMovement, on_delete=models.PROTECT, related_name="return_line", null=True, blank=True
+    )
 
     class Meta:
         verbose_name = "línea de devolución"

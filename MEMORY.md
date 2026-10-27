@@ -8,8 +8,9 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - **Spec 006 (catálogo e inventario en la app)** completa (2026-10-19): pantallas Productos (historial de precios; sin `catalog.edit_prices` el producto queda pendiente de precio), Ajustes (los aprueba `inventory.adjust`), Conteos ciegos (esperado a la hora de cada línea) y Traslados en un paso (`inventory.transfer`); ventas sin conexión de productos desactivados o con fecha anterior a un conteo aprobado quedan con `needs_review`.
 - **Spec 007 (cotizaciones)** completa (2026-10-22): cotizar con vigencia (8 días), imprimir en hoja carta o PDF, convertir en pedidos por partes cobrados al precio cotizado (sin revisión) y reporte de conversión por vendedor.
 - **Spec 008 (bodega por defecto)** completa (2026-10-22): bodega principal en el admin y la última elegida por usuario en cada equipo.
+- **Spec 010 (servicios: lavados)** aprobada (PR #74) y en curso: T1 hecha (`Product.is_service` y líneas de venta sin movimiento).
 - **Spec 009 (clientes y motos)** completa (2026-10-27): módulo de taller (`Business.workshop_enabled`), motos con placa o chasis, dueño actual e historial, kilometraje que solo baja con nota y pantalla Motos para Recepción de taller.
-- **Primer cliente (2026-10-27): Moto Repuestos y Lavadero Arias**, taller de motos con repuestos y lavadero. Módulo de taller: spec 009 (clientes y motos) completa, luego lavados (010), órdenes de trabajo (011), historial y recordatorios (012) y DIAN (005 T7/T8). Su instalación (logo, configuración) va en el repo privado Carlos-j24/taller-arias. Forma de pago aún por definir.
+- **Primer cliente (2026-10-27): Moto Repuestos y Lavadero Arias**, taller de motos con repuestos y lavadero. Módulo de taller: spec 009 (clientes y motos) completa, lavados (010) en curso, luego órdenes de trabajo (011), historial y recordatorios (012) y DIAN (005 T7/T8). Su instalación (logo, configuración) va en el repo privado Carlos-j24/taller-arias. Forma de pago aún por definir.
 - Datos de demostración en el repo: `manage.py seed_demo` (app `apps/demo`), dos semanas de historia con semilla fija para mostrar la app; `--taller` siembra un taller de motos (perfil en `apps/demo/workshop.py`).
 - Repositorio público Carlos-j24/Inventario-POS. main exige 5 checks: pytest 3.12 y 3.14, pytest-postgres, frontend y docker (`scripts/smoke-test.sh`).
 
@@ -43,7 +44,6 @@ Memoria del proyecto entre sesiones. Máximo ~50 líneas: resume o elimina lo qu
 - Los tests de concurrencia (dos cajas a la vez) no corren en SQLite: el job `pytest-postgres` del CI corre la suite contra PostgreSQL. Llevan `django_db(transaction=True, serialized_rollback=True)`: sin lo segundo vacían la base, incluidos los datos de las migraciones (unidades, roles), y rompen el test transaccional siguiente (pasó en el PR #38).
 - SQLite ignora `select_for_update`: los errores de bloqueo solo salen en el job `pytest-postgres` (PR #39: no se puede bloquear el lado opcional de un `select_related`; usar `of=("self",)`). Tampoco reinicia los id entre tests: no asumir números como `AJ-000001` (PR #48).
 - Para probar una demo sin tocar `db.sqlite3`: un settings que importa `config.settings` y cambia `DATABASES["default"]["NAME"]`, con `DJANGO_SETTINGS_MODULE` para `seed_demo --fresh` y `runserver` en otro puerto (así se probaron a la vez taller y ferretería en la spec 009).
-- Bases de desarrollo con ventas anteriores a la T5 no migran (las ventas exigen turno): borrar `db.sqlite3` y volver a migrar.
 - El BOM del CSV se escribe con `String.fromCharCode(0xfeff)`: el escape `\uFEFF` puede acabar guardado como carácter invisible. Para comprobarlo, leer los bytes: `Blob.text()` quita el BOM.
 
 ## Próximos pasos

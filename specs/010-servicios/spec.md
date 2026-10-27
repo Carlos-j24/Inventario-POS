@@ -1,6 +1,6 @@
 # Spec 010 — Servicios: lavados (módulo de taller, etapa 2)
 
-> Estado: **borrador (2026-10-27)**, pendiente de aprobar en el PR. Decisiones tomadas con Carlos el 2026-10-27. Tareas en tasks.md.
+> Estado: **aprobada (2026-10-27)** en el PR #74. Decisiones tomadas con Carlos el 2026-10-27. Tareas en tasks.md.
 
 ## Problema
 Arias cobra lavados en la caja (alcance confirmado el 2026-10-27, cotizado aparte). Hoy la caja solo vende **productos con inventario**: cada línea vendida exige un movimiento de kardex (`SaleLine.movement`), en línea no se vende sin stock y una venta que deja stock negativo queda para revisión. Un lavado no tiene existencias: si se creara como producto, nunca habría stock para venderlo en línea y, sin conexión, cada lavado dejaría el inventario en negativo y la venta para revisión. Además ensuciaría Existencias, Conteos y el inventario valorizado.

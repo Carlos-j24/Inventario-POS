@@ -20,7 +20,7 @@ class ProductSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             "id", "sku", "name", "category", "base_unit", "barcode",
-            "sale_price", "tax_rate", "vat_excluded", "allows_fractions", "min_stock", "units",
+            "sale_price", "tax_rate", "vat_excluded", "allows_fractions", "min_stock", "is_service", "units",
         ]
 
 
@@ -66,7 +66,7 @@ class ProductAdminSerializer(serializers.ModelSerializer):
         model = Product
         fields = [
             "id", "sku", "name", "category", "category_name", "base_unit", "barcode", "sale_price", "tax_rate",
-            "vat_excluded", "allows_fractions", "min_stock", "is_active", "price_pending", "has_movements", "units",
+            "vat_excluded", "allows_fractions", "min_stock", "is_active", "is_service", "price_pending", "has_movements", "units",
         ]
         read_only_fields = ["price_pending"]
         extra_kwargs = {"sale_price": {"required": False}, "barcode": {"required": False, "allow_null": True}}

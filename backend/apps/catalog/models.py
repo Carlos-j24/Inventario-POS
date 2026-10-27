@@ -1,5 +1,6 @@
 from decimal import Decimal
 
+from django.apps import apps
 from django.core.exceptions import ValidationError
 from django.core.validators import MinValueValidator
 from django.db import models
@@ -60,6 +61,11 @@ class Product(models.Model):
     # Lo creó alguien sin permiso de precios (spec 006, decisión 2): queda inactivo hasta que
     # quien tiene catalog.edit_prices le ponga precio.
     price_pending = models.BooleanField("pendiente de precio", default=False)
+    # Un lavado o la mano de obra (spec 010): se cobra en la caja pero no mueve inventario.
+    is_service = models.BooleanField(
+        "es un servicio", default=False,
+        help_text="Se cobra en la caja sin mover inventario: sin existencias, costo, stock mínimo ni presentaciones.",
+    )
 
     class Meta:
         ordering = ["name"]
@@ -70,10 +76,39 @@ class Product(models.Model):
                 name="vat_excluded_only_at_zero_rate",
                 violation_error_message="Un producto excluido de IVA debe tener tarifa 0 %%.",
             ),
+            models.CheckConstraint(
+                condition=models.Q(is_service=False) | models.Q(allows_fractions=False, min_stock=0),
+                name="service_without_stock_rules",
+                violation_error_message="Un servicio se vende por unidad entera y no lleva stock mínimo.",
+            ),
         ]
 
     def __str__(self):
         return f"{self.sku} · {self.name}"
+
+    def clean(self):
+        if self.is_service:
+            errors = {}
+            if self.allows_fractions:
+                errors["allows_fractions"] = "Un servicio se vende por unidad entera."
+            if self.min_stock:
+                errors["min_stock"] = "Un servicio no tiene existencias: no lleva stock mínimo."
+            if errors:
+                raise ValidationError(errors)
+        self._check_kind_change()
+
+    def _check_kind_change(self):
+        """Producto y servicio no se intercambian si eso mezclaría el kardex o los reportes (spec 010, regla 2)."""
+        was_service = Product.objects.filter(pk=self.pk).values_list("is_service", flat=True).first()
+        if was_service is None or was_service == self.is_service:
+            return
+        if self.is_service and self.movements.exists():
+            raise ValidationError({"is_service": "El producto ya tiene movimientos de inventario: no puede pasar a servicio. Crea uno nuevo."})
+        if self.is_service and self.units.exists():
+            raise ValidationError({"is_service": "Quítale antes las presentaciones: un servicio se vende por unidad."})
+        sale_line = apps.get_model("sales", "SaleLine")  # sales importa este módulo
+        if not self.is_service and sale_line.objects.filter(product=self).exists():
+            raise ValidationError({"is_service": "El servicio ya tiene ventas: no puede pasar a producto. Crea uno nuevo."})
 
 
 class ProductUnit(models.Model):
@@ -92,6 +127,8 @@ class ProductUnit(models.Model):
         verbose_name_plural = "presentaciones"
 
     def clean(self):
+        if self.product_id and self.product.is_service:
+            raise ValidationError("Un servicio se vende por unidad: no lleva presentaciones.")
         if self.unit_id and self.unit_id == self.product.base_unit_id:
             raise ValidationError("La unidad base no necesita presentación: su factor siempre es 1.")
 
