@@ -40,7 +40,10 @@ def inventory_report(warehouse=None):
 
     # Productos activos, y los inactivos que todavía tienen existencias.
     held = [pid for pid, st in stats.items() if st["q"]]
-    products = Product.objects.filter(Q(is_active=True) | Q(pk__in=held)).select_related("base_unit").order_by("sku")
+    products = (
+        Product.objects.filter(Q(is_active=True) | Q(pk__in=held), is_service=False)  # un servicio no tiene inventario
+        .select_related("base_unit").order_by("sku")
+    )
     rows = []
     for p in products:
         st = stats.get(p.pk, {"q": ZERO, "positive": ZERO, "value": ZERO, "negative": False})
@@ -67,43 +70,50 @@ def margins_report(start, end, register=None):
     sales, returns = period_querysets(start, end, register)
     stats = {}
 
-    def add(product, net, quantity, unit_cost, estimated):
-        st = stats.setdefault(product, {"net": ZERO, "cost": ZERO, "estimated": False})
+    def add(product, net, quantity, unit_cost, estimated, service):
+        st = stats.setdefault(product, {"net": ZERO, "cost": ZERO, "estimated": False, "service": service})
         st["net"] += net
+        if service:  # sin costo: su margen es todo lo cobrado (spec 010)
+            return
         st["cost"] += quantity * (unit_cost or ZERO)
         st["estimated"] |= bool(estimated) or unit_cost is None
 
     fields = ("subtotal", "movement__quantity", "movement__unit_cost", "movement__cost_estimated")
-    for line in SaleLine.objects.filter(sale__in=sales).values("product", *fields):
+    for line in SaleLine.objects.filter(sale__in=sales).values("product", "is_service", *fields):
         # La salida es negativa en el kardex: -cantidad es lo vendido.
-        add(line["product"], line["subtotal"], -line["movement__quantity"],
-            line["movement__unit_cost"], line["movement__cost_estimated"])
-    for line in SaleReturnLine.objects.filter(sale_return__in=returns).values(*fields, product=F("sale_line__product")):
-        add(line["product"], -line["subtotal"], -line["movement__quantity"],
-            line["movement__unit_cost"], line["movement__cost_estimated"])
+        add(line["product"], line["subtotal"], -(line["movement__quantity"] or ZERO),
+            line["movement__unit_cost"], line["movement__cost_estimated"], line["is_service"])
+    returned = SaleReturnLine.objects.filter(sale_return__in=returns)
+    for line in returned.values(*fields, product=F("sale_line__product"), is_service=F("sale_line__is_service")):
+        add(line["product"], -line["subtotal"], -(line["movement__quantity"] or ZERO),
+            line["movement__unit_cost"], line["movement__cost_estimated"], line["is_service"])
 
     products = Product.objects.select_related("base_unit").in_bulk(stats.keys())
     rows = []
     for pid, st in stats.items():
         margin = st["net"] - st["cost"]
         rows.append({
-            "product": pid, "sku": products[pid].sku, "name": products[pid].name,
+            "product": pid, "sku": products[pid].sku, "name": products[pid].name, "is_service": st["service"],
             "net_sales": money(st["net"]), "cost": money(st["cost"]), "margin": money(margin),
             "margin_pct": percent(margin, st["net"]), "cost_estimated": st["estimated"],
             "_margin": margin,
         })
-    rows.sort(key=lambda r: (-r["_margin"], r["sku"]))
+    # La mercancía primero y los servicios al final, cada grupo por margen.
+    rows.sort(key=lambda r: (r["is_service"], -r["_margin"], r["sku"]))
     for row in rows:
         del row["_margin"]
 
-    net = sum((st["net"] for st in stats.values()), ZERO)
-    cost = sum((st["cost"] for st in stats.values()), ZERO)
+    # Los totales son de la mercancía: los servicios, sin costo, inflarían su margen (spec 010, regla 8).
+    goods = [st for st in stats.values() if not st["service"]]
+    net = sum((st["net"] for st in goods), ZERO)
+    cost = sum((st["cost"] for st in goods), ZERO)
     return {
         "from": start.isoformat(), "to": end.isoformat(),
         "totals": {
             "net_sales": money(net), "cost": money(cost), "margin": money(net - cost),
             "margin_pct": percent(net - cost, net),
-            "cost_estimated": any(st["estimated"] for st in stats.values()),
+            "cost_estimated": any(st["estimated"] for st in goods),
+            "services_net_sales": money(sum((st["net"] for st in stats.values() if st["service"]), ZERO)),
         },
         "rows": rows,
     }

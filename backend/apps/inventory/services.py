@@ -49,6 +49,8 @@ def record_movement(
         if existing:
             return existing, False
 
+    if product.is_service:  # la caja ya no los manda; esto cubre cualquier otro camino (spec 010)
+        raise ValidationError(f"{product.sku} es un servicio: no tiene inventario.")
     base_qty = to_base_quantity(product, quantity, unit)
     if base_qty == 0:
         raise ValidationError("La cantidad no puede ser cero.")

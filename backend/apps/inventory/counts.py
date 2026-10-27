@@ -32,7 +32,7 @@ NAMESPACE = uuid.UUID("6f0c4f0e-5d0b-4f8a-9a2f-0c0a7b1d2e3f")  # para que el aju
 def products_for(warehouse, category=None):
     """Lo que se cuenta: productos activos y los inactivos que aún tienen existencias en la bodega."""
     has_stock = Q(stock_levels__warehouse=warehouse) & ~Q(stock_levels__quantity=0)
-    products = Product.objects.filter(Q(is_active=True) | has_stock)
+    products = Product.objects.filter(Q(is_active=True) | has_stock, is_service=False)  # un servicio no se cuenta
     if category is not None:
         products = products.filter(category=category)
     return products.distinct().order_by("name")

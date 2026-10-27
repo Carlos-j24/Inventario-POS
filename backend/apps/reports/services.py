@@ -10,7 +10,7 @@ Reglas:
 from decimal import Decimal
 
 from django.db.models import Count, F, Sum
-from django.db.models.functions import TruncDate
+from django.db.models.functions import Coalesce, TruncDate
 
 from apps.cash.models import Payment, Refund
 from apps.catalog.models import Product
@@ -118,14 +118,16 @@ def products_report(start, end, register=None, limit=20):
     sold = (
         SaleLine.objects.filter(sale__in=sales)
         .values("product")
-        .annotate(q=Sum("movement__quantity"), total=Sum("total"), subtotal=Sum("subtotal"), n=Count("sale", distinct=True))
+        # La salida es negativa en el kardex; un servicio no tiene movimiento y se vende en su unidad base (spec 010).
+        .annotate(q=Sum(Coalesce(-F("movement__quantity"), "quantity")), total=Sum("total"), subtotal=Sum("subtotal"),
+                  n=Count("sale", distinct=True))
     )
-    for row in sold:  # la salida es negativa en el kardex
-        stats[row["product"]] = {"q": -row["q"], "total": row["total"], "subtotal": row["subtotal"], "n": row["n"]}
+    for row in sold:
+        stats[row["product"]] = {"q": row["q"], "total": row["total"], "subtotal": row["subtotal"], "n": row["n"]}
     back = (
         SaleReturnLine.objects.filter(sale_return__in=returns)
         .values(product=F("sale_line__product"))
-        .annotate(q=Sum("movement__quantity"), total=Sum("total"), subtotal=Sum("subtotal"))
+        .annotate(q=Sum(Coalesce("movement__quantity", "quantity")), total=Sum("total"), subtotal=Sum("subtotal"))
     )
     for row in back:  # también restan devoluciones de ventas de otro período
         st = stats.setdefault(row["product"], {"q": ZERO, "total": ZERO, "subtotal": ZERO, "n": 0})
@@ -149,7 +151,7 @@ def products_report(start, end, register=None, limit=20):
     stock = {r["product"]: r["q"] for r in StockLevel.objects.values("product").annotate(q=Sum("quantity"))}
     not_moved = [
         {"product": p.pk, "sku": p.sku, "name": p.name, "unit": p.base_unit.code, "stock": qty(stock.get(p.pk))}
-        for p in Product.objects.filter(is_active=True).exclude(pk__in=moved).select_related("base_unit").order_by("sku")
+        for p in Product.objects.filter(is_active=True, is_service=False).exclude(pk__in=moved).select_related("base_unit").order_by("sku")
     ]
     return {
         "from": start.isoformat(), "to": end.isoformat(),
