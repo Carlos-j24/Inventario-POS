@@ -1,6 +1,6 @@
 # Spec 009 — Clientes y motos (módulo de taller, etapa 1)
 
-> Estado: **aprobada (2026-10-27)**. Decisiones tomadas en Carlos-j24/Inventario-POS#68 y en el repo privado del taller; ver la decisión 1. Tareas en tasks.md.
+> Estado: ✅ **completada (2026-10-27)**: T1 a T5 en los PRs #69 a #73. Decisiones tomadas en Carlos-j24/Inventario-POS#68 y en el repo privado del taller; ver la decisión 1. Tareas en tasks.md.
 
 ## Problema
 El primer cliente es **Moto Repuestos y Lavadero Arias**, un taller de motos con venta de repuestos y lavadero (propuesta del 2026-10-25, alcance sin cambios más el cobro de lavados). Hoy la app sabe de productos, ventas y clientes para la factura, pero no de **motos**: no hay dónde guardar la placa, la marca o el kilometraje, ni quién es el dueño. Sin eso no se pueden hacer las órdenes de trabajo ni el historial y los recordatorios de mantenimiento.
