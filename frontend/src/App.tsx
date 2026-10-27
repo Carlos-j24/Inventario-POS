@@ -8,6 +8,7 @@ import Counts from "./pages/Counts";
 import Transfers from "./pages/Transfers";
 import FiscalInbox from "./pages/FiscalInbox";
 import Login from "./pages/Login";
+import Motorcycles from "./pages/Motorcycles";
 import Orders from "./pages/Orders";
 import Quotes from "./pages/Quotes";
 import Pos from "./pages/Pos";
@@ -22,8 +23,10 @@ import Users from "./pages/Users";
 import { useSync } from "./sync";
 
 // Cada pantalla aparece si el usuario tiene alguno de sus permisos; el backend vuelve a comprobarlo.
-const PAGES: { id: string; label: string; permission: string | string[]; Component: ComponentType }[] = [
+// Las del taller, además, solo si la instalación tiene el módulo activo (spec 009).
+const PAGES: { id: string; label: string; permission: string | string[]; workshop?: true; Component: ComponentType }[] = [
   { id: "pos", label: "Caja", permission: "cash.operate", Component: Pos },
+  { id: "motorcycles", label: "Motos", permission: "workshop.receive", workshop: true, Component: Motorcycles },
   { id: "orders", label: "Pedidos", permission: "sales.create", Component: Orders },
   { id: "quotes", label: "Cotizaciones", permission: ["sales.create", "sales.void", "reports.view"], Component: Quotes },
   { id: "receipts", label: "Entradas", permission: "inventory.receive", Component: Receipts },
@@ -49,7 +52,7 @@ export default function App() {
   // Contraseña temporal: hasta cambiarla no hay nada más (la API tampoco lo permite).
   if (user.must_change_password) return <ChangePassword forced />;
 
-  const pages = PAGES.filter((p) => [p.permission].flat().some(can));
+  const pages = PAGES.filter((p) => (!p.workshop || user.workshop_enabled) && [p.permission].flat().some(can));
   const page = current === "password" ? null : pages.find((p) => p.id === current) ?? pages[0];
 
   return (

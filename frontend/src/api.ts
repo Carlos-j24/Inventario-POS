@@ -65,6 +65,8 @@ export interface Me {
   permissions: string[];
   /** Contraseña temporal puesta por un administrador: hay que cambiarla antes de usar la app. */
   must_change_password: boolean;
+  /** Módulo de taller activo en esta instalación (spec 009). Falta en una sesión guardada de antes: apagado. */
+  workshop_enabled?: boolean;
 }
 
 export interface ProductUnit {
@@ -420,6 +422,43 @@ export interface Customer {
   city: string;
   tax_responsibilities: string[];
   is_final_consumer: boolean;
+}
+
+/** Dueño de una moto (spec 009): el mismo cliente de la caja. */
+export interface Owner {
+  id: number;
+  name: string;
+  id_type: string;
+  id_number: string;
+  check_digit: string;
+  phone: string;
+}
+
+export interface Motorcycle {
+  id: number;
+  /** Sin espacios ni guiones, en mayúsculas; vacía si la moto aún no tiene placa. */
+  plate: string;
+  /** Número de chasis: obligatorio si no hay placa. */
+  vin: string;
+  brand: string;
+  model: string;
+  year: number | null;
+  displacement_cc: number | null;
+  color: string;
+  notes: string;
+  is_active: boolean;
+  mileage: number;
+  mileage_at: string | null;
+  owner: Owner;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface MotorcycleDetail extends Motorcycle {
+  /** El más reciente primero; el que no tiene `ended_at` es el dueño actual. */
+  ownerships: { customer: Owner; started_at: string; ended_at: string | null }[];
+  /** Las últimas 20 lecturas, la más reciente primero. */
+  mileage_readings: { mileage: number; previous: number | null; note: string; recorded_at: string; recorded_by: string }[];
 }
 
 export interface Business {

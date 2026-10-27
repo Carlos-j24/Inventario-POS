@@ -34,6 +34,7 @@ afterEach(() => vi.unstubAllGlobals());
 
 it("agrupa los permisos por tema", () => {
   expect(groupPermissions(perms).map((g) => [g.group, g.items.length])).toEqual([["Caja", 1], ["Inventario", 2], ["Ventas", 1]]);
+  expect(groupPermissions([{ code: "workshop.receive", description: "Recibir motos" }])[0].group).toBe("Taller");
 });
 
 describe("pantalla Roles", () => {
