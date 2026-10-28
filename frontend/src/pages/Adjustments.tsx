@@ -4,6 +4,7 @@ import { api, type Adjustment, type AdjustmentStatus, type Product } from "../ap
 import { adjustmentBody, directionFor, newLine, REASONS, type DraftLine } from "../adjustment";
 import { useCan } from "../auth";
 import { fetchWithCache } from "../cache";
+import { stockedProducts } from "../cart";
 import ProductSearch from "../components/ProductSearch";
 import { formatMoney, formatQty, toCents } from "../money";
 import { useWarehouseChoice } from "../useWarehouseChoice";
@@ -97,7 +98,7 @@ function NewAdjustment({ onCreated, onCancel }: { onCreated: (a: Adjustment) => 
   const bothWays = REASONS.find((r) => r.id === reason)?.direction === "BOTH";
 
   useEffect(() => {
-    fetchWithCache<Product[]>("/api/catalog/products/").then((r) => setProducts(r.data)).catch((e: Error) => setError(e.message));
+    fetchWithCache<Product[]>("/api/catalog/products/").then((r) => setProducts(stockedProducts(r.data))).catch((e: Error) => setError(e.message));
   }, []);
 
   const update = (key: string, change: Partial<DraftLine>) => setLines(lines.map((l) => (l.key === key ? { ...l, ...change } : l)));

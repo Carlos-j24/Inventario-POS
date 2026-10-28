@@ -11,13 +11,14 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const hammer: AdminProduct = {
   id: 2, sku: "MAR-16", name: "Martillo 16 oz", category: 3, category_name: "Herramientas", base_unit: "und",
   barcode: null, sale_price: "28000.00", tax_rate: "19", vat_excluded: false, allows_fractions: false,
-  min_stock: "5.000", is_active: true, price_pending: false, has_movements: true, units: [],
+  min_stock: "5.000", is_active: true, is_service: false, price_pending: false, has_movements: true, units: [],
 };
 const cable: AdminProduct = {
   ...hammer, id: 1, sku: "CAB-12", name: "Cable THHN calibre 12", category_name: "Eléctricos", category: 4, base_unit: "m",
   sale_price: "3200.00", allows_fractions: true, has_movements: false,
   units: [{ id: 7, unit: "rollo", factor: "100.000", barcode: "ROLLO-12", is_active: true, in_use: true }],
 };
+const wash: AdminProduct = { ...hammer, id: 11, sku: "LAV-150", name: "Lavado moto hasta 150 cc", category_name: "Lavadero", sale_price: "12000.00", min_stock: "0.000", is_service: true, has_movements: false };
 const pending: AdminProduct = { ...hammer, id: 9, sku: "DES-PH2", name: "Destornillador PH2", sale_price: "0.00", price_pending: true, is_active: false, has_movements: false };
 
 type Call = { method: string; url: string; body: unknown };
@@ -34,6 +35,7 @@ function mockApi(permissions: string[], routes: Record<string, (body: unknown) =
     "GET /api/catalog/admin/products/2/price-history/": () => json([{ old_price: "26000.00", new_price: "28000.00", user: "dueno", at: "2026-10-18T15:00:00Z" }]),
     "GET /api/catalog/admin/products/1/price-history/": () => json([]),
     "GET /api/catalog/admin/products/9/price-history/": () => json([]),
+    "GET /api/catalog/admin/products/11/price-history/": () => json([]),
     ...routes,
   };
   vi.stubGlobal("fetch", vi.fn((url: string, init?: RequestInit) => {
@@ -114,6 +116,40 @@ describe("pantalla Productos", () => {
     expect(post).toMatchObject({ sku: "LLA-10", name: "Llave 10 mm", category: 3, base_unit: "und" });
     expect(post).not.toHaveProperty("sale_price");
     expect(post).not.toHaveProperty("tax_rate");
+  });
+
+  it("un servicio lleva su etiqueta y no tiene stock mínimo, fracciones ni presentaciones (spec 010)", async () => {
+    mockApi(owner, { "GET /api/catalog/admin/products/": () => json([cable, hammer, wash]) });
+    renderPage();
+    const table = await screen.findByRole("table", { name: "Productos" });
+    expect(await within(table).findByRole("row", { name: /LAV-150/ })).toHaveTextContent("Servicio");
+    expect(within(table).getByRole("row", { name: /MAR-16/ })).not.toHaveTextContent("Servicio");
+    await userEvent.click(screen.getByRole("button", { name: "LAV-150" }));
+    const form = screen.getByRole("form", { name: "Producto" });
+    expect(within(form).getByLabelText(/Es un servicio/)).toBeChecked();
+    expect(within(form).queryByLabelText(/Stock mínimo/)).not.toBeInTheDocument();
+    expect(within(form).queryByLabelText(/Se vende fraccionado/)).not.toBeInTheDocument();
+    expect(screen.queryByRole("region", { name: "Presentaciones" })).not.toBeInTheDocument();
+  });
+
+  it("un producto sin movimientos pasa a servicio; uno con movimientos no", async () => {
+    const calls = mockApi(owner, {
+      "PATCH /api/catalog/admin/products/1/": (body) => json({ ...cable, ...(body as object) }),
+    });
+    renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: "MAR-16" }));
+    let form = screen.getByRole("form", { name: "Producto" });
+    expect(within(form).getByLabelText(/Es un servicio/)).toBeDisabled();
+    expect(within(form).getByText(/no puede pasar a servicio/)).toBeInTheDocument();
+    expect(screen.getByRole("region", { name: "Presentaciones" })).toBeInTheDocument();
+
+    await userEvent.click(screen.getByRole("button", { name: "CAB-12" }));
+    form = screen.getByRole("form", { name: "Producto" });
+    expect(within(form).getByLabelText(/Stock mínimo/)).toBeInTheDocument();
+    await userEvent.click(within(form).getByLabelText(/Es un servicio/));
+    expect(within(form).queryByLabelText(/Stock mínimo/)).not.toBeInTheDocument();
+    await userEvent.click(within(form).getByRole("button", { name: "Guardar cambios" }));
+    await vi.waitFor(() => expect(calls.find((c) => c.method === "PATCH")!.body).toEqual({ is_service: true, allows_fractions: false, min_stock: "0" }));
   });
 
   it("muestra el error del servidor", async () => {

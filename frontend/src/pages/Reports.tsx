@@ -405,14 +405,18 @@ function InventoryView({ report }: { report: InventoryReport }) {
 
 function MarginsView({ report }: { report: MarginsReport }) {
   const t = report.totals;
+  // Los servicios no tienen costo: van aparte para no inflar el margen de la mercancía (spec 010).
+  const goods = report.rows.filter((r) => !r.is_service);
+  const services = report.rows.filter((r) => r.is_service);
   return (
     <>
       <Kpis
         items={[
-          ["Venta neta sin IVA", money(t.net_sales)],
+          ["Venta neta sin IVA (mercancía)", money(t.net_sales)],
           ["Costo de lo vendido", money(t.cost)],
           ["Margen", signed(t.margin)],
           ["Margen %", formatPct(t.margin_pct)],
+          ...(services.length ? [["Servicios sin IVA (sin costo)", money(t.services_net_sales)] as [string, string]] : []),
         ]}
       />
       {t.cost_estimated && (
@@ -424,7 +428,7 @@ function MarginsView({ report }: { report: MarginsReport }) {
         title="Por producto"
         head={<tr><th>Producto</th><th className="num">Venta neta</th><th className="num">Costo</th><th className="num">Margen</th><th className="num">%</th></tr>}
       >
-        {report.rows.map((r) => (
+        {goods.map((r) => (
           <tr key={r.product}>
             <td>
               <span className="muted small">{r.sku}</span> {r.name}
@@ -437,6 +441,16 @@ function MarginsView({ report }: { report: MarginsReport }) {
           </tr>
         ))}
       </Table>
+      {services.length > 0 && (
+        <Table title="Servicios (sin costo)" head={<tr><th>Servicio</th><th className="num">Venta neta</th></tr>}>
+          {services.map((r) => (
+            <tr key={r.product}>
+              <td><span className="muted small">{r.sku}</span> {r.name}</td>
+              <td className="num">{signed(r.net_sales)}</td>
+            </tr>
+          ))}
+        </Table>
+      )}
     </>
   );
 }

@@ -16,11 +16,13 @@ export interface ProductForm {
   allows_fractions: boolean;
   min_stock: string;
   is_active: boolean;
+  /** Servicio (spec 010): se cobra sin mover inventario. */
+  is_service: boolean;
 }
 
 export const EMPTY_FORM: ProductForm = {
   sku: "", name: "", category: "", base_unit: "und", barcode: "", price: "", tax_rate: "19",
-  vat_excluded: false, allows_fractions: false, min_stock: "0", is_active: true,
+  vat_excluded: false, allows_fractions: false, min_stock: "0", is_active: true, is_service: false,
 };
 
 /** Precio escrito en formato colombiano ("12.500,50") o con punto decimal ("12500.5") a centavos. */
@@ -40,6 +42,7 @@ export function toForm(p: AdminProduct): ProductForm {
     sku: p.sku, name: p.name, category: String(p.category), base_unit: p.base_unit, barcode: p.barcode ?? "",
     price: p.price_pending ? "" : String(toCents(p.sale_price) / 100), tax_rate: p.tax_rate, vat_excluded: p.vat_excluded,
     allows_fractions: p.allows_fractions, min_stock: String(Number(p.min_stock)), is_active: p.is_active,
+    is_service: p.is_service,
   };
 }
 
@@ -56,8 +59,10 @@ export function productPayload(form: ProductForm, original: AdminProduct | null,
   const all: Record<string, unknown> = {
     sku: form.sku.trim(), name: form.name.trim(), category: Number(form.category), base_unit: form.base_unit,
     barcode: form.barcode.trim() || null, allows_fractions: form.allows_fractions, min_stock: form.min_stock || "0",
-    is_active: form.is_active,
+    is_active: form.is_active, is_service: form.is_service,
   };
+  // Un servicio se vende por unidad entera y no lleva stock mínimo: la casilla manda sobre lo que quedó escrito.
+  if (form.is_service) Object.assign(all, { allows_fractions: false, min_stock: "0" });
   if (canPrice) {
     if (cents != null) all.sale_price = centsToApi(cents);
     all.tax_rate = form.tax_rate;
@@ -68,7 +73,7 @@ export function productPayload(form: ProductForm, original: AdminProduct | null,
   const before: Record<string, unknown> = {
     sku: original.sku, name: original.name, category: original.category, base_unit: original.base_unit,
     barcode: original.barcode || null, allows_fractions: original.allows_fractions,
-    min_stock: String(Number(original.min_stock)), is_active: original.is_active,
+    min_stock: String(Number(original.min_stock)), is_active: original.is_active, is_service: original.is_service,
     tax_rate: original.tax_rate, vat_excluded: original.vat_excluded,
     sale_price: original.price_pending ? null : original.sale_price,
   };

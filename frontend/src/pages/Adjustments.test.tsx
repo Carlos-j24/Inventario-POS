@@ -55,6 +55,20 @@ const helper = ["inventory.receive", "inventory.count"];
 const boss = ["inventory.receive", "inventory.count", "inventory.adjust"];
 
 describe("pantalla Ajustes", () => {
+  it("no ofrece servicios: no tienen inventario (spec 010)", async () => {
+    const wash = { ...hammer, id: 3, sku: "LAV-150", name: "Lavado moto", is_service: true };
+    mockApi(helper, { "GET /api/catalog/products/": () => json([hammer, wash]) });
+    renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: "Nuevo ajuste" }));
+    const form = screen.getByRole("form", { name: "Nuevo ajuste" });
+    await within(form).findByRole("option", { name: "Bodega principal" });
+    await userEvent.type(within(form).getByLabelText("Buscar producto"), "lavado");
+    expect(within(form).queryByRole("button", { name: /Lavado moto/ })).not.toBeInTheDocument();
+    await userEvent.clear(within(form).getByLabelText("Buscar producto"));
+    await userEvent.type(within(form).getByLabelText("Buscar producto"), "martillo");
+    expect(await within(form).findByRole("button", { name: /Martillo 16 oz/ })).toBeInTheDocument();
+  });
+
   it("propone la bodega que recuerda este usuario y recuerda la que elige (spec 008)", async () => {
     localStorage.setItem("inventario.bodega.u", "2");
     mockApi(helper, { "GET /api/inventory/warehouses/": () => json([{ id: 1, code: "PRAL", name: "Bodega principal", is_default: true }, { id: 2, code: "LOC", name: "Local", is_default: false }]) });

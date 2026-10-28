@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState } from "react";
 import { api, type Product, type Transfer, type Warehouse } from "../api";
 import { useAuth } from "../auth";
 import { fetchWithCache } from "../cache";
+import { stockedProducts } from "../cart";
 import ProductSearch from "../components/ProductSearch";
 import { formatMoney, formatQty, toCents } from "../money";
 import { newTransferLine, transferBody, type TransferDraftLine } from "../transfer";
@@ -73,7 +74,7 @@ function NewTransfer({ onCreated, onCancel }: { onCreated: (t: Transfer) => void
 
   useEffect(() => {
     api<Warehouse[]>("/api/inventory/warehouses/").then(setWarehouses).catch((e: Error) => setError(e.message));
-    fetchWithCache<Product[]>("/api/catalog/products/").then((r) => setProducts(r.data)).catch((e: Error) => setError(e.message));
+    fetchWithCache<Product[]>("/api/catalog/products/").then((r) => setProducts(stockedProducts(r.data))).catch((e: Error) => setError(e.message));
   }, []);
 
   // Origen: la que este usuario usa en las demás pantallas o la principal; destino: la principal u otra (spec 008).

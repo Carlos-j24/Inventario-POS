@@ -88,6 +88,8 @@ export interface Product {
   vat_excluded?: boolean;
   allows_fractions: boolean;
   min_stock: string;
+  /** Servicio (spec 010): se cobra sin mover inventario. Opcional: el catálogo guardado sin conexión puede ser anterior. */
+  is_service?: boolean;
   units: ProductUnit[];
 }
 
@@ -332,8 +334,9 @@ export interface MarginRow {
 export interface MarginsReport {
   from: string;
   to: string;
-  totals: MarginRow;
-  rows: (MarginRow & { product: number; sku: string; name: string })[];
+  /** Solo de la mercancía (spec 010): los servicios, sin costo, van aparte en services_net_sales. */
+  totals: MarginRow & { services_net_sales: string };
+  rows: (MarginRow & { product: number; sku: string; name: string; is_service: boolean })[];
 }
 
 export interface ShiftsReport {
@@ -536,6 +539,8 @@ export interface AdminProduct {
   allows_fractions: boolean;
   min_stock: string;
   is_active: boolean;
+  /** Servicio (spec 010): sin stock mínimo, fracciones ni presentaciones. */
+  is_service: boolean;
   /** Lo creó alguien sin permiso de precios: inactivo hasta que le pongan precio. */
   price_pending: boolean;
   /** Tiene kardex: el SKU y la unidad base ya no cambian. */

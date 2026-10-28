@@ -87,6 +87,7 @@
 - `SaleLine.is_service` se copia del producto al vender (como `vat_excluded`) y una restricción de la base de datos exige movimiento de inventario si y solo si la línea no es de servicio. `SaleReturnLine.movement` es opcional: va vacío al devolver un servicio.
 - Caja (`sales/services.py` y `returns.py`): un servicio se vende sin movimiento ni revisión por stock, en línea y sin conexión; anular devuelve solo la mercancía y devolver un servicio reembolsa sin movimiento. Los avisos de stock de los pedidos (`orders.stock_warnings`) los saltan.
 - Inventario: `record_movement` rechaza los servicios (última defensa de cualquier camino); entradas y solicitudes de ajuste los rechazan al validar, y conteos, inventario valorizado y "sin movimiento" no los listan. Reportes: más vendidos toma la cantidad de la línea si no hay movimiento; en márgenes los servicios van al final, con costo 0, y los totales son solo de la mercancía (`services_net_sales` aparte).
+- Frontend: casilla "Es un servicio" en Productos; `cart.stockedProducts` saca los servicios de Entradas, Ajustes y Traslados; el buscador los marca; Márgenes los muestra en su propia tabla.
 - No dependen del módulo de taller: cualquier negocio puede tener servicios.
 
 ## Roles y permisos

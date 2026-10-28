@@ -78,6 +78,7 @@ export default function Products() {
                   <td className="num">{p.price_pending ? "—" : formatMoney(toCents(p.sale_price))}</td>
                   <td>
                     <span className="row badges">
+                      {p.is_service && <span className="badge">Servicio</span>}
                       {p.price_pending && <span className="badge warn">Pendiente de precio</span>}
                       {!p.is_active && !p.price_pending && <span className="badge danger">Inactivo</span>}
                     </span>
@@ -218,10 +219,18 @@ function ProductEditor({ product, categories, units, onCategoriesChanged, onSave
           <input type="checkbox" checked={form.vat_excluded} onChange={(e) => set("vat_excluded", e.target.checked)} disabled={!canPrice || form.tax_rate !== "0"} />
           Excluido de IVA (no causa IVA; distinto de exento)
         </label>
-        <div className="row">
-          <label>Stock mínimo ({form.base_unit})<input value={form.min_stock} onChange={(e) => set("min_stock", e.target.value)} inputMode="decimal" /></label>
-          <label className="check"><input type="checkbox" checked={form.allows_fractions} onChange={(e) => set("allows_fractions", e.target.checked)} /> Se vende fraccionado</label>
-        </div>
+        <label className="check">
+          <input type="checkbox" checked={form.is_service} onChange={(e) => set("is_service", e.target.checked)}
+            disabled={locked && !form.is_service} />
+          Es un servicio (lavado, mano de obra): se cobra sin mover inventario
+        </label>
+        {locked && !form.is_service && <p className="muted small">Tiene movimientos de inventario: no puede pasar a servicio.</p>}
+        {!form.is_service && (
+          <div className="row">
+            <label>Stock mínimo ({form.base_unit})<input value={form.min_stock} onChange={(e) => set("min_stock", e.target.value)} inputMode="decimal" /></label>
+            <label className="check"><input type="checkbox" checked={form.allows_fractions} onChange={(e) => set("allows_fractions", e.target.checked)} /> Se vende fraccionado</label>
+          </div>
+        )}
         <label className="check">
           <input type="checkbox" checked={form.is_active} onChange={(e) => set("is_active", e.target.checked)} /> Activo (se vende en la caja)
         </label>
@@ -232,7 +241,7 @@ function ProductEditor({ product, categories, units, onCategoriesChanged, onSave
           <button className="primary">{product ? "Guardar cambios" : "Crear producto"}</button>
         </div>
       </form>
-      {product && <Presentations product={product} units={units} onChanged={() => onSaved(product)} />}
+      {product && !product.is_service && <Presentations product={product} units={units} onChanged={() => onSaved(product)} />}
       {product && <PriceHistory productId={product.id} key={product.sale_price} />}
     </div>
   );
