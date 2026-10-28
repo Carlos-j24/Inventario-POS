@@ -24,7 +24,7 @@
   - La migración `accounts/0007` crea el rol "Mecánico" (solo `workshop.repair`) y le da ese permiso al Administrador.
   - En el admin las órdenes solo se consultan.
   - 9 tests y 12 fallos a propósito. Uno era equivalente: los métodos de solo lectura de las líneas sobraban, porque la orden ya es de solo lectura, y se quitaron.
-- [ ] **T2** Servicios:
+- [x] **T2** Servicios:
   - recibir (actualiza el kilometraje de la moto);
   - asignar mecánico;
   - diagnosticar;
@@ -35,6 +35,21 @@
   - cancelar, que devuelve lo sacado.
 
   (Reglas 2 a 7)
+  - Los servicios están en `apps/workshop/work_orders.py`.
+  - Permisos: recepción (`workshop.receive`) puede todo; el mecánico, solo en las órdenes que tiene asignadas, y sin precios.
+  - Recibir y aprobar:
+    - al recibir se guarda una lectura de kilometraje solo si cambió, y para bajarlo pide nota, como en la ficha de la moto;
+    - aprobar marca lo pendiente y guarda el total aprobado hasta ese momento;
+    - no se aprueba mano de obra sin precio.
+  - Repuestos:
+    - salen de la bodega principal con la referencia "Orden OT-…" y vuelven al costo con que salieron;
+    - se puede quitar lo que no ha salido, aunque esté aprobado (el cliente aprobó y al final no se usó);
+    - lo que salió solo se regresa.
+  - "Lista" pide que no quede nada por aprobar y que todo repuesto aprobado esté puesto en la moto.
+  - Cancelar devuelve lo que salió y no ha vuelto.
+  - 19 tests y 52 fallos a propósito:
+    - dos condiciones eran equivalentes y se quitaron: un usuario inactivo ya no tiene permisos, y un producto pendiente de precio siempre está inactivo;
+    - cuatro sobrevivían por falta de test y destaparon que no se probaba que una orden cancelada con cambios pendientes siguiera cancelada, ni que una lista conservara sus repuestos; se agregaron esos tests.
 - [ ] **T3** Cobro y entrega:
   - mandar a la caja crea el pedido del día con los precios aprobados;
   - la caja lo cobra usando los movimientos ya hechos, sin revisión por precio;
