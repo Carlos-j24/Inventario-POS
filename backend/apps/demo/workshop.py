@@ -4,14 +4,17 @@ La misma historia que la ferretería (turnos, anulación, devolución, faltante,
 conteo, traslado, pedido y cotizaciones) con repuestos de moto, más el módulo de taller activo,
 una recepcionista y clientes con sus motos: una con dueño anterior, una sin placa y lecturas de
 kilometraje de los últimos meses. Los datos del negocio son ficticios.
+
+Lavadero (spec 010): lavados todos los días, alguno con un repuesto, y hoy uno cobrado sin conexión.
 """
+import random
 import uuid
 from datetime import timedelta
 from decimal import Decimal
 
 from apps.cash.models import Shift
 from apps.cash.services import open_shift
-from apps.catalog.models import Unit
+from apps.catalog.models import Product, Unit
 from apps.customers.models import Customer
 from apps.customers.rules import check_digit
 from apps.inventory.adjustments import approve_adjustment, create_adjustment
@@ -21,7 +24,7 @@ from apps.invoicing.models import Business
 from apps.sales.models import Quote, Sale
 from apps.sales.orders import create_order
 from apps.sales.quotes import convert_quote, create_quote, void_quote
-from apps.sales.services import create_sale
+from apps.sales.services import catalog_price, create_sale, money
 from apps.workshop.models import MileageReading, Motorcycle, Ownership
 from apps.workshop.services import change_owner, register_motorcycle, update_mileage
 
@@ -51,6 +54,11 @@ PRODUCTS = (
 
 PENDING = {"sku": "DIR-LED", "name": "Direccional LED universal", "category": "Eléctricos", "unit": "und", "fractions": False, "minimum": 10}
 RESTOCK = (("KIT-BOX100", 10, 69000), ("LLA-90-18", 12, 104000))
+SERVICES = (
+    ("LAV-150", "Lavado moto hasta 150 cc", "Lavadero", 12000),
+    ("LAV-AC", "Lavado moto alto cilindraje", "Lavadero", 18000),
+    ("LAV-MOT", "Lavado de motor y desengrase", "Lavadero", 15000),
+)
 
 # Clientes del taller (cédula o NIT, nombre, teléfono) y sus motos. Placas y chasis ficticios.
 CUSTOMERS = {
@@ -155,6 +163,30 @@ def _motorcycles(now, users):
          year=2020, displacement_cc=150, color="Negro")
 
 
+def _charge(cashier, shift, lines, when, offline=False):
+    """Cobra en efectivo, al precio del catálogo, con la hora del día de la historia."""
+    total = sum(money(catalog_price(line["product"], line["product"].base_unit) * line["quantity"]) for line in lines)
+    sale, _ = create_sale(user=cashier, shift=shift, client_uuid=uuid.uuid4(), lines=lines, offline=offline,
+                          occurred_at=when, payments=[{"method": "CASH", "amount": total}])
+    Sale.objects.filter(pk=sale.pk).update(created_at=when)
+    return sale
+
+
+def _washes(day, shift, cashier, products):
+    """De 2 a 4 lavados al día; el primero, con grasa para la cadena si alcanza el stock.
+
+    Con su propio azar (por fecha), para no cambiar las ventas al azar del resto de la historia.
+    """
+    rng = random.Random(day.toordinal())
+    washes = {p.sku: p for p in Product.objects.filter(is_service=True)}
+    grease = products["GRA-CAD"]
+    for n in range(rng.randint(2, 4)):
+        lines = [{"product": washes[rng.choice(["LAV-150", "LAV-150", "LAV-AC", "LAV-MOT"])], "quantity": 1}]
+        if n == 0 and grease.stock_levels.get(warehouse=shift.register.warehouse).quantity - 1 >= grease.min_stock:
+            lines.append({"product": grease, "quantity": 1})
+        _charge(cashier, shift, lines, _at(day, 9 + 2 * n, rng.randint(0, 59)))
+
+
 def _date(motorcycle, when):
     """Corre hacia atrás el registro de la moto: su primer dueño y su primera lectura son de ese día."""
     Motorcycle.objects.filter(pk=motorcycle.pk).update(created_at=when, mileage_at=when)
@@ -175,6 +207,11 @@ def _today(rng, now, users, warehouses, registers, products):
     Shift.objects.filter(pk=shift.pk).update(opened_at=min(now, _at(now, 7, 50)))
     for minutes in (20, 75, 130):
         _sale(rng, products, laura, shift, min(now, _at(now, 8) + timedelta(minutes=minutes)))
+    # Lavadero (spec 010): un lavado con cambio de aceite y otro cobrado sin conexión, que no queda para revisión.
+    washes = {p.sku: p for p in Product.objects.filter(is_service=True)}
+    _charge(laura, shift, [{"product": washes["LAV-150"], "quantity": 1}, {"product": products["ACE-20W50"], "quantity": 1}],
+            min(now, _at(now, 8, 45)))
+    _charge(laura, shift, [{"product": washes["LAV-AC"], "quantity": 1}], min(now, _at(now, 9, 10)), offline=True)
     # Venta hecha sin conexión con el precio viejo del aceite: queda para revisión.
     create_sale(
         user=laura, shift=shift, client_uuid=uuid.uuid4(), offline=True, occurred_at=min(now, _at(now, 9, 40)),
@@ -214,4 +251,5 @@ PROFILE = Profile(
     products=PRODUCTS, pending=PENDING, restock=RESTOCK,
     warehouses=(("PRAL", "Bodega principal"), ("VIT", "Mostrador del almacén")), business=_business, today=_today,
     users=(*USERS, ("diana.recepcion", "Diana", "Recepción de taller")),
+    services=SERVICES, daily=_washes,
 )
