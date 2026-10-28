@@ -91,9 +91,14 @@
 - Frontend: casilla "Es un servicio" en Productos; `cart.stockedProducts` saca los servicios de Entradas, Ajustes y Traslados; el buscador los marca; Márgenes los muestra en su propia tabla.
 - No dependen del módulo de taller: cualquier negocio puede tener servicios.
 
+## Taller: órdenes de trabajo (spec 011)
+- `WorkOrder` (`OT-000001`): moto, dueño al recibirla, kilometraje, lo que pide el cliente, estado al recibir, mecánico, diagnóstico y estado: Recibida → Esperando aprobación → En reparación → Lista → Entregada, o Cancelada. Una sola abierta por moto (restricción de la base de datos). `WorkOrderEvent` guarda cada cambio con quién y cuándo.
+- `WorkOrderLine`: repuesto o mano de obra (servicio, spec 010) en unidad base, con precio y si está aprobada. Un repuesto aprobado sale de la bodega con un movimiento `WORKSHOP_OUT` y, si no se usa, vuelve con `WORKSHOP_RETURN` (restricciones: solo sale lo aprobado, solo vuelve lo que salió). `WorkOrderApproval`: quién aprobó el presupuesto, cómo y por cuánto.
+- En el admin de Django las órdenes solo se consultan: todo cambio pasa por la app.
+
 ## Roles y permisos
-- `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones. `inventory.transfer` (spec 006) lo tienen por defecto Administrador, Jefe de bodega y Auxiliar de bodega. `workshop.receive` (spec 009) lo tienen Administrador y Recepción de taller.
-- `Role`: conjunto editable de permisos. Por defecto: Administrador, Supervisor, Jefe de bodega, Auxiliar de bodega, Ventas, Caja y Recepción de taller (`workshop.receive` y `sales.create`).
+- `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones. `inventory.transfer` (spec 006) lo tienen por defecto Administrador, Jefe de bodega y Auxiliar de bodega. `workshop.receive` (spec 009) lo tienen Administrador y Recepción de taller; `workshop.repair` (spec 011), Administrador y Mecánico.
+- `Role`: conjunto editable de permisos. Por defecto: Administrador, Supervisor, Jefe de bodega, Auxiliar de bodega, Ventas, Caja, Recepción de taller (`workshop.receive` y `sales.create`) y Mecánico (`workshop.repair`).
 - `User.roles`: un usuario puede tener varios roles y sus permisos se suman.
 
 ## Modo sin conexión (T9)

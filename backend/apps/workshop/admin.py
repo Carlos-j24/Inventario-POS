@@ -3,7 +3,7 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from .models import MileageReading, Motorcycle, Ownership
+from .models import MileageReading, Motorcycle, Ownership, WorkOrder, WorkOrderApproval, WorkOrderEvent, WorkOrderLine
 from .services import check_owner
 
 
@@ -66,3 +66,45 @@ class MotorcycleAdmin(admin.ModelAdmin):
             Ownership.objects.create(motorcycle=obj, customer=obj.owner, started_at=now, created_by=request.user)
             if obj.mileage:
                 MileageReading.objects.create(motorcycle=obj, mileage=obj.mileage, recorded_at=now, recorded_by=request.user)
+
+
+# --- Órdenes de trabajo (spec 011): solo para consultar; todo cambio pasa por la app ------------
+
+class ReadOnlyInline(admin.TabularInline):
+    # La orden es de solo lectura, así que sus líneas también: el admin no deja agregar ni cambiar.
+    extra = 0
+    can_delete = False
+
+
+class WorkOrderLineInline(ReadOnlyInline):
+    model = WorkOrderLine
+    fields = ("product", "quantity", "unit_price", "approved", "movement", "returned_movement", "added_by")
+
+
+class WorkOrderApprovalInline(ReadOnlyInline):
+    model = WorkOrderApproval
+    fields = ("approved_by", "channel", "total", "recorded_by", "recorded_at")
+    readonly_fields = ("recorded_at",)
+
+
+class WorkOrderEventInline(ReadOnlyInline):
+    model = WorkOrderEvent
+    fields = ("status", "note", "user", "at")
+    readonly_fields = ("at",)
+
+
+@admin.register(WorkOrder)
+class WorkOrderAdmin(admin.ModelAdmin):
+    list_display = ("number", "motorcycle", "customer", "status", "mechanic", "received_at")
+    list_filter = ("status", "mechanic")
+    search_fields = ("motorcycle__plate", "motorcycle__vin", "customer__name", "customer__id_number")
+    inlines = [WorkOrderLineInline, WorkOrderApprovalInline, WorkOrderEventInline]
+
+    def has_add_permission(self, request):
+        return False  # se reciben desde la app (recepción), que actualiza el kilometraje de la moto
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False

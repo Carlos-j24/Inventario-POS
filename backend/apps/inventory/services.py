@@ -16,8 +16,8 @@ from .models import StockLevel, StockMovement
 
 Kind = StockMovement.Kind
 
-INBOUND = {Kind.RECEIPT, Kind.RETURN, Kind.TRANSFER_IN}
-OUTBOUND = {Kind.SALE, Kind.TRANSFER_OUT}
+INBOUND = {Kind.RECEIPT, Kind.RETURN, Kind.TRANSFER_IN, Kind.WORKSHOP_RETURN}
+OUTBOUND = {Kind.SALE, Kind.TRANSFER_OUT, Kind.WORKSHOP_OUT}
 
 
 class InsufficientStock(ValidationError):
