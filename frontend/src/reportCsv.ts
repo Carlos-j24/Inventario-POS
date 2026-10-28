@@ -153,13 +153,15 @@ function inventoryCsv(r: InventoryReport): Section[] {
 function marginsCsv(r: MarginsReport): Section[] {
   const t = r.totals;
   return [{
-    head: ["SKU", "Producto", "Venta neta sin IVA", "Costo", "Margen", "Margen %", "Costo estimado"],
+    head: ["SKU", "Producto", "Venta neta sin IVA", "Costo", "Margen", "Margen %", "Costo estimado", "Servicio"],
     rows: [
       ...r.rows.map((p): Cell[] => [
         p.sku, p.name, num(p.net_sales), num(p.cost), num(p.margin),
-        p.margin_pct == null ? null : num(p.margin_pct), yesNo(p.cost_estimated),
+        p.margin_pct == null ? null : num(p.margin_pct), yesNo(p.cost_estimated), yesNo(p.is_service),
       ]),
-      ["Total", null, num(t.net_sales), num(t.cost), num(t.margin), t.margin_pct == null ? null : num(t.margin_pct), yesNo(t.cost_estimated)],
+      // Los totales son de la mercancía; los servicios, sin costo, van en su propia fila (spec 010).
+      ["Total mercancía", null, num(t.net_sales), num(t.cost), num(t.margin), t.margin_pct == null ? null : num(t.margin_pct), yesNo(t.cost_estimated), null],
+      ["Total servicios", null, num(t.services_net_sales), null, null, null, null, null],
     ],
   }];
 }

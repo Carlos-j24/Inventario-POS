@@ -62,6 +62,11 @@ export function findByCode(products: Product[], code: string): { product: Produc
   return null;
 }
 
+/** Lo que tiene inventario: un servicio (spec 010) no entra a bodega, ni se ajusta, ni se traslada. */
+export function stockedProducts(products: Product[]): Product[] {
+  return products.filter((p) => !p.is_service);
+}
+
 export function searchProducts(products: Product[], text: string, limit = 8): Product[] {
   const words = text.trim().toLowerCase().split(/\s+/).filter(Boolean);
   if (!words.length) return [];

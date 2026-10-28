@@ -47,8 +47,11 @@ export const inventory: InventoryReport = {
 
 export const margins: MarginsReport = {
   from: "2026-10-16", to: "2026-10-16",
-  totals: { net_sales: "1008487.39", cost: "822150.00", margin: "186337.39", margin_pct: "18.5", cost_estimated: true },
-  rows: [{ product: 2, sku: "MAR-16", name: "Martillo 16 oz", net_sales: "188235.28", cost: "152000.00", margin: "36235.28", margin_pct: "19.2", cost_estimated: true }],
+  totals: { net_sales: "1008487.39", cost: "822150.00", margin: "186337.39", margin_pct: "18.5", cost_estimated: true, services_net_sales: "20168.07" },
+  rows: [
+    { product: 2, sku: "MAR-16", name: "Martillo 16 oz", is_service: false, net_sales: "188235.28", cost: "152000.00", margin: "36235.28", margin_pct: "19.2", cost_estimated: true },
+    { product: 9, sku: "LAV-150", name: "Lavado moto hasta 150 cc", is_service: true, net_sales: "20168.07", cost: "0.00", margin: "20168.07", margin_pct: "100.0", cost_estimated: false },
+  ],
 };
 
 

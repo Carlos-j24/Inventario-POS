@@ -6,7 +6,7 @@ import { EMPTY_FORM, priceToCents, productPayload, toForm } from "./productForm"
 const hammer: AdminProduct = {
   id: 2, sku: "MAR-16", name: "Martillo 16 oz", category: 3, category_name: "Herramientas", base_unit: "und",
   barcode: null, sale_price: "28000.00", tax_rate: "19", vat_excluded: false, allows_fractions: false,
-  min_stock: "5.000", is_active: true, price_pending: false, has_movements: true, units: [],
+  min_stock: "5.000", is_active: true, is_service: false, price_pending: false, has_movements: true, units: [],
 };
 
 describe("priceToCents", () => {
@@ -27,7 +27,7 @@ describe("productPayload", () => {
     const form = { ...EMPTY_FORM, sku: " DES-PH2 ", name: "Destornillador", category: "3", price: "12.500", barcode: "  " };
     expect(productPayload(form, null, true)).toEqual({ body: {
       sku: "DES-PH2", name: "Destornillador", category: 3, base_unit: "und", barcode: null, allows_fractions: false,
-      min_stock: "0", is_active: true, sale_price: "12500.00", tax_rate: "19", vat_excluded: false,
+      min_stock: "0", is_active: true, is_service: false, sale_price: "12500.00", tax_rate: "19", vat_excluded: false,
     } });
   });
 
@@ -65,5 +65,21 @@ describe("productPayload", () => {
     expect(form.price).toBe("");
     expect(productPayload({ ...form, price: "15000" }, pending, true)).toEqual({ body: { sale_price: "15000.00" } });
     expect(productPayload({ ...form, price: "0" }, pending, true)).toEqual({ body: { sale_price: "0.00" } });
+  });
+
+  it("servicio nuevo: sin fracciones ni stock mínimo, aunque hayan quedado escritos", () => {
+    const form = { ...EMPTY_FORM, sku: "LAV-150", name: "Lavado moto", category: "3", price: "12000", is_service: true,
+      allows_fractions: true, min_stock: "4" };
+    const result = productPayload(form, null, true);
+    expect(result).toMatchObject({ body: { is_service: true, allows_fractions: false, min_stock: "0" } });
+  });
+
+  it("marcar un producto como servicio manda la casilla y lo que deja de aplicar", () => {
+    const fresh = { ...hammer, has_movements: false };
+    expect(toForm(fresh).is_service).toBe(false);
+    expect(productPayload({ ...toForm(fresh), is_service: true }, fresh, true)).toEqual({ body: { is_service: true, min_stock: "0" } });
+    const wash = { ...hammer, is_service: true, min_stock: "0.000" };
+    expect(toForm(wash).is_service).toBe(true);
+    expect(productPayload({ ...toForm(wash), name: "Lavado" }, wash, true)).toEqual({ body: { name: "Lavado" } });
   });
 });

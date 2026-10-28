@@ -153,6 +153,9 @@ describe("pantalla Reportes", () => {
     expect(await screen.findByText(/costo estimado/)).toBeInTheDocument();
     expect(screen.getByText("Margen %").parentElement).toHaveTextContent("18,5 %");
     expect(screen.getByRole("table", { name: "Por producto" })).toHaveTextContent(/Martillo.*estimado.*36\.235.*19,2 %/);
+    expect(screen.getByRole("table", { name: "Por producto" })).not.toHaveTextContent("Lavado"); // spec 010: aparte
+    expect(screen.getByRole("table", { name: "Servicios (sin costo)" })).toHaveTextContent(/LAV-150.*Lavado moto hasta 150 cc.*20\.168/);
+    expect(screen.getByText("Servicios sin IVA (sin costo)").parentElement).toHaveTextContent("20.168");
   });
 
   it("descarga el CSV del reporte que se está viendo", async () => {

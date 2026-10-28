@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { Product } from "./api";
 import {
-  addToCart, cartTotalCents, linePriceCents, orderToCart, checkPayments, findByCode, lineTotalCents, quantityError, searchProducts, unitPriceCents,
+  addToCart, cartTotalCents, linePriceCents, orderToCart, checkPayments, findByCode, lineTotalCents, quantityError, searchProducts, stockedProducts, unitPriceCents,
   type CartLine,
 } from "./cart";
 
@@ -56,6 +56,12 @@ describe("búsqueda", () => {
   it("busca por todas las palabras, en cualquier orden", () => {
     expect(searchProducts([cable, hammer], "12 cable")).toEqual([cable]);
     expect(searchProducts([cable, hammer], "")).toEqual([]);
+  });
+
+  it("lo que tiene inventario deja fuera los servicios (spec 010)", () => {
+    const wash: Product = { ...hammer, id: 3, sku: "LAV-150", name: "Lavado moto", is_service: true };
+    const cached = { ...cable, is_service: undefined }; // catálogo guardado antes de la spec 010
+    expect(stockedProducts([cached, wash, { ...hammer, is_service: false }])).toEqual([cached, { ...hammer, is_service: false }]);
   });
 });
 

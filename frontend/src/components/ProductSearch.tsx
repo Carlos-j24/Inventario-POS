@@ -48,7 +48,7 @@ export default function ProductSearch({ products, onPick, inputRef }: {
             <li key={p.id}>
               <button onClick={() => pick(p)}>
                 <span>{p.name}</span>
-                <span className="muted">{p.sku} · {formatMoney(toCents(p.sale_price))}/{p.base_unit}</span>
+                <span className="muted">{p.sku} · {formatMoney(toCents(p.sale_price))}/{p.base_unit}{p.is_service && " · servicio"}</span>
               </button>
             </li>
           ))}

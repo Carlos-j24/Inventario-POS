@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type FormEvent } from "react";
 
 import { api, type Product, type StockMovement } from "../api";
-import { searchProducts } from "../cart";
+import { searchProducts, stockedProducts } from "../cart";
 import { centsToApi, formatQty, toCents } from "../money";
 import { useWarehouseChoice } from "../useWarehouseChoice";
 
@@ -26,7 +26,7 @@ export default function Receipts() {
   const { warehouses, warehouse: warehouseId, choose: setWarehouseId } = useWarehouseChoice(setError);
 
   useEffect(() => {
-    api<Product[]>("/api/catalog/products/").then(setProducts).catch((e) => setError(e.message));
+    api<Product[]>("/api/catalog/products/").then((p) => setProducts(stockedProducts(p))).catch((e) => setError(e.message));
   }, []);
 
   const results = useMemo(() => (product ? [] : searchProducts(products, query)), [products, query, product]);

@@ -59,6 +59,18 @@ async function openForm() {
 }
 
 describe("pantalla Traslados", () => {
+  it("no ofrece servicios: no tienen inventario (spec 010)", async () => {
+    const wash = { ...hammer, id: 3, sku: "LAV-150", name: "Lavado moto", is_service: true };
+    mockApi({ "GET /api/catalog/products/": () => json([hammer, wash]) });
+    renderPage();
+    const form = await openForm();
+    await userEvent.type(within(form).getByLabelText("Buscar producto"), "lavado");
+    expect(within(form).queryByRole("button", { name: /Lavado moto/ })).not.toBeInTheDocument();
+    await userEvent.clear(within(form).getByLabelText("Buscar producto"));
+    await userEvent.type(within(form).getByLabelText("Buscar producto"), "martillo");
+    expect(await within(form).findByRole("button", { name: /Martillo 16 oz/ })).toBeInTheDocument();
+  });
+
   it("traslada rollos de la bodega al local y lo muestra", async () => {
     const created = { ...done, id: 5, number: "TR-000005" };
     let list = [done];

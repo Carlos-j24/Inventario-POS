@@ -74,13 +74,15 @@ describe("reportCsv", () => {
 
   it("márgenes: porcentaje, costo estimado y total", () => {
     const l = lines(reportCsv("margins", margins, week, "2026-10-17").content);
-    expect(l).toContain("MAR-16;Martillo 16 oz;188235,28;152000,00;36235,28;19,2;Sí");
-    expect(l).toContain("Total;;1008487,39;822150,00;186337,39;18,5;Sí");
+    expect(l).toContain("MAR-16;Martillo 16 oz;188235,28;152000,00;36235,28;19,2;Sí;No");
+    expect(l).toContain("LAV-150;Lavado moto hasta 150 cc;20168,07;0,00;20168,07;100,0;No;Sí");
+    expect(l).toContain("Total mercancía;;1008487,39;822150,00;186337,39;18,5;Sí;");
+    expect(l).toContain("Total servicios;;20168,07;;;;;"); // los servicios no inflan el margen de la mercancía
   });
 
   it("márgenes sin venta: porcentaje vacío", () => {
     const empty = { ...margins, rows: [], totals: { ...margins.totals, net_sales: "0.00", margin_pct: null, cost_estimated: false } };
-    expect(lines(reportCsv("margins", empty, week, "2026-10-17").content)).toContain("Total;;0,00;822150,00;186337,39;;No");
+    expect(lines(reportCsv("margins", empty, week, "2026-10-17").content)).toContain("Total mercancía;;0,00;822150,00;186337,39;;No;");
   });
 });
 
