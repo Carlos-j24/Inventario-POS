@@ -1,6 +1,6 @@
 # Tareas — Spec 011
 
-> Spec en borrador (2026-10-28): se empieza al aprobar el PR. Decisiones en spec.md.
+> Spec aprobada (PR #81, 2026-10-28). Decisiones en spec.md.
 
 - [ ] **T1** Backend, modelo:
   - `WorkOrder` con su número, moto, dueño, kilometraje, pedido del cliente, estado al recibir, mecánico, diagnóstico, estado y fechas;
