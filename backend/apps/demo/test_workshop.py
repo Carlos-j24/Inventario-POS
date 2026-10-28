@@ -1,4 +1,6 @@
 """Lo que deja sembrado `seed_demo --taller` (spec 009, T4). Se siembra una vez para todo el módulo."""
+from collections import Counter
+from datetime import timedelta
 from decimal import Decimal
 
 import pytest
@@ -11,8 +13,8 @@ from apps.catalog.models import Product
 from apps.customers.models import Customer
 from apps.inventory.models import PhysicalCount, StockLevel, StockMovement, Transfer, Warehouse
 from apps.invoicing.models import Business
-from apps.reports.costs import inventory_report
-from apps.sales.models import Order, Quote, Sale
+from apps.reports.costs import inventory_report, margins_report
+from apps.sales.models import Order, Quote, Sale, SaleLine
 from apps.workshop.models import Motorcycle
 
 from .seed import USERS, seed
@@ -95,6 +97,42 @@ def test_mileage_readings_go_back_months():
     assert (boxer.mileage, days_ago(boxer.mileage_at), days_ago(boxer.created_at)) == (15200, 3, 120)
     reset = Motorcycle.objects.get(plate="GHI78H").mileage_readings.order_by("-recorded_at").first()
     assert (reset.mileage, reset.previous, reset.note) == (120, 31200, "Cambio de tablero")
+
+
+def test_the_car_wash_services_have_no_stock():
+    washes = Product.objects.filter(is_service=True)
+    assert {(p.sku, p.category.name, p.sale_price) for p in washes} == {
+        ("LAV-150", "Lavadero", Decimal("12000")), ("LAV-AC", "Lavadero", Decimal("18000")), ("LAV-MOT", "Lavadero", Decimal("15000")),
+    }
+    assert not StockLevel.objects.filter(product__in=washes).exists()
+    assert not StockMovement.objects.filter(product__in=washes).exists()
+
+
+def test_washes_every_worked_day_some_with_a_part():
+    lines = SaleLine.objects.filter(is_service=True, sale__status="COMPLETED").select_related("sale")
+    per_day = Counter(timezone.localtime(line.sale.occurred_at).date() for line in lines)
+    history = {day: n for day, n in per_day.items() if day != timezone.localdate()}
+    assert len(history) >= 10 and all(2 <= n <= 4 for n in history.values()), per_day
+    assert all(line.movement is None for line in lines)
+    assert all(line.sale.created_at == line.sale.occurred_at for line in lines)  # la lista de Ventas los pone en su día
+    with_grease = Sale.objects.filter(lines__is_service=True).filter(lines__product__sku="GRA-CAD").distinct()
+    assert with_grease.count() >= 5  # el primero del día lleva grasa mientras alcance el stock
+
+
+def test_today_a_wash_with_oil_and_an_offline_wash_without_review():
+    today = timezone.localdate()
+    with_oil = Sale.objects.filter(lines__product__sku="LAV-150", occurred_at__date=today).filter(lines__product__sku="ACE-20W50").get()
+    assert (with_oil.offline, with_oil.needs_review, with_oil.total) == (False, False, Decimal("44000.00"))
+    offline = Sale.objects.get(offline=True, lines__product__sku="LAV-AC", occurred_at__date=today)
+    assert (offline.needs_review, offline.total) == (False, Decimal("18000.00"))
+
+
+def test_the_margins_report_shows_the_washes_apart():
+    report = margins_report(timezone.localdate() - timedelta(days=30), timezone.localdate())
+    services = [r for r in report["rows"] if r["is_service"]]
+    assert {r["sku"] for r in services} == {"LAV-150", "LAV-AC", "LAV-MOT"}
+    assert all(r["cost"] == "0.00" for r in services)
+    assert Decimal(report["totals"]["services_net_sales"]) == sum(Decimal(r["net_sales"]) for r in services) > 0
 
 
 def test_one_motorcycle_changed_owner():

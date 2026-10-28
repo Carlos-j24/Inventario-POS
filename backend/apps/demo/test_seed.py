@@ -115,6 +115,7 @@ def test_business_data_and_quotes_in_every_state():
     assert business.name != Business._meta.get_field("name").default  # ya no dice "configura los datos en el admin"
     assert list(Warehouse.objects.filter(is_default=True).values_list("code", flat=True)) == ["PRAL"]  # spec 008
     assert business.workshop_enabled is False and not Motorcycle.objects.exists()  # la ferretería no ve el taller
+    assert not Product.objects.filter(is_service=True).exists()  # ni sus lavados (spec 010)
 
     by_status = {}
     for quote in Quote.objects.all():

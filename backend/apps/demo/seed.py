@@ -123,6 +123,16 @@ def _catalog(product_rows=PRODUCTS, pending=PENDING):
     return units, products
 
 
+def _services(rows):
+    """Servicios (spec 010): no tienen existencias, así que no entran a las ventas al azar de la historia."""
+    unit = Unit.objects.get(code="und")
+    for sku, name, category, price in rows:
+        Product.objects.create(
+            sku=sku, name=name, category=Category.objects.get_or_create(name=category)[0], base_unit=unit,
+            sale_price=Decimal(price), is_service=True,
+        )
+
+
 def _at(day, hour, minute=0):
     return day.replace(hour=hour, minute=minute, second=0, microsecond=0)
 
@@ -162,8 +172,11 @@ def _worked_days(now):
     return worked, (worked[-3], worked[-2], worked[-5], worked[len(worked) // 2])
 
 
-def _history(rng, now, users, warehouse, registers, products, restock=RESTOCK):
-    """Dos semanas de turnos cerrados en la caja 1, con una anulación, una devolución y un faltante."""
+def _history(rng, now, users, warehouse, registers, products, restock=RESTOCK, daily=None):
+    """Dos semanas de turnos cerrados en la caja 1, con una anulación, una devolución y un faltante.
+
+    daily(día, turno, cajero, productos) agrega lo propio de cada demo antes del cierre (los lavados del taller).
+    """
     laura, sofia = users["laura.caja"][0], users["sofia.super"][0]
     worked, (void_day, return_day, short_day, restock_day) = _worked_days(now)
     for day in worked:
@@ -187,6 +200,8 @@ def _history(rng, now, users, warehouse, registers, products, restock=RESTOCK):
             StockMovement.objects.filter(reference=f"Devolución {sale_return.number} de {sales[-1].number}").update(
                 occurred_at=_at(day, 17, 45),
             )
+        if daily:
+            daily(day, shift, laura, products)
         expected = shift_summary(shift)["expected_cash"]
         short = Decimal(2000) if day == short_day else Decimal(0)
         close_shift(shift=shift, user=laura, counted_cash=expected - short, notes="Faltan 2.000" if short else "")
@@ -326,6 +341,8 @@ class Profile:
     business: Callable
     today: Callable  # (rng, now, users, warehouses, registers, products)
     users: tuple = field(default=tuple(USERS))
+    services: tuple = ()  # (sku, nombre, categoría, precio): spec 010
+    daily: Callable | None = None  # ver _history
 
 
 HARDWARE = Profile(
@@ -355,12 +372,13 @@ def seed(*, password=None, now=None, rng_seed=2026, workshop=False):
             for code, name in (("CAJA1", "Caja 1"), ("CAJA2", "Caja 2"))
         }
         _, products = _catalog(profile.products, profile.pending)
+        _services(profile.services)
         start = _at(now - timedelta(days=DAYS + 1), 9)
         for sku, *_rest, (quantity, cost) in profile.products:
             record_movement(
                 kind=StockMovement.Kind.RECEIPT, product=products[sku], warehouse=warehouses["PRAL"], quantity=quantity,
                 unit_cost=Decimal(cost), user=users["pedro.bodega"][0], reference="Factura proveedor FAC-1043", occurred_at=start,
             )
-        _history(rng, now, users, warehouses["PRAL"], registers, products, profile.restock)
+        _history(rng, now, users, warehouses["PRAL"], registers, products, profile.restock, profile.daily)
         profile.today(rng, now, users, warehouses, registers, products)
     return {username: secret for username, (_, secret) in users.items()}

@@ -21,7 +21,7 @@ Antes de vender, crea en el admin al menos una **bodega** y una **caja** (Caja �
 
 Para mostrar la app: una ferretería con dos semanas de ventas, arqueos (uno con faltante), una anulación, una devolución, un pedido por cobrar, una venta sin conexión para revisión, una baja por aprobar, un conteo, un traslado, un producto pendiente de precio, los datos del negocio (ficticios) y cotizaciones en todos sus estados. Usuarios: `admin.demo` (también entra al admin de Django), `marta.jefe`, `pedro.bodega`, `laura.caja`, `maria.caja`, `andres.ventas` y `sofia.super`.
 
-Con `--taller`, la misma historia en un taller de motos con repuestos: el módulo de taller activo, `diana.recepcion` (Recepción de taller) y clientes con sus motos (una con dueño anterior, una sin placa).
+Con `--taller`, la misma historia en un taller de motos con repuestos: el módulo de taller activo, `diana.recepcion` (Recepción de taller), clientes con sus motos (una con dueño anterior, una sin placa) y lavados cobrados todos los días como servicios (spec 010).
 
 ```bash
 .venv\Scripts\python manage.py seed_demo --fresh
