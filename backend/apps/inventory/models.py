@@ -60,6 +60,8 @@ class StockMovement(models.Model):
         ADJUSTMENT = "ADJUSTMENT", "Ajuste"
         TRANSFER_OUT = "TRANSFER_OUT", "Traslado (salida)"
         TRANSFER_IN = "TRANSFER_IN", "Traslado (entrada)"
+        WORKSHOP_OUT = "WORKSHOP_OUT", "Salida a orden de trabajo"  # spec 011
+        WORKSHOP_RETURN = "WORKSHOP_RETURN", "Regreso de orden de trabajo"
 
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     # UUID que genera el cliente: si el POS reenvía una venta hecha sin conexión, no se duplica.

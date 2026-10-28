@@ -2,7 +2,7 @@
 
 > Spec aprobada (PR #81, 2026-10-28). Decisiones en spec.md.
 
-- [ ] **T1** Backend, modelo:
+- [x] **T1** Backend, modelo:
   - `WorkOrder` con su número, moto, dueño, kilometraje, pedido del cliente, estado al recibir, mecánico, diagnóstico, estado y fechas;
   - `WorkOrderLine` con repuesto o mano de obra, cantidad, precio, si está aprobada y su movimiento al sacarla;
   - `WorkOrderApproval` con quién aprobó, cómo, cuándo y el total;
@@ -12,6 +12,18 @@
   - Admin solo de lectura.
 
   (Reglas 1, 2, 6 y 11)
+  - En `apps/workshop/models.py`:
+    - `WorkOrder` con número `OT-000001` y el dueño al recibirla, que se queda aunque la moto cambie de dueño;
+    - `WorkOrderLine` en unidad base, que copia `is_service` del producto;
+    - `WorkOrderApproval` (en persona o por llamada) y `WorkOrderEvent` (cada cambio de estado).
+  - Tres restricciones de la base de datos:
+    - una orden abierta por moto (las abiertas son `WorkOrder.OPEN`);
+    - solo sale de la bodega un repuesto aprobado;
+    - solo vuelve lo que salió.
+  - `WORKSHOP_OUT` sale y `WORKSHOP_RETURN` entra, con el mismo trato que las ventas y las devoluciones en `record_movement`.
+  - La migración `accounts/0007` crea el rol "Mecánico" (solo `workshop.repair`) y le da ese permiso al Administrador.
+  - En el admin las órdenes solo se consultan.
+  - 9 tests y 12 fallos a propósito. Uno era equivalente: los métodos de solo lectura de las líneas sobraban, porque la orden ya es de solo lectura, y se quitaron.
 - [ ] **T2** Servicios:
   - recibir (actualiza el kilometraje de la moto);
   - asignar mecánico;
