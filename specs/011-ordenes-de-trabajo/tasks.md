@@ -50,13 +50,27 @@
   - 19 tests y 52 fallos a propósito:
     - dos condiciones eran equivalentes y se quitaron: un usuario inactivo ya no tiene permisos, y un producto pendiente de precio siempre está inactivo;
     - cuatro sobrevivían por falta de test y destaparon que no se probaba que una orden cancelada con cambios pendientes siguiera cancelada, ni que una lista conservara sus repuestos; se agregaron esos tests.
-- [ ] **T3** Cobro y entrega:
+- [x] **T3** Cobro y entrega:
   - mandar a la caja crea el pedido del día con los precios aprobados;
   - la caja lo cobra usando los movimientos ya hechos, sin revisión por precio;
   - entregar solo cobrada;
   - anular la venta de una orden la deja Lista, sin mover el inventario.
 
   (Reglas 8 a 10)
+  - Servicios nuevos en `apps/workshop/work_orders.py`: `send_to_till`, `deliver`, `paid_sale` y `till_order`.
+  - Mandar a la caja:
+    - crea el pedido del día a nombre de recepción, con lo aprobado y no regresado a sus precios;
+    - el pedido (`Order.work_order`) y cada línea (`OrderLine.work_order_line`) saben de qué orden salen;
+    - no se manda dos veces mientras haya uno de hoy en la caja; si la caja lo cancela o se vence, se manda otra vez.
+  - Cobro:
+    - se cobra completo, sin revisión por precio (el de la mano de obra no es el del catálogo);
+    - el documento electrónico va a nombre del cliente de la orden, salvo que la caja diga otro;
+    - los repuestos no salen otra vez: la línea de venta apunta a la salida de la orden, que conserva su referencia "Orden OT-…", y el margen usa su costo.
+  - `SaleLine.movement` pasó de uno a uno a llave foránea: si la venta se anula y la orden se cobra otra vez, la venta nueva usa la misma salida.
+  - Anular la venta no mueve los repuestos de la orden y deja en su historia "Se anuló la venta …". Una devolución los regresa a la bodega de donde salieron (antes iba a la de la caja; para una venta normal es la misma).
+  - Entregar exige la venta cobrada y no anulada, y guarda el kilometraje de salida (lectura nueva solo si cambió).
+  - Cancelar saca el pedido de la caja; una orden cobrada no se cancela sin anular antes la venta.
+  - 17 tests y 32 fallos a propósito; dos sobrevivían por falta de test (entregar con el mismo kilometraje no crea lectura y la nota se guarda) y se agregaron.
 - [ ] **T4** API `/api/workshop/orders/`:
   - lista por estado y mecánico (el mecánico solo ve las suyas);
   - ficha y cada acción de la T2 y la T3, con sus permisos;

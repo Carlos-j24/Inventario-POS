@@ -79,7 +79,7 @@ def test_wash_and_oil_together_only_the_oil_leaves_the_warehouse(cashier, shift,
     assert stock(oil, warehouse) == 4
     oil_line = sale.lines.get(product=oil)
     assert (oil_line.is_service, oil_line.movement.reference) == (False, f"Venta {sale.number}")
-    assert StockMovement.objects.filter(sale_line__sale=sale).count() == 1
+    assert StockMovement.objects.filter(sale_lines__sale=sale).count() == 1
 
 
 def test_offline_wash_does_not_go_to_review(cashier, shift, wash):

@@ -78,8 +78,10 @@ class SaleLine(models.Model):
     subtotal = models.DecimalField(**MONEY)
     tax = models.DecimalField(**MONEY)
     total = models.DecimalField(**MONEY)
-    movement = models.OneToOneField(
-        StockMovement, on_delete=models.PROTECT, related_name="sale_line", null=True, blank=True
+    # Un repuesto de una orden de taller (spec 011) llega con la salida que ya hizo la orden; si la venta
+    # se anula y la orden se cobra otra vez, la nueva venta usa la misma salida.
+    movement = models.ForeignKey(
+        StockMovement, on_delete=models.PROTECT, related_name="sale_lines", null=True, blank=True
     )
 
     class Meta:
@@ -169,6 +171,10 @@ class Order(models.Model):
     )
     cancelled_at = models.DateTimeField(null=True, blank=True)
     sale = models.OneToOneField(Sale, on_delete=models.PROTECT, related_name="order", null=True, blank=True)
+    work_order = models.ForeignKey(
+        "workshop.WorkOrder", on_delete=models.PROTECT, related_name="sales_orders", null=True, blank=True,
+        help_text="La orden de taller que se cobra con este pedido (spec 011), si es de una.",
+    )
 
     class Meta:
         ordering = ["-created_at"]
@@ -207,6 +213,10 @@ class OrderLine(models.Model):
     quote_line = models.ForeignKey(
         "QuoteLine", on_delete=models.PROTECT, related_name="order_lines", null=True, blank=True,
         help_text="La línea de cotización de la que sale (spec 007), si salió de una.",
+    )
+    work_order_line = models.ForeignKey(
+        "workshop.WorkOrderLine", on_delete=models.PROTECT, related_name="order_lines", null=True, blank=True,
+        help_text="La línea de la orden de taller que cobra (spec 011), si es de una.",
     )
 
     class Meta:

@@ -1,4 +1,4 @@
-"""Órdenes de trabajo (spec 011, T2): de que la moto entra a que queda lista.
+"""Órdenes de trabajo (spec 011, T2 y T3): de que la moto entra a que sale.
 
 Reglas:
 - Recepción (`workshop.receive`) recibe, asigna, pone el precio de la mano de obra, registra la
@@ -8,15 +8,21 @@ Reglas:
   de lo aprobado ya no cambia.
 - Los repuestos salen de la bodega principal al sacarlos para la moto y, si no se usan o la orden
   se cancela, vuelven a ella al costo con que salieron (decisión 1).
+- Lista, recepción la manda a la caja como un pedido del día (spec 002) con lo aprobado a sus precios;
+  la caja lo cobra sin sacar otra vez los repuestos. Solo cobrada se entrega (reglas 8 y 9).
 - Cada cambio de estado queda en WorkOrderEvent con quién y cuándo.
 """
+import uuid
 from decimal import Decimal
 
 from django.core.exceptions import PermissionDenied, ValidationError
 from django.db import transaction
+from django.utils import timezone
 
 from apps.inventory.models import StockMovement, Warehouse
 from apps.inventory.services import record_movement
+from apps.sales.models import Order, Sale, business_date
+from apps.sales.orders import create_order
 
 from .models import WorkOrder, WorkOrderApproval, WorkOrderEvent, WorkOrderLine
 from .services import update_mileage
@@ -173,10 +179,23 @@ def pending_lines(order):
     return order.lines.filter(approved=False)
 
 
-def charged_total(order):
+def charged_lines(order):
     """Lo que el cliente ha aprobado y sigue en la orden (sin lo regresado a la bodega)."""
-    lines = order.lines.filter(approved=True, returned_movement__isnull=True)
-    return sum((line.total for line in lines), Decimal(0))
+    return order.lines.filter(approved=True, returned_movement__isnull=True)
+
+
+def charged_total(order):
+    return sum((line.total for line in charged_lines(order)), Decimal(0))
+
+
+def paid_sale(order):
+    """La venta que cobró la orden, si no se anuló."""
+    return Sale.objects.filter(order__work_order=order, status=Sale.Status.COMPLETED).first()
+
+
+def till_order(order):
+    """El pedido de hoy que espera en la caja, si hay uno."""
+    return order.sales_orders.filter(status=Order.Status.PENDING, business_date=business_date()).first()
 
 
 @transaction.atomic
@@ -281,13 +300,58 @@ def mark_ready(*, order, user):
 
 
 @transaction.atomic
+def send_to_till(*, order, user):
+    """La orden lista va a la caja como un pedido del día, con lo aprobado a sus precios. Devuelve el pedido."""
+    _require_reception(user)
+    order = _lock(order)
+    _require_status(order, (Status.READY,), "mandar a la caja")
+    if paid_sale(order):
+        raise ValidationError(f"La orden {order.number} ya está cobrada.")
+    waiting = till_order(order)
+    if waiting:
+        raise ValidationError(f"La orden {order.number} ya está en la caja: pedido {waiting.code}.")
+    lines = [
+        {"product": line.product, "quantity": line.quantity, "unit_price": line.unit_price, "work_order_line": line}
+        for line in charged_lines(order).select_related("product__base_unit")
+    ]
+    if not lines:
+        raise ValidationError("No hay nada que cobrar: agrega la mano de obra o cancela la orden.")
+    sales_order, _ = create_order(user=user, lines=lines, client_uuid=uuid.uuid4(), work_order=order)
+    WorkOrderEvent.objects.create(work_order=order, status=order.status, user=user, note=f"A la caja: pedido {sales_order.code}")
+    return sales_order
+
+
+@transaction.atomic
+def deliver(*, order, user, mileage=None, mileage_note=""):
+    """Entrega la moto cobrada. El kilometraje de salida actualiza el de la moto si cambió."""
+    _require_reception(user)
+    order = _lock(order)
+    _require_status(order, (Status.READY,), "entregar")
+    if not paid_sale(order):
+        raise ValidationError(f"La orden {order.number} no está cobrada: mándala a la caja.")
+    motorcycle = order.motorcycle
+    if mileage is not None and mileage != motorcycle.mileage:
+        motorcycle = update_mileage(motorcycle=motorcycle, mileage=mileage, user=user, note=mileage_note)
+    order.mileage_out = motorcycle.mileage
+    order.save(update_fields=["mileage_out", "updated_at"])
+    _set_status(order, Status.DELIVERED, user)
+    return order
+
+
+@transaction.atomic
 def cancel(*, order, user, reason):
-    """Cancela la orden: lo que salió de la bodega y no ha vuelto, vuelve."""
+    """Cancela la orden: lo que salió de la bodega y no ha vuelto, vuelve, y su pedido sale de la caja."""
     _require_reception(user)
     order = _lock(order)
     _require_status(order, WorkOrder.OPEN, "cancelar")
     if not reason.strip():
         raise ValidationError({"reason": "Escribe por qué se cancela."})
+    sale = paid_sale(order)
+    if sale:
+        raise ValidationError(f"La orden {order.number} ya está cobrada: anula la venta {sale.number} primero.")
+    order.sales_orders.filter(status=Order.Status.PENDING).update(
+        status=Order.Status.CANCELLED, cancelled_by=user, cancelled_at=timezone.now(),
+    )
     # Sin select_for_update: la orden ya está bloqueada y el lado opcional de un join no se bloquea en PostgreSQL.
     taken = order.lines.filter(movement__isnull=False, returned_movement__isnull=True)
     for line in taken.select_related("product", "movement__warehouse"):

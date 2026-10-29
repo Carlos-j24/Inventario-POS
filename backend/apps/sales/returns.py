@@ -1,5 +1,7 @@
 """Anulaciones y devoluciones. Nada se borra: el stock vuelve con movimientos de devolución.
 Los servicios (spec 010) devuelven el dinero sin movimientos de inventario.
+Anular la venta de una orden de taller (spec 011) no mueve el inventario: los repuestos siguen
+puestos en la moto, y la orden queda por cobrar otra vez. Para devolverlos, una devolución.
 
 - Anular: deshace la venta completa. Solo mientras su turno siga abierto, porque el arqueo
   de un turno cerrado ya no puede cambiar.
@@ -18,7 +20,9 @@ from apps.inventory.models import StockMovement
 from apps.inventory.services import record_movement
 from apps.invoicing.documents import issue_for_return, issue_for_void
 
-from .models import Sale, SaleReturn, SaleReturnLine
+from apps.workshop.models import WorkOrder, WorkOrderEvent
+
+from .models import Order, Sale, SaleReturn, SaleReturnLine
 from .services import money, split_tax
 
 RETURN = StockMovement.Kind.RETURN
@@ -49,8 +53,9 @@ def void_sale(*, sale, user, reason):
         )
         if sale.returns.exists():
             raise ValidationError(f"La venta {sale.number} tiene devoluciones: no se puede anular.")
-        # Los servicios no salieron de la bodega: solo vuelve la mercancía (spec 010).
-        for line in sale.lines.filter(is_service=False).select_related("product", "unit"):
+        # Los servicios no salieron de la bodega: solo vuelve la mercancía (spec 010), y no la de una orden de taller.
+        goods = sale.lines.filter(is_service=False).exclude(movement__kind=StockMovement.Kind.WORKSHOP_OUT)
+        for line in goods.select_related("product", "unit", "movement"):
             record_movement(
                 kind=RETURN, product=line.product, warehouse=sale.warehouse, quantity=line.quantity,
                 unit=line.unit, user=user, reference=f"Anulación {sale.number}",
@@ -61,6 +66,11 @@ def void_sale(*, sale, user, reason):
         sale.voided_at = timezone.now()
         sale.void_reason = reason
         sale.save(update_fields=["status", "voided_by", "voided_at", "void_reason"])
+        work_order = Order.objects.filter(sale=sale, work_order__isnull=False).values_list("work_order", flat=True).first()
+        if work_order:  # sigue Lista y por cobrar otra vez: queda en su historia
+            WorkOrderEvent.objects.create(
+                work_order_id=work_order, status=WorkOrder.Status.READY, user=user, note=f"Se anuló la venta {sale.number}"[:200],
+            )
         issue_for_void(sale)
     return sale
 
@@ -115,7 +125,8 @@ def _create_return(sale, user, shift, lines, refund_method, reason, client_uuid)
             movement = None
             if not line.is_service:  # de un servicio vuelve el dinero, no mercancía (spec 010)
                 movement, _ = record_movement(
-                    kind=RETURN, product=line.product, warehouse=sale.warehouse, quantity=qty,
+                    # A la bodega de donde salió: la de la caja, o la principal si salió con una orden de taller.
+                    kind=RETURN, product=line.product, warehouse=line.movement.warehouse, quantity=qty,
                     unit=line.unit, user=user, reference=f"Devolución de {sale.number}",
                     unit_cost=line.movement.unit_cost,  # vuelve al costo con que salió (spec 004)
                 )

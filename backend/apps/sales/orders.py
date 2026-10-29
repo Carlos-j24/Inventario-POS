@@ -27,11 +27,12 @@ def _random_code():
     return 1000 + secrets.randbelow(9000)
 
 
-def create_order(*, user, lines, client_uuid):
+def create_order(*, user, lines, client_uuid, work_order=None):
     """Crea un pedido pendiente y devuelve (pedido, creado). Reenviar el mismo client_uuid no lo duplica.
 
     lines: dicts con product, quantity y opcionalmente unit (la base si falta). Al convertir una cotización
     (spec 007) cada línea trae además unit_price (el cotizado) y quote_line; la API de pedidos no los acepta.
+    Una orden de taller (spec 011) llega con work_order y, en cada línea, unit_price (el aprobado) y work_order_line.
     """
     existing = Order.objects.filter(client_uuid=client_uuid).first()
     if existing:
@@ -48,7 +49,7 @@ def create_order(*, user, lines, client_uuid):
             raise ValidationError("Las cantidades deben ser positivas.")
         to_base_quantity(product, quantity, unit)  # valida la unidad y las fracciones
         price = line["unit_price"] if line.get("unit_price") is not None else catalog_price(product, unit)
-        priced.append((product, unit, quantity, price, money(price * quantity), line.get("quote_line")))
+        priced.append((product, unit, quantity, price, money(price * quantity), line.get("quote_line"), line.get("work_order_line")))
     total = sum((p[4] for p in priced), Decimal(0))
 
     # El código es aleatorio para que no se adivine el siguiente; si choca con otro del día, se reintenta.
@@ -56,11 +57,12 @@ def create_order(*, user, lines, client_uuid):
         try:
             with transaction.atomic():
                 order = Order.objects.create(
-                    code=_random_code(), client_uuid=client_uuid, salesperson=user, total=total,
+                    code=_random_code(), client_uuid=client_uuid, salesperson=user, total=total, work_order=work_order,
                 )
                 OrderLine.objects.bulk_create(
-                    OrderLine(order=order, product=p, unit=u, quantity=q, unit_price=price, total=t, quote_line=ql)
-                    for p, u, q, price, t, ql in priced
+                    OrderLine(order=order, product=p, unit=u, quantity=q, unit_price=price, total=t, quote_line=ql,
+                              work_order_line=wl)
+                    for p, u, q, price, t, ql, wl in priced
                 )
             return order, True
         except IntegrityError:

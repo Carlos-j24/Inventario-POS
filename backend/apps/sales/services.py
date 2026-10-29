@@ -51,6 +51,8 @@ def create_sale(*, user, shift, lines, payments, client_uuid, offline=False, occ
 
     Con order (spec 002) se cobra un pedido: lines son dicts con order_line y quantity (o None
     para cobrarlo completo), se cobra el precio del pedido y la venta queda a nombre de su vendedor.
+    El pedido de una orden de taller (spec 011) se cobra completo, a nombre de su cliente si no se dice
+    otro, y sus repuestos no salen otra vez: la venta usa las salidas que ya hizo la orden.
 
     customer e invoice (spec 005): a quién va el documento electrónico (consumidor final si no se
     dice) y si el cliente pidió factura electrónica en vez del documento equivalente POS.
@@ -79,7 +81,9 @@ def create_sale(*, user, shift, lines, payments, client_uuid, offline=False, occ
 
 def _order_lines(order, lines):
     """Líneas a cobrar de un pedido: todas, o un subconjunto sin pasar de lo pedido."""
-    by_id = {line.pk: line for line in order.lines.select_related("product", "unit")}
+    by_id = {line.pk: line for line in order.lines.select_related("product", "unit", "work_order_line__movement")}
+    if lines is not None and order.work_order_id:
+        raise ValidationError("Una orden de taller se cobra completa.")
     if lines is None:
         chosen = [(line, line.quantity) for line in by_id.values()]
     else:
@@ -99,7 +103,9 @@ def _order_lines(order, lines):
         raise ValidationError("No hay nada que cobrar del pedido.")
     return [
         {"product": line.product, "unit": line.unit, "quantity": quantity, "agreed_price": line.unit_price,
-         "quoted": line.quote_line_id is not None}
+         # El precio cotizado (spec 007) o el aprobado por el cliente del taller (spec 011) ya lo dio el negocio.
+         "agreed": line.quote_line_id is not None or line.work_order_line_id is not None,
+         "workshop_movement": line.work_order_line.movement if line.work_order_line_id else None}
         for line, quantity in chosen
     ]
 
@@ -128,6 +134,8 @@ def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, ord
             order = _lock_payable_order(order)
             lines = _order_lines(order, lines)
             salesperson = order.salesperson
+            if order.work_order_id and customer is None:
+                customer = order.work_order.customer
         warehouse = shift.register.warehouse
         sale = Sale.objects.create(
             client_uuid=client_uuid, shift=shift, warehouse=warehouse, seller=user, salesperson=salesperson,
@@ -155,8 +163,8 @@ def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, ord
             total = money(charged * quantity)
             rate = Decimal(product.tax_rate)
             subtotal, tax = split_tax(total, rate)
-            movement = None
-            if not product.is_service:  # un servicio no tiene existencias: no mueve inventario (spec 010)
+            movement = line.get("workshop_movement")  # el repuesto ya salió con la orden de taller (spec 011)
+            if movement is None and not product.is_service:  # un servicio no tiene existencias (spec 010)
                 movement, _ = record_movement(
                     kind=StockMovement.Kind.SALE, product=product, warehouse=warehouse,
                     quantity=quantity, unit=unit, user=user, reference=f"Venta {client_uuid}",
@@ -169,8 +177,8 @@ def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, ord
             )
             review = (
                 review or (movement is not None and movement.needs_review) or inactive
-                # El precio de una cotización vigente ya lo dio el negocio (spec 007, decisión 1).
-                or (charged != listed and not line.get("quoted"))
+                # El precio de una cotización vigente o de una orden aprobada ya lo dio el negocio (spec 007 y 011).
+                or (charged != listed and not line.get("agreed"))
                 # Llega con fecha anterior a un conteo ya aprobado: el ajuste no la tuvo en cuenta (decisión 3).
                 or counted_after(product, warehouse, occurred_at)
             )
@@ -180,7 +188,8 @@ def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, ord
         sale.needs_review = review
         sale.save(update_fields=["subtotal", "tax", "total", "needs_review"])
         apply_payments(sale=sale, shift=shift, payments=payments)
-        StockMovement.objects.filter(sale_line__sale=sale).update(reference=f"Venta {sale.number}")
+        # La salida de un repuesto de taller conserva la referencia de su orden.
+        StockMovement.objects.filter(sale_lines__sale=sale, kind=StockMovement.Kind.SALE).update(reference=f"Venta {sale.number}")
         issue_for_sale(sale, customer=customer, invoice=invoice, contingency_number=contingency_number)
         if order is not None:
             order.status = Order.Status.PAID
