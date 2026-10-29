@@ -1,4 +1,7 @@
-"""API de motos y dueños (spec 009, T2). Todo con el módulo de taller activo y workshop.receive."""
+"""API de motos y dueños (spec 009, T2). Todo con el módulo de taller activo y workshop.receive.
+
+La ficha de la moto lista sus órdenes de trabajo (spec 011, regla 11). Las órdenes tienen su API en order_api.py.
+"""
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
 from django.db.models import Prefetch, Q
@@ -16,7 +19,7 @@ from apps.customers.serializers import CustomerSerializer
 from apps.invoicing.models import Business
 
 from . import services
-from .models import MileageReading, Motorcycle, Ownership
+from .models import MileageReading, Motorcycle, Ownership, WorkOrder
 from .rules import normalize_code
 
 
@@ -65,12 +68,21 @@ class MotorcycleSerializer(serializers.ModelSerializer):
         fields = ["id", *EDITABLE, "mileage", "mileage_at", "owner", "created_at", "updated_at"]
 
 
+class WorkOrderSummarySerializer(serializers.ModelSerializer):
+    number = serializers.CharField(read_only=True)
+
+    class Meta:
+        model = WorkOrder
+        fields = ["id", "number", "status", "mileage_in", "request", "received_at"]
+
+
 class MotorcycleDetailSerializer(MotorcycleSerializer):
     ownerships = OwnershipSerializer(many=True, read_only=True)
     mileage_readings = serializers.SerializerMethodField()
+    work_orders = WorkOrderSummarySerializer(many=True, read_only=True)
 
     class Meta(MotorcycleSerializer.Meta):
-        fields = [*MotorcycleSerializer.Meta.fields, "ownerships", "mileage_readings"]
+        fields = [*MotorcycleSerializer.Meta.fields, "ownerships", "mileage_readings", "work_orders"]
 
     def get_mileage_readings(self, motorcycle):
         return ReadingSerializer(motorcycle.mileage_readings.all()[:READINGS_SHOWN], many=True).data
