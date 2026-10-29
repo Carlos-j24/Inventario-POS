@@ -20,7 +20,7 @@ async function tabs(permissions: string[], extra: Record<string, unknown> = {}) 
   serve(permissions, extra);
   render(<AuthProvider><SyncProvider><App /></SyncProvider></AuthProvider>);
   await screen.findByRole("button", { name: "Salir" });
-  return screen.getAllByRole("button").map((b) => b.textContent).filter((t) => t && ["Caja", "Órdenes", "Motos", "Pedidos", "Entradas", "Existencias", "Ventas", "Revisión"].includes(t));
+  return screen.getAllByRole("button").map((b) => b.textContent).filter((t) => t && ["Caja", "Órdenes", "Mis órdenes", "Motos", "Pedidos", "Entradas", "Existencias", "Ventas", "Revisión"].includes(t));
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -54,6 +54,15 @@ describe("módulo de taller (spec 009)", () => {
 
   it("una sesión guardada de antes, sin el dato del módulo, lo toma como apagado", async () => {
     expect(await tabs(["workshop.receive", "sales.create"])).toEqual(["Pedidos"]);
+  });
+
+  it("el mecánico solo ve Mis órdenes y abre en ella (spec 011)", async () => {
+    expect(await tabs(["workshop.repair"], { workshop_enabled: true })).toEqual(["Mis órdenes"]);
+    expect(screen.getByRole("heading", { name: "Mis órdenes" })).toBeInTheDocument();
+  });
+
+  it("sin el módulo el mecánico no ve nada del taller", async () => {
+    expect(await tabs(["workshop.repair"], { workshop_enabled: false })).toEqual([]);
   });
 
   it("con el módulo, sin el permiso no se ve", async () => {

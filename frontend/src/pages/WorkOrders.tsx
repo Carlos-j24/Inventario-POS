@@ -1,11 +1,11 @@
-import { useCallback, useEffect, useMemo, useState, type FormEvent } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 
 import {
-  api, type ApprovalChannel, type Business, type Motorcycle, type Person, type Product, type WorkOrderDetail,
+  api, type ApprovalChannel, type Business, type Motorcycle, type Person, type WorkOrderDetail,
   type WorkOrderLine, type WorkOrderRow,
 } from "../api";
-import ProductSearch from "../components/ProductSearch";
+import AddLine from "../components/AddWorkOrderLine";
 import ReceiveOrder, { ORDERS_URL as URL } from "../components/ReceiveOrder";
 import WorkOrderPrint from "../components/WorkOrderPrint";
 import { formatMoney, formatQty, toCents } from "../money";
@@ -185,7 +185,7 @@ function OrderCard({ id, onChanged }: { id: number; onChanged: () => void }) {
 
       <h3>Presupuesto</h3>
       <Lines order={order} editable={can.editLines} send={send} />
-      {can.editLines && <AddLine onAdd={(body, name) => send("lines/", "POST", body, `${name} agregado: queda por aprobar.`)} />}
+      {can.editLines && <AddLine canPrice onAdd={(body, name) => send("lines/", "POST", body, `${name} agregado: queda por aprobar.`)} />}
       <div className="row">
         <button type="button" onClick={() => setPrinting(true)}>Imprimir presupuesto</button>
       </div>
@@ -294,51 +294,6 @@ function LaborPrice({ line, send }: { line: WorkOrderLine; send: Send }) {
         </button>
       )}
     </span>
-  );
-}
-
-function AddLine({ onAdd }: { onAdd: (body: Record<string, string>, name: string) => Promise<boolean> }) {
-  const [products, setProducts] = useState<Product[]>([]);
-  const [picked, setPicked] = useState<Product | null>(null);
-  const [quantity, setQuantity] = useState("1");
-  const [price, setPrice] = useState("");
-  useEffect(() => { api<Product[]>("/api/catalog/products/").then(setProducts).catch(() => setProducts([])); }, []);
-
-  const validQty = /^\d+([.,]\d+)?$/.test(quantity.trim()) && Number(quantity.replace(",", ".")) > 0;
-  const validPrice = !price.trim() || /^\d+$/.test(price.trim());
-
-  async function submit(e: FormEvent) {
-    e.preventDefault();
-    if (!picked || !validQty || !validPrice) return;
-    const body: Record<string, string> = { product: String(picked.id), quantity: quantity.trim().replace(",", ".") };
-    if (picked.is_service && price.trim()) body.unit_price = price.trim();
-    if (await onAdd(body, picked.name)) { setPicked(null); setQuantity("1"); setPrice(""); }
-  }
-
-  if (!picked) {
-    return (
-      <div className="action-form" aria-label="Agregar al presupuesto">
-        <ProductSearch products={products} onPick={(p) => setPicked(p)} />
-      </div>
-    );
-  }
-  return (
-    <form className="action-form" onSubmit={submit} aria-label="Agregar al presupuesto">
-      <p>
-        <strong>{picked.name}</strong> <span className="muted small">
-          {picked.is_service ? "mano de obra" : `${picked.sku} · ${money(picked.sale_price)} c/u (precio del catálogo)`}</span>
-      </p>
-      <div className="row">
-        <label>Cantidad<input inputMode="decimal" value={quantity} onChange={(e) => setQuantity(e.target.value)} size={5} /></label>
-        {picked.is_service && (
-          <label>Precio de este trabajo<input inputMode="numeric" value={price} onChange={(e) => setPrice(e.target.value)} placeholder={String(toCents(picked.sale_price) / 100)} /></label>
-        )}
-      </div>
-      <div className="row">
-        <button type="button" onClick={() => setPicked(null)}>Cancelar</button>
-        <button className="primary" disabled={!validQty || !validPrice}>Agregar</button>
-      </div>
-    </form>
   );
 }
 
