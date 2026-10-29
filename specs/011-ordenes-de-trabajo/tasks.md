@@ -71,13 +71,27 @@
   - Entregar exige la venta cobrada y no anulada, y guarda el kilometraje de salida (lectura nueva solo si cambió).
   - Cancelar saca el pedido de la caja; una orden cobrada no se cancela sin anular antes la venta.
   - 17 tests y 32 fallos a propósito; dos sobrevivían por falta de test (entregar con el mismo kilometraje no crea lectura y la nota se guarda) y se agregaron.
-- [ ] **T4** API `/api/workshop/orders/`:
+- [x] **T4** API `/api/workshop/orders/`:
   - lista por estado y mecánico (el mecánico solo ve las suyas);
   - ficha y cada acción de la T2 y la T3, con sus permisos;
   - 404 con el módulo apagado;
   - las órdenes en la ficha de la moto.
 
   (Reglas 6, 7, 11 y 12)
+  - Está en `apps/workshop/order_api.py`:
+    - `GET/POST orders/`: lista (por defecto las abiertas; `?status=`, `ALL`, `?mechanic=`, `?motorcycle=`) y recibir;
+    - `GET orders/mechanics/`: los mecánicos activos para asignar;
+    - `GET orders/<id>/`: la ficha con líneas, total aprobado y por aprobar, aprobaciones, historia, pedido en caja y venta;
+    - `POST orders/<id>/<acción>/`: assign, diagnose, send-for-approval, approve, ready, send-to-till, deliver y cancel;
+    - `POST orders/<id>/lines/`, `PATCH`/`DELETE orders/<id>/lines/<línea>/` y `POST .../take/` o `.../return/`.
+  - Permisos:
+    - entra quien tenga `workshop.receive` o `workshop.repair`;
+    - el mecánico solo ve sus órdenes, y las demás le dan 404;
+    - lo demás lo deciden los servicios: sus reglas dan 400 y sus permisos 403 con el mismo mensaje.
+  - La ficha de la moto trae `work_orders`.
+  - 15 tests y 24 fallos a propósito:
+    - uno sobrevivía porque sin kilometraje también saltaba la regla de bajarlo, y ahora el test pide el mensaje exacto;
+    - un corte por tiempo dejó un archivo mutado, se notó por el test que falló y se restauró.
 - [ ] **T5** Frontend, recepción. Pantalla "Órdenes":
   - recibir desde la ficha de la moto o buscándola;
   - lista por estado;
