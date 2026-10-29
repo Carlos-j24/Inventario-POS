@@ -21,6 +21,7 @@ const detail = (over: Partial<MotorcycleDetail> = {}): MotorcycleDetail => ({
     { customer: ana, started_at: "2024-03-10T15:00:00Z", ended_at: "2026-01-05T15:00:00Z" },
   ],
   mileage_readings: [{ mileage: 15200, previous: 9000, note: "", recorded_at: "2026-10-20T15:00:00Z", recorded_by: "recepcion" }],
+  work_orders: [],
   ...over,
 });
 const customer = (o: Owner): Customer => ({
@@ -267,5 +268,46 @@ describe("la ficha", () => {
     expect(await screen.findByText("Inactiva")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Reactivar moto" }));
     expect(bodies(fetch, `PATCH ${URL}1/`)).toEqual([{ is_active: false }, { is_active: true }]);
+  });
+
+  it("muestra sus órdenes y la recibe en el taller desde la ficha", async () => {
+    const delivered = { id: 4, number: "OT-000004", status: "DELIVERED" as const, mileage_in: 9000, request: "Lavado", received_at: "2026-05-02T15:00:00Z" };
+    const opened = { id: 5, number: "OT-000005", status: "RECEIVED" as const, mileage_in: 15400, request: "Cambio de aceite", received_at: "2026-10-28T15:00:00Z" };
+    let received = false;
+    const fetch = await openCard({
+      [`GET ${URL}1/`]: () => json(detail({ mileage: received ? 15400 : 15200, work_orders: received ? [opened, delivered] : [delivered] })),
+      "GET /api/workshop/orders/mechanics/": () => json([{ id: 3, username: "carlos", name: "Carlos" }]),
+      "POST /api/workshop/orders/": () => { received = true; return json({ ...opened, lines: [] }, 201); },
+    });
+    expect(screen.getByRole("list", { name: "Órdenes de la moto" })).toHaveTextContent("OT-000004 · 2 de may de 2026 · Entregada · 9.000 km · Lavado");
+    await userEvent.click(screen.getByRole("button", { name: "Recibir en el taller" }));
+    const form = screen.getByRole("form", { name: "Recibir moto" });
+    expect(form).toHaveTextContent("Recibir XYZ12A · Bajaj Boxer CT 100");
+    await userEvent.type(within(form).getByLabelText("Kilometraje de llegada"), "15400");
+    await userEvent.type(within(form).getByLabelText("Qué pide el cliente"), "Cambio de aceite");
+    await userEvent.click(within(form).getByRole("button", { name: "Abrir orden" }));
+    expect(bodies(fetch, "POST /api/workshop/orders/")).toEqual([{
+      motorcycle: 1, mileage: 15400, mileage_note: "", request: "Cambio de aceite", condition: "", mechanic: null,
+    }]);
+    expect(await screen.findByRole("status")).toHaveTextContent("Orden OT-000005 abierta: síguela en Órdenes.");
+    expect(await screen.findByText("Tiene abierta la orden OT-000005: síguela en Órdenes.")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: "Recibir en el taller" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("form", { name: "Recibir moto" })).not.toBeInTheDocument();
+  });
+
+  it("sin órdenes lo dice y cancelar cierra el formulario", async () => {
+    await openCard();
+    expect(screen.getByText("Todavía no ha entrado al taller.")).toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Recibir en el taller" }));
+    await userEvent.click(within(screen.getByRole("form", { name: "Recibir moto" })).getByRole("button", { name: "Cancelar" }));
+    expect(screen.queryByRole("form", { name: "Recibir moto" })).not.toBeInTheDocument();
+  });
+
+  it("una moto inactiva no se recibe en el taller", async () => {
+    mockApi({ ...list, [`GET ${URL}1/`]: () => json(detail({ is_active: false })) });
+    render(<Motorcycles />);
+    await userEvent.click(await screen.findByRole("button", { name: "XYZ12A" }));
+    await screen.findByRole("heading", { name: "XYZ12A · Bajaj Boxer CT 100" });
+    expect(screen.queryByRole("button", { name: "Recibir en el taller" })).not.toBeInTheDocument();
   });
 });
