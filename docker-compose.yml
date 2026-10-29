@@ -28,6 +28,10 @@ services:
       DB_ENGINE: postgres
       DB_HOST: db
       DB_PORT: "5432"
+      # Logo e íconos del negocio (opcional, ver docs/despliegue.md): la carpeta brand/ junto a este archivo.
+      BRAND_DIR: /app/brand
+    volumes:
+      - ./brand:/app/brand:ro
     ports:
       - "${APP_PORT:-8000}:8000"
 

@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from "react";
 
 import { useAuth } from "../auth";
+import BrandLogo from "../components/BrandLogo";
 
 export default function Login() {
   const { login } = useAuth();
@@ -24,6 +25,7 @@ export default function Login() {
 
   return (
     <form className="card login" onSubmit={submit}>
+      <BrandLogo className="login-logo" alt="Logo del negocio" />
       <h1>Inventario POS</h1>
       <label>
         Usuario

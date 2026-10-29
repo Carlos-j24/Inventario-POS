@@ -1,6 +1,7 @@
 import { useState, type ComponentType } from "react";
 
 import { useAuth } from "./auth";
+import BrandLogo from "./components/BrandLogo";
 import { promptInstall, useCanInstall } from "./install";
 import Adjustments from "./pages/Adjustments";
 import ChangePassword from "./pages/ChangePassword";
@@ -62,6 +63,7 @@ export default function App() {
   return (
     <div className="app">
       <header className="topbar">
+        <BrandLogo className="topbar-logo" />
         <strong className="brand">Inventario POS</strong>
         <nav>
           {pages.map((p) => (

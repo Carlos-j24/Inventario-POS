@@ -42,6 +42,16 @@ docker compose exec app python manage.py createsuperuser
 
 Entra a `https://tu-dominio/admin/`. Crea al menos una **bodega**, una **caja** y los productos, y asigna roles a los usuarios. La app queda en `https://tu-dominio/`.
 
+## Logo del negocio (opcional)
+Cada instalación puede traer su logo; el repositorio no guarda ninguno. Pon en la carpeta `brand/` (junto a `docker-compose.yml`) estos PNG:
+
+| Archivo | Dónde sale |
+|---|---|
+| `logo.png` | Barra superior, pantalla de ingreso y hojas impresas (cotización y orden de trabajo). Cuadrado, unos 320 px. |
+| `icon-192.png`, `icon-512.png` | Ícono al instalar la app en el celular o el PC. |
+
+`docker compose` monta la carpeta en el contenedor (`BRAND_DIR=/app/brand`). Sin ella, o sin algún archivo, la app queda sin logo y con el ícono genérico. Un logo nuevo llega a los equipos en menos de una hora; el ícono ya instalado puede pedir reinstalar la app.
+
 ## HTTPS con Caddy (ejemplo)
 Caddy obtiene y renueva el certificado solo. En el mismo servidor, un `Caddyfile`:
 
@@ -106,6 +116,7 @@ gunzip -c respaldo-AAAA-MM-DD.sql.gz | docker compose exec -T db psql -U inventa
 | `GUNICORN_WORKERS` | Procesos de gunicorn | `3` |
 | `SESSION_COOKIE_AGE` | Duración de la sesión en segundos | `43200` (12 h) |
 | `LOGIN_RATE` | Intentos de inicio de sesión | `5/min` |
+| `BRAND_DIR` | Carpeta con el logo y los íconos del negocio | — (en Docker, `/app/brand`) |
 
 ## Probar en un celular (desarrollo)
 El modo sin conexión y la instalación exigen HTTPS (o `localhost`). En producción lo da el dominio con HTTPS; para probar contra el equipo de desarrollo:

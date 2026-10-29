@@ -37,6 +37,11 @@ describe("navegación por permisos", () => {
     expect(seen).not.toContain("Caja");
   });
 
+  it("la barra superior lleva el logo del negocio", async () => {
+    await tabs(["sales.void"]);
+    expect(document.querySelector("header.topbar img.topbar-logo")).toHaveAttribute("src", "/brand/logo.png");
+  });
+
   it("el supervisor ve Ventas por poder anular", async () => {
     expect(await tabs(["sales.void"])).toEqual(["Ventas"]);
   });

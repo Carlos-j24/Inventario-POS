@@ -71,6 +71,23 @@ self.addEventListener("fetch", (event) => {
     return;
   }
 
+  // Logo, íconos y manifiesto del negocio (/brand): red primero, para que un logo nuevo llegue;
+  // sin red, la copia guardada. Si la instalación no trae logo (404), no se guarda nada.
+  if (url.pathname.startsWith("/brand/")) {
+    event.respondWith(
+      (async () => {
+        try {
+          const res = await fetch(req);
+          if (res.ok) (await caches.open(CACHE)).put(req, res.clone());
+          return res;
+        } catch {
+          return (await caches.match(req)) ?? Response.error();
+        }
+      })(),
+    );
+    return;
+  }
+
   // Archivos estáticos: la copia guardada si existe; si no, la red (y se guarda).
   event.respondWith(
     (async () => {

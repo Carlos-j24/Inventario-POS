@@ -158,6 +158,9 @@ FRONTEND_DIST = Path(os.environ.get("FRONTEND_DIST", BASE_DIR.parent / "frontend
 if FRONTEND_DIST.is_dir():
     WHITENOISE_ROOT = FRONTEND_DIST
     WHITENOISE_INDEX_FILE = True
+# Logo e íconos del negocio (config/brand.py): una carpeta de cada instalación, fuera del repositorio.
+BRAND_DIR = Path(os.environ["BRAND_DIR"]) if os.environ.get("BRAND_DIR") else None
+
 # Los archivos de /assets llevan hash en el nombre: se pueden guardar en caché para siempre.
 # index.html y sw.js no, para que las versiones nuevas lleguen.
 _HASHED_ASSET = re.compile(r"^/assets/.+-[A-Za-z0-9_-]{8,}\.\w+$")

@@ -121,7 +121,14 @@
   - `workOrder.ts` decide los botones (`mechanicActions`, `canTake`, `canReturn`). `readyProblem` dice, como el servidor, por qué no se puede marcar lista.
   - El buscador para agregar pasó a `components/AddWorkOrderLine.tsx`, compartido con recepción; el precio de la mano de obra solo lo ve recepción (`canPrice`).
   - 14 tests nuevos y 29 fallos a propósito: dos sobrevivían porque la condición sobraba (se quitó) y uno por un test flojo (se reforzó).
-- [ ] **T7** `seed_demo --taller`: un mecánico y órdenes en todos los estados, una con un cambio sin aprobar y una cancelada con su repuesto devuelto. (Regla 13)
+- [x] **T7** `seed_demo --taller`: un mecánico y órdenes en todos los estados, una con un cambio sin aprobar y una cancelada con su repuesto devuelto. (Regla 13)
+  - En `apps/demo/workshop.py`, con los mismos servicios que usa la app:
+    - el mecánico `jhon.mecanico` y el servicio "Mano de obra de taller" (`MO-TALLER`), al que recepción le pone el precio de cada trabajo;
+    - la Boxer `XYZ12A` del caso de la spec, en reparación con las bandas de freno sin aprobar;
+    - una esperando aprobación, una recibida sin mecánico, una lista con su pedido en la caja, una entregada y cobrada hace dos días, y una cancelada con su bujía devuelta.
+  - Los tests del demo cambian donde la T7 cambia los datos: otro pedido pendiente (el de la orden), la lectura de kilometraje al recibir y la mano de obra entre los servicios.
+  - 4 tests nuevos.
+  - Aparte, a pedido de Carlos: el logo de cada instalación (ver docs/arquitectura.md).
 - [ ] **T8** Prueba en el navegador y cierre:
   - el recorrido de los criterios de aceptación con la demo de taller;
   - la ferretería sin módulo de taller;
