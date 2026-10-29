@@ -9,6 +9,7 @@ import Transfers from "./pages/Transfers";
 import FiscalInbox from "./pages/FiscalInbox";
 import Login from "./pages/Login";
 import Motorcycles from "./pages/Motorcycles";
+import MyOrders from "./pages/MyOrders";
 import Orders from "./pages/Orders";
 import Quotes from "./pages/Quotes";
 import Pos from "./pages/Pos";
@@ -28,6 +29,7 @@ import { useSync } from "./sync";
 const PAGES: { id: string; label: string; permission: string | string[]; workshop?: true; Component: ComponentType }[] = [
   { id: "pos", label: "Caja", permission: "cash.operate", Component: Pos },
   { id: "work-orders", label: "Órdenes", permission: "workshop.receive", workshop: true, Component: WorkOrders },
+  { id: "my-orders", label: "Mis órdenes", permission: "workshop.repair", workshop: true, Component: MyOrders },
   { id: "motorcycles", label: "Motos", permission: "workshop.receive", workshop: true, Component: Motorcycles },
   { id: "orders", label: "Pedidos", permission: "sales.create", Component: Orders },
   { id: "quotes", label: "Cotizaciones", permission: ["sales.create", "sales.void", "reports.view"], Component: Quotes },

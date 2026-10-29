@@ -107,13 +107,20 @@
   - Qué botones ve recepción según el estado lo decide `workOrder.ts`; el servidor vuelve a comprobarlo todo.
   - Sacar y regresar repuestos, el diagnóstico y "Lista" quedan para la pantalla del mecánico (T6).
   - 25 tests nuevos y 36 fallos a propósito.
-- [ ] **T6** Frontend, mecánico. "Mis órdenes":
+- [x] **T6** Frontend, mecánico. "Mis órdenes":
   - diagnóstico;
   - agregar repuestos y mano de obra;
   - sacar y regresar repuestos;
   - marcar lista.
 
   (Reglas 5 y 6)
+  - Pantalla `pages/MyOrders.tsx` (pestaña "Mis órdenes", con `workshop.repair` y el módulo activo; el mecánico abre en ella):
+    - lista las abiertas asignadas a quien entró (`?mechanic=<yo>`), también si es de recepción y ve todas;
+    - la ficha muestra lo de la moto pero no al cliente ni los precios: eso es de recepción;
+    - diagnóstico, agregar repuestos y mano de obra sin precio, quitar lo que no salió, sacar y regresar repuestos, pedir aprobación y marcar lista.
+  - `workOrder.ts` decide los botones (`mechanicActions`, `canTake`, `canReturn`). `readyProblem` dice, como el servidor, por qué no se puede marcar lista.
+  - El buscador para agregar pasó a `components/AddWorkOrderLine.tsx`, compartido con recepción; el precio de la mano de obra solo lo ve recepción (`canPrice`).
+  - 14 tests nuevos y 29 fallos a propósito: dos sobrevivían porque la condición sobraba (se quitó) y uno por un test flojo (se reforzó).
 - [ ] **T7** `seed_demo --taller`: un mecánico y órdenes en todos los estados, una con un cambio sin aprobar y una cancelada con su repuesto devuelto. (Regla 13)
 - [ ] **T8** Prueba en el navegador y cierre:
   - el recorrido de los criterios de aceptación con la demo de taller;

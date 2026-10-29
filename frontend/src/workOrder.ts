@@ -41,6 +41,31 @@ export function receptionActions(order: WorkOrderDetail) {
   };
 }
 
+/** Qué puede hacer el mecánico con su orden (spec 011, regla 6). */
+export function mechanicActions(order: WorkOrderDetail) {
+  const pending = order.lines.some((l) => !l.approved);
+  return {
+    editLines: isEditable(order.status),
+    askApproval: (order.status === "RECEIVED" || order.status === "IN_REPAIR") && pending,
+    ready: order.status === "IN_REPAIR",
+  };
+}
+
+/** El repuesto aprobado sale de la bodega solo con la orden en reparación. */
+export const canTake = (order: WorkOrderDetail, line: WorkOrderLine) =>
+  order.status === "IN_REPAIR" && !line.is_service && line.approved && !line.taken;
+
+/** Lo que salió y no se usó vuelve mientras la orden se puede editar. */
+export const canReturn = (order: WorkOrderDetail, line: WorkOrderLine) =>
+  isEditable(order.status) && line.taken && !line.returned;
+
+/** Por qué todavía no se puede marcar lista, como lo diría el servidor, o null. */
+export function readyProblem(order: WorkOrderDetail): string | null {
+  if (order.lines.some((l) => !l.approved)) return "Hay cambios sin aprobar: que el cliente los apruebe o quítalos.";
+  const untaken = order.lines.find((l) => !l.is_service && !l.taken);
+  return untaken ? `${untaken.name} está aprobado pero no ha salido de la bodega: sácalo o quítalo.` : null;
+}
+
 /** Dónde está la línea: por aprobar, aprobada, puesta en la moto o regresada a la bodega. */
 export function lineState(line: WorkOrderLine): string {
   if (!line.approved) return "Por aprobar";

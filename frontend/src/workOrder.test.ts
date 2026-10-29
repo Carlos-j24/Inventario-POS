@@ -2,7 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import type { WorkOrderDetail, WorkOrderLine, WorkOrderStatus } from "./api";
 import {
-  STATUS_FILTERS, emptyReceive, isEditable, isOpen, lineState, receivePayload, receiveProblem, receptionActions, unpricedLabor,
+  STATUS_FILTERS, canReturn, canTake, emptyReceive, isEditable, isOpen, lineState, mechanicActions, readyProblem, receivePayload,
+  receiveProblem, receptionActions, unpricedLabor,
 } from "./workOrder";
 
 const line = (over: Partial<WorkOrderLine> = {}): WorkOrderLine => ({
@@ -93,5 +94,44 @@ describe("recibir la moto", () => {
       motorcycle: 7, mileage: 15400, mileage_note: "", request: "Aceite", condition: "Casco", mechanic: 3,
     });
     expect(receivePayload(7, form).mechanic).toBeNull();
+  });
+});
+
+describe("lo que puede hacer el mecánico", () => {
+  it("pide aprobación recibida o en reparación si hay algo pendiente, y marca lista en reparación", () => {
+    const pending = [line(), line({ id: 2, approved: false })];
+    expect(mechanicActions(order("RECEIVED", { lines: pending }))).toEqual({ editLines: true, askApproval: true, ready: false });
+    expect(mechanicActions(order("IN_REPAIR", { lines: pending }))).toEqual({ editLines: true, askApproval: true, ready: true });
+    expect(mechanicActions(order("IN_REPAIR"))).toEqual({ editLines: true, askApproval: false, ready: true });
+    expect(mechanicActions(order("AWAITING_APPROVAL", { lines: pending }))).toEqual({ editLines: true, askApproval: false, ready: false });
+    for (const status of ["READY", "DELIVERED", "CANCELLED"] as const) {
+      expect(mechanicActions(order(status, { lines: pending }))).toEqual({ editLines: false, askApproval: false, ready: false });
+    }
+  });
+
+  it("saca solo repuestos aprobados que no han salido, con la orden en reparación", () => {
+    const o = order("IN_REPAIR");
+    expect(canTake(o, line())).toBe(true);
+    expect(canTake(o, line({ approved: false }))).toBe(false);
+    expect(canTake(o, line({ is_service: true }))).toBe(false);
+    expect(canTake(o, line({ taken: true }))).toBe(false);
+    expect(canTake(order("AWAITING_APPROVAL"), line())).toBe(false);
+  });
+
+  it("regresa lo que salió y no ha vuelto, mientras se edita", () => {
+    expect(canReturn(order("IN_REPAIR"), line({ taken: true }))).toBe(true);
+    expect(canReturn(order("AWAITING_APPROVAL"), line({ taken: true }))).toBe(true);
+    expect(canReturn(order("IN_REPAIR"), line())).toBe(false);
+    expect(canReturn(order("IN_REPAIR"), line({ taken: true, returned: true }))).toBe(false);
+    expect(canReturn(order("READY"), line({ taken: true }))).toBe(false);
+  });
+
+  it("dice por qué no se puede marcar lista", () => {
+    expect(readyProblem(order("IN_REPAIR", { lines: [line({ taken: true }), line({ id: 2, approved: false })] })))
+      .toBe("Hay cambios sin aprobar: que el cliente los apruebe o quítalos.");
+    expect(readyProblem(order("IN_REPAIR", { lines: [line({ taken: true }), line({ id: 2, name: "Bujía" })] })))
+      .toBe("Bujía está aprobado pero no ha salido de la bodega: sácalo o quítalo.");
+    expect(readyProblem(order("IN_REPAIR", { lines: [line({ taken: true, returned: true }), line({ id: 2, is_service: true })] }))).toBeNull();
+    expect(readyProblem(order("IN_REPAIR", { lines: [] }))).toBeNull();
   });
 });
