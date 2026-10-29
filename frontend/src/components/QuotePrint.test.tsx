@@ -30,6 +30,7 @@ describe("hoja de la cotización", () => {
   it("lleva los datos del negocio, el número, las fechas y el cliente", () => {
     render(<QuotePrint quote={quote} />);
     const sheet = screen.getByRole("article", { name: "Hoja de la cotización" });
+    expect(within(sheet).getByRole("img", { name: "Logo del negocio" })).toHaveAttribute("src", "/brand/logo.png");
     expect(sheet.querySelector(".quote-sheet-business")).toHaveTextContent(/^El Tornillo$/); // el nombre comercial, en grande
     expect(sheet).toHaveTextContent("Ferretería El Tornillo S.A.S.");
     expect(sheet).toHaveTextContent("NIT 900555111-2");

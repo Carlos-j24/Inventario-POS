@@ -1,4 +1,5 @@
 import type { QuoteDetail } from "../api";
+import BrandLogo from "./BrandLogo";
 import { formatMoney, formatQty, toCents } from "../money";
 
 const money = (value: string) => formatMoney(toCents(value));
@@ -16,7 +17,8 @@ export default function QuotePrint({ quote }: { quote: QuoteDetail }) {
     <article className="quote-sheet" aria-label="Hoja de la cotización">
       <style>{"@media print { @page { size: letter portrait; margin: 14mm; } }"}</style>
       <header className="quote-sheet-head">
-        <div>
+        <BrandLogo className="quote-sheet-logo" alt="Logo del negocio" />
+        <div className="quote-sheet-from">
           <strong className="quote-sheet-business">{b.trade_name || b.name}</strong>
           {b.trade_name && <div>{b.name}</div>}
           {b.nit && <div>NIT {b.nit}</div>}

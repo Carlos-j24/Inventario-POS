@@ -7,3 +7,6 @@ db.sqlite3
 node_modules/
 dist/
 staticfiles/
+
+# Logo e íconos de cada instalación (docs/despliegue.md): nunca en este repositorio público.
+/brand/

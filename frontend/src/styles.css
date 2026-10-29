@@ -72,6 +72,8 @@ label input, label select { color: var(--text); }
 .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); padding: 16px; }
 .narrow { max-width: 440px; margin: 24px auto; }
 .login { max-width: 360px; margin: 10vh auto; }
+.login-logo { display: block; width: 140px; height: 140px; margin: 0 auto 8px; object-fit: contain; }
+.topbar-logo { width: 36px; height: 36px; object-fit: contain; }
 .login button { width: 100%; }
 
 .row { display: flex; gap: 8px; align-items: flex-end; flex-wrap: wrap; }
@@ -196,6 +198,8 @@ button.danger-btn { background: var(--danger); color: #fff; border-color: var(--
 .quote-sheet { background: #fff; color: #000; font: 12px/1.45 system-ui, sans-serif; padding: 20px; }
 .quote-sheet .muted { color: #555; }
 .quote-sheet-head { display: flex; justify-content: space-between; gap: 16px; border-bottom: 2px solid #000; padding-bottom: 10px; }
+.quote-sheet-logo { width: 80px; height: 80px; object-fit: contain; }
+.quote-sheet-from { flex: 1; }
 .quote-sheet-business { font-size: 18px; }
 .quote-sheet-number { text-align: right; }
 .quote-sheet-number strong { font-size: 18px; }

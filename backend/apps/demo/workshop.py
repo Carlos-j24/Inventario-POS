@@ -6,6 +6,10 @@ una recepcionista y clientes con sus motos: una con dueño anterior, una sin pla
 kilometraje de los últimos meses. Los datos del negocio son ficticios.
 
 Lavadero (spec 010): lavados todos los días, alguno con un repuesto, y hoy uno cobrado sin conexión.
+
+Órdenes de trabajo (spec 011, T7): un mecánico, la mano de obra de taller y una orden en cada estado,
+hechas con los mismos servicios que usa la app: una en reparación con un cambio sin aprobar, una lista
+en la caja sin cobrar, una entregada y cobrada, y una cancelada con su repuesto devuelto a la bodega.
 """
 import random
 import uuid
@@ -25,7 +29,8 @@ from apps.sales.models import Quote, Sale
 from apps.sales.orders import create_order
 from apps.sales.quotes import convert_quote, create_quote, void_quote
 from apps.sales.services import catalog_price, create_sale, money
-from apps.workshop.models import MileageReading, Motorcycle, Ownership
+from apps.workshop import work_orders as wo
+from apps.workshop.models import MileageReading, Motorcycle, Ownership, WorkOrder, WorkOrderEvent
 from apps.workshop.services import change_owner, register_motorcycle, update_mileage
 
 from .seed import USERS, Profile, _at, _sale
@@ -58,7 +63,10 @@ SERVICES = (
     ("LAV-150", "Lavado moto hasta 150 cc", "Lavadero", 12000),
     ("LAV-AC", "Lavado moto alto cilindraje", "Lavadero", 18000),
     ("LAV-MOT", "Lavado de motor y desengrase", "Lavadero", 15000),
+    # Precio de referencia: recepción pone el de cada trabajo (spec 011).
+    ("MO-TALLER", "Mano de obra de taller", "Taller", 20000),
 )
+MECHANIC = ("jhon.mecanico", "Jhon", "Mecánico")
 
 # Clientes del taller (cédula o NIT, nombre, teléfono) y sus motos. Placas y chasis ficticios.
 CUSTOMERS = {
@@ -245,11 +253,79 @@ def _today(rng, now, users, warehouses, registers, products):
         {"product": products["LLA-90-18"], "quantity": 1}, {"product": products["ACE-20W50"], "quantity": 2},
     ])
     _motorcycles(now, users)
+    _work_orders(now, users, products, shift)
+
+
+def _work_orders(now, users, products, shift):
+    """Una orden en cada estado, con la historia que tendría en la app (spec 011, regla 13)."""
+    diana, jhon, laura = users["diana.recepcion"][0], users[MECHANIC[0]][0], users["laura.caja"][0]
+    labor = Product.objects.get(sku="MO-TALLER")
+    motos = {m.plate or m.vin: m for m in Motorcycle.objects.all()}
+
+    def receive(plate, mileage, request, condition="", mechanic=jhon, back=0):
+        order = wo.receive_order(user=diana, motorcycle=motos[plate], mileage=mileage, request=request,
+                                 condition=condition, mechanic=mechanic)
+        if back:  # llegó hace unos días
+            when = now - timedelta(days=back)
+            WorkOrder.objects.filter(pk=order.pk).update(received_at=when)
+            WorkOrderEvent.objects.filter(work_order=order).update(at=when)
+            order.refresh_from_db()
+        return order
+
+    def budget(order, diagnosis, parts, work_price):
+        """El mecánico diagnostica y agrega los repuestos; recepción agrega la mano de obra con su precio."""
+        wo.diagnose(order=order, user=jhon, diagnosis=diagnosis)
+        for sku, qty in parts:
+            wo.add_line(order=order, user=jhon, product=products[sku], quantity=qty)
+        wo.add_line(order=order, user=diana, product=labor, quantity=1, unit_price=Decimal(work_price))
+
+    def repaired(order, approved_by, channel="PHONE"):
+        """Aprobada y con todos sus repuestos puestos."""
+        wo.approve(order=order, user=diana, approved_by=approved_by, channel=channel)
+        for line in order.lines.filter(is_service=False, movement__isnull=True):
+            wo.take_part(line=line, user=jhon)
+
+    # Entregada y cobrada: la flota trajo la Honda hace dos días.
+    honda = receive("DEF56G", 21050, "Mantenimiento de los 21.000 km", "Sin espejo izquierdo", back=2)
+    budget(honda, "Cambio de aceite y bujía", [("ACE-20W50", 1), ("BUJ-C7", 1)], 25000)
+    repaired(honda, "Jefe de flota de la mensajería")
+    wo.mark_ready(order=honda, user=jhon)
+    till = wo.send_to_till(order=honda, user=diana)
+    create_sale(user=laura, shift=shift, order=till, lines=None, client_uuid=uuid.uuid4(),
+                payments=[{"method": "CASH", "amount": till.total}])
+    wo.deliver(order=honda, user=diana, mileage=21052)
+
+    # Cancelada: el repuesto ya había salido y volvió a la bodega.
+    suzuki = receive("JKL90B", 49000, "No prende", "Batería descargada", back=1)
+    budget(suzuki, "Bujía dañada", [("BUJ-C7", 1)], 10000)
+    repaired(suzuki, "Jorge Ramírez")
+    wo.cancel(order=suzuki, user=diana, reason="El cliente se la llevó sin arreglar")
+
+    # Lista y en la caja, sin cobrar todavía.
+    yamaha = receive("GHI78H", 150, "Ajustar y lubricar la cadena")
+    budget(yamaha, "Cadena seca y floja", [("GRA-CAD", 1)], 15000)
+    repaired(yamaha, "Jefe de flota de la mensajería", "IN_PERSON")
+    wo.mark_ready(order=yamaha, user=jhon)
+    wo.send_to_till(order=yamaha, user=diana)
+
+    # En reparación, con un cambio que el cliente todavía no aprueba (el caso de la spec).
+    boxer = receive("XYZ12A", 15400, "Cambio de aceite y revisar frenos", "Rayón en el tanque, deja el casco")
+    budget(boxer, "Aceite vencido y pastillas gastadas", [("ACE-20W50", 1), ("PAS-DEL", 1)], 25000)
+    repaired(boxer, "Jorge Ramírez")
+    wo.add_line(order=boxer, user=jhon, product=products["BAN-TRA"], quantity=1)
+
+    # Esperando aprobación.
+    pulsar = receive("ABC34D", 8350, "Suena el motor", "Sin novedades")
+    budget(pulsar, "Cadenilla del árbol de levas floja", [("FIL-P200", 1)], 60000)
+    wo.send_for_approval(order=pulsar, user=jhon)
+
+    # Recibida, sin mecánico todavía.
+    receive("9F2NKD125T0001234", 40, "Primera revisión", "Nueva, sin placa", mechanic=None)
 
 
 PROFILE = Profile(
     products=PRODUCTS, pending=PENDING, restock=RESTOCK,
     warehouses=(("PRAL", "Bodega principal"), ("VIT", "Mostrador del almacén")), business=_business, today=_today,
-    users=(*USERS, ("diana.recepcion", "Diana", "Recepción de taller")),
+    users=(*USERS, ("diana.recepcion", "Diana", "Recepción de taller"), MECHANIC),
     services=SERVICES, daily=_washes,
 )

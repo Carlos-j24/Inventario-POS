@@ -2,6 +2,7 @@ import type { Business, WorkOrderDetail } from "../api";
 import { formatMoney, formatQty, toCents } from "../money";
 import { describeMotorcycle, formatKm } from "../motorcycle";
 import { STATUS_LABELS } from "../workOrder";
+import BrandLogo from "./BrandLogo";
 
 const money = (value: string) => formatMoney(toCents(value));
 const day = (iso: string) => new Date(iso).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" });
@@ -19,7 +20,8 @@ export default function WorkOrderPrint({ order, business }: { order: WorkOrderDe
     <article className="quote-sheet" aria-label="Hoja de la orden de trabajo">
       <style>{"@media print { @page { size: letter portrait; margin: 14mm; } }"}</style>
       <header className="quote-sheet-head">
-        <div>
+        <BrandLogo className="quote-sheet-logo" alt="Logo del negocio" />
+        <div className="quote-sheet-from">
           {b && <strong className="quote-sheet-business">{b.trade_name || b.name}</strong>}
           {b?.trade_name && <div>{b.name}</div>}
           {b?.nit && <div>NIT {b.nit}</div>}

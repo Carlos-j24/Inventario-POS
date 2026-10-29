@@ -15,7 +15,7 @@ from apps.inventory.models import PhysicalCount, StockLevel, StockMovement, Tran
 from apps.invoicing.models import Business
 from apps.reports.costs import inventory_report, margins_report
 from apps.sales.models import Order, Quote, Sale, SaleLine
-from apps.workshop.models import Motorcycle
+from apps.workshop.models import Motorcycle, WorkOrder
 
 from .seed import USERS, seed
 
@@ -48,7 +48,7 @@ def test_the_workshop_module_and_its_reception():
 
 
 def test_the_same_users_as_the_hardware_store_plus_reception(seeded):
-    assert set(seeded) == {u for u, *_ in USERS} | {"diana.recepcion"}
+    assert set(seeded) == {u for u, *_ in USERS} | {"diana.recepcion", "jhon.mecanico"}
 
 
 def test_motorcycle_parts_with_the_same_history():
@@ -64,7 +64,7 @@ def test_motorcycle_parts_with_the_same_history():
     assert count.lines.get(product__sku="ACE-10W40").difference == Decimal("-1.000")
     transfer = Transfer.objects.get()
     assert (transfer.destination.name, transfer.lines.get(product__sku="BOM-H4").base_quantity) == ("Mostrador del almacén", 10)
-    assert Order.objects.get(status="PENDING").lines.filter(product__sku="LLA-90-18").exists()
+    assert Order.objects.get(status="PENDING", work_order=None).lines.filter(product__sku="LLA-90-18").exists()
     assert list(Warehouse.objects.filter(is_default=True).values_list("code", flat=True)) == ["PRAL"]
     statuses = sorted(q.effective_status() for q in Quote.objects.all())
     assert statuses == ["CONVERTED", "EXPIRED", "VALID", "VALID", "VOIDED"]
@@ -93,14 +93,15 @@ def test_customers_and_motorcycles_to_show():
 def test_mileage_readings_go_back_months():
     boxer = Motorcycle.objects.get(plate="XYZ12A")
     readings = list(boxer.mileage_readings.order_by("recorded_at"))
-    assert [(r.mileage, days_ago(r.recorded_at)) for r in readings] == [(12500, 120), (14100, 35), (15200, 3)]
-    assert (boxer.mileage, days_ago(boxer.mileage_at), days_ago(boxer.created_at)) == (15200, 3, 120)
-    reset = Motorcycle.objects.get(plate="GHI78H").mileage_readings.order_by("-recorded_at").first()
+    # la última, de hoy: la recibieron en el taller (spec 011)
+    assert [(r.mileage, days_ago(r.recorded_at)) for r in readings] == [(12500, 120), (14100, 35), (15200, 3), (15400, 0)]
+    assert (boxer.mileage, days_ago(boxer.mileage_at), days_ago(boxer.created_at)) == (15400, 0, 120)
+    reset = Motorcycle.objects.get(plate="GHI78H").mileage_readings.order_by("-recorded_at")[1]
     assert (reset.mileage, reset.previous, reset.note) == (120, 31200, "Cambio de tablero")
 
 
 def test_the_car_wash_services_have_no_stock():
-    washes = Product.objects.filter(is_service=True)
+    washes = Product.objects.filter(is_service=True, category__name="Lavadero")
     assert {(p.sku, p.category.name, p.sale_price) for p in washes} == {
         ("LAV-150", "Lavadero", Decimal("12000")), ("LAV-AC", "Lavadero", Decimal("18000")), ("LAV-MOT", "Lavadero", Decimal("15000")),
     }
@@ -109,7 +110,7 @@ def test_the_car_wash_services_have_no_stock():
 
 
 def test_washes_every_worked_day_some_with_a_part():
-    lines = SaleLine.objects.filter(is_service=True, sale__status="COMPLETED").select_related("sale")
+    lines = SaleLine.objects.filter(product__category__name="Lavadero", sale__status="COMPLETED").select_related("sale")
     per_day = Counter(timezone.localtime(line.sale.occurred_at).date() for line in lines)
     history = {day: n for day, n in per_day.items() if day != timezone.localdate()}
     assert len(history) >= 10 and all(2 <= n <= 4 for n in history.values()), per_day
@@ -130,7 +131,7 @@ def test_today_a_wash_with_oil_and_an_offline_wash_without_review():
 def test_the_margins_report_shows_the_washes_apart():
     report = margins_report(timezone.localdate() - timedelta(days=30), timezone.localdate())
     services = [r for r in report["rows"] if r["is_service"]]
-    assert {r["sku"] for r in services} == {"LAV-150", "LAV-AC", "LAV-MOT"}
+    assert {r["sku"] for r in services} == {"LAV-150", "LAV-AC", "LAV-MOT", "MO-TALLER"}  # la mano de obra de la orden cobrada
     assert all(r["cost"] == "0.00" for r in services)
     assert Decimal(report["totals"]["services_net_sales"]) == sum(Decimal(r["net_sales"]) for r in services) > 0
 
@@ -142,3 +143,53 @@ def test_one_motorcycle_changed_owner():
     assert previous.customer.name == "Luis Gómez"
     assert (days_ago(previous.started_at), days_ago(previous.ended_at), days_ago(current.started_at)) == (400, 30, 30)
     assert honda.owner == current.customer
+
+
+# --- órdenes de trabajo (spec 011, T7) ----------------------------------------------
+
+def orders():
+    return {o.motorcycle.plate or o.motorcycle.vin: o for o in WorkOrder.objects.select_related("motorcycle", "mechanic")}
+
+
+def test_a_mechanic_and_an_order_in_every_status():
+    jhon = User.objects.get(username="jhon.mecanico")
+    assert [r.name for r in jhon.roles.all()] == ["Mecánico"]
+    labor = Product.objects.get(sku="MO-TALLER")
+    assert (labor.is_service, labor.category.name) == (True, "Taller")
+    assert {plate: o.status for plate, o in orders().items()} == {
+        "DEF56G": "DELIVERED", "JKL90B": "CANCELLED", "GHI78H": "READY", "XYZ12A": "IN_REPAIR",
+        "ABC34D": "AWAITING_APPROVAL", "9F2NKD125T0001234": "RECEIVED",
+    }
+    assert [o.mechanic for o in orders().values() if o.status == "RECEIVED"] == [None]
+    assert all(o.mechanic == jhon for o in orders().values() if o.status != "RECEIVED")
+    assert days_ago(orders()["DEF56G"].received_at) == 2
+
+
+def test_the_boxer_of_the_spec_has_a_change_without_approval():
+    boxer = orders()["XYZ12A"]
+    assert (boxer.mileage_in, boxer.request, boxer.condition) == (15400, "Cambio de aceite y revisar frenos", "Rayón en el tanque, deja el casco")
+    lines = {line.product.sku: line for line in boxer.lines.select_related("product")}
+    assert {sku: (line.approved, line.movement_id is not None) for sku, line in lines.items()} == {
+        "ACE-20W50": (True, True), "PAS-DEL": (True, True), "MO-TALLER": (True, False), "BAN-TRA": (False, False),
+    }
+    assert lines["MO-TALLER"].unit_price == Decimal("25000")
+    assert boxer.approvals.get().approved_by == "Jorge Ramírez"
+    out = StockMovement.objects.get(product__sku="PAS-DEL", kind="WORKSHOP_OUT", reference=f"Orden {boxer.number}")
+    assert (out.warehouse.code, out.quantity) == ("PRAL", Decimal("-1"))
+
+
+def test_delivered_after_the_till_charged_it_and_one_waiting_in_the_till():
+    honda = orders()["DEF56G"]
+    sale = Sale.objects.get(order__work_order=honda)
+    assert (sale.status, sale.total, honda.mileage_out) == ("COMPLETED", Decimal("69000.00"), 21052)
+    assert all(line.movement.kind == "WORKSHOP_OUT" for line in sale.lines.filter(is_service=False))  # no se descontó otra vez
+    assert not sale.needs_review
+    waiting = Order.objects.get(status="PENDING", work_order=orders()["GHI78H"])
+    assert waiting.total == Decimal("39000.00")
+
+
+def test_the_cancelled_one_returned_its_part():
+    suzuki = orders()["JKL90B"]
+    line = suzuki.lines.get(product__sku="BUJ-C7")
+    assert (line.movement.kind, line.returned_movement.kind) == ("WORKSHOP_OUT", "WORKSHOP_RETURN")
+    assert suzuki.events.last().note == "El cliente se la llevó sin arreglar"

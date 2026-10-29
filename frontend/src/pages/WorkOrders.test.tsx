@@ -328,6 +328,7 @@ describe("pantalla Órdenes", () => {
     const sheet = within(dialog).getByRole("article", { name: "Hoja de la orden de trabajo" });
     expect(await within(sheet).findByText("Moto Repuestos y Lavadero Arias")).toBeInTheDocument();
     expect(sheet).toHaveTextContent("NIT 900123456-7");
+    expect(within(sheet).getByRole("img", { name: "Logo del negocio" })).toHaveAttribute("src", "/brand/logo.png");
     expect(sheet).toHaveTextContent("Orden de trabajoOT-000005");
     expect(sheet).toHaveTextContent("En reparación");
     expect(sheet).toHaveTextContent("Jorge Ramírez");

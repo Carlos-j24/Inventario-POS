@@ -100,6 +100,13 @@
 - API (T4) en `apps/workshop/order_api.py`, bajo `/api/workshop/orders/`: lista y recibir, ficha, `<id>/<acción>/` para cada servicio y `<id>/lines/…` para el presupuesto. Entra quien tenga `workshop.receive` o `workshop.repair`; el mecánico solo ve las suyas (las demás, 404). Los servicios deciden el resto: reglas → 400, permisos → 403 con su mensaje. Con el módulo apagado, 404. La ficha de la moto lista sus órdenes.
 - Pantalla "Órdenes" de recepción (T5) en `frontend/src/pages/WorkOrders.tsx`: lista, recibir, y la ficha con presupuesto, aprobación, hoja para imprimir (`WorkOrderPrint`), caja, entrega y cancelación. `workOrder.ts` decide qué acciones mostrar según el estado. La ficha de la moto también recibe (`ReceiveOrder`).
 - Pantalla "Mis órdenes" del mecánico (T6) en `frontend/src/pages/MyOrders.tsx`: sus órdenes abiertas, con diagnóstico, repuestos y mano de obra sin precios, sacar y regresar, pedir aprobación y marcar lista. `AddWorkOrderLine` es el buscador compartido con recepción.
+- Demo (T7): `seed_demo --taller` siembra un mecánico, la mano de obra de taller y una orden en cada estado.
+
+## Logo de cada instalación
+- El logo es del cliente y el repositorio es público y genérico: va en una carpeta de la instalación (`BRAND_DIR`; en Docker, `./brand` montada en `/app/brand`). `/brand/` está en `.gitignore`.
+- `config/brand.py` sirve `/brand/logo.png`, `icon-192.png` e `icon-512.png` (solo esos nombres, sin sesión: se ven en el ingreso) y el manifiesto `/brand/manifest.webmanifest` con esos íconos o, sin ellos, el genérico.
+- `BrandLogo` lo muestra en la barra superior, el ingreso y las hojas de cotización y orden; si responde 404 (la ferretería) no muestra nada.
+- El service worker pide `/brand/` primero a la red y guarda la copia para verlo sin conexión.
 
 ## Roles y permisos
 - `Permission`: códigos fijos (`inventory.receive`, `sales.void`…), creados por migraciones. `inventory.transfer` (spec 006) lo tienen por defecto Administrador, Jefe de bodega y Auxiliar de bodega. `workshop.receive` (spec 009) lo tienen Administrador y Recepción de taller; `workshop.repair` (spec 011), Administrador y Mecánico.
