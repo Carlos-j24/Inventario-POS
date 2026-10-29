@@ -1,10 +1,12 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
-import { api, type Customer, type Motorcycle, type MotorcycleDetail } from "../api";
+import { api, type Customer, type Motorcycle, type MotorcycleDetail, type WorkOrderDetail } from "../api";
 import CustomerPicker from "../components/CustomerPicker";
+import ReceiveOrder from "../components/ReceiveOrder";
 import {
   BRANDS, describeMotorcycle, emptyForm, formatKm, formOf, formProblem, mileageNeedsNote, payload, type MotorcycleForm,
 } from "../motorcycle";
+import { STATUS_LABELS, isOpen } from "../workOrder";
 
 const URL = "/api/workshop/motorcycles/";
 /** Cierra con punto, sin repetirlo si el nombre ya termina en uno ("… S.A.S."). */
@@ -197,6 +199,14 @@ function MotorcycleCard({ id, onChanged }: { id: number; onChanged: () => void }
         </ul>
       )}
 
+      <h3>Órdenes de trabajo</h3>
+      <WorkOrdersOf moto={moto} onReceived={(order) => {
+        setMessage(`Orden ${order.number} abierta: síguela en Órdenes.`);
+        setError(null);
+        api<MotorcycleDetail>(`${URL}${id}/`).then(setMoto).catch((e: Error) => setError(e.message));
+        onChanged();
+      }} />
+
       <h3>Dueño</h3>
       <OwnerChange current={moto.owner.id} onSave={(owner) => send("owner/", "POST", { owner: owner.id }, sentence(`Ahora es de ${owner.name}`))} />
       {previous.length > 0 && (
@@ -209,6 +219,36 @@ function MotorcycleCard({ id, onChanged }: { id: number; onChanged: () => void }
 
       <h3>Datos de la moto</h3>
       <EditData key={moto.updated_at} moto={moto} onSave={(body, done) => send("", "PATCH", body, done)} />
+    </div>
+  );
+}
+
+/** Spec 011, T5: las órdenes de la moto y, si no tiene una abierta, recibirla en el taller. */
+function WorkOrdersOf({ moto, onReceived }: { moto: MotorcycleDetail; onReceived: (order: WorkOrderDetail) => void }) {
+  const [receiving, setReceiving] = useState(false);
+  const open = moto.work_orders.find((o) => isOpen(o.status));
+  return (
+    <div className="action-form">
+      {moto.work_orders.length > 0 ? (
+        <ul className="plain-list small" aria-label="Órdenes de la moto">
+          {moto.work_orders.map((o) => (
+            <li key={o.id}>{o.number} · {date(o.received_at)} · {STATUS_LABELS[o.status]} · {formatKm(o.mileage_in)} <span className="muted">· {o.request}</span></li>
+          ))}
+        </ul>
+      ) : (
+        <p className="muted small">Todavía no ha entrado al taller.</p>
+      )}
+      {receiving ? (
+        <ReceiveOrder
+          motorcycle={{ id: moto.id, mileage: moto.mileage, label: describeMotorcycle(moto) }}
+          onReceived={(order) => { setReceiving(false); onReceived(order); }}
+          onCancel={() => setReceiving(false)}
+        />
+      ) : open ? (
+        <p className="muted small">Tiene abierta la orden {open.number}: síguela en Órdenes.</p>
+      ) : (
+        moto.is_active && <div className="row"><button onClick={() => setReceiving(true)}>Recibir en el taller</button></div>
+      )}
     </div>
   );
 }

@@ -20,7 +20,7 @@ async function tabs(permissions: string[], extra: Record<string, unknown> = {}) 
   serve(permissions, extra);
   render(<AuthProvider><SyncProvider><App /></SyncProvider></AuthProvider>);
   await screen.findByRole("button", { name: "Salir" });
-  return screen.getAllByRole("button").map((b) => b.textContent).filter((t) => t && ["Caja", "Motos", "Pedidos", "Entradas", "Existencias", "Ventas", "Revisión"].includes(t));
+  return screen.getAllByRole("button").map((b) => b.textContent).filter((t) => t && ["Caja", "Órdenes", "Motos", "Pedidos", "Entradas", "Existencias", "Ventas", "Revisión"].includes(t));
 }
 
 afterEach(() => vi.restoreAllMocks());
@@ -43,12 +43,12 @@ describe("navegación por permisos", () => {
 });
 
 describe("módulo de taller (spec 009)", () => {
-  it("recepción ve Motos primero si la instalación tiene el taller", async () => {
-    expect(await tabs(["workshop.receive", "sales.create"], { workshop_enabled: true })).toEqual(["Motos", "Pedidos"]);
-    expect(screen.getByRole("heading", { name: "Motos" })).toBeInTheDocument(); // es la pantalla que abre
+  it("recepción ve Órdenes y Motos, y abre en Órdenes, si la instalación tiene el taller (spec 011)", async () => {
+    expect(await tabs(["workshop.receive", "sales.create"], { workshop_enabled: true })).toEqual(["Órdenes", "Motos", "Pedidos"]);
+    expect(screen.getByRole("heading", { name: "Órdenes de trabajo" })).toBeInTheDocument(); // es la pantalla que abre
   });
 
-  it("sin el módulo (la ferretería) nadie ve Motos, aunque tenga el permiso", async () => {
+  it("sin el módulo (la ferretería) nadie ve Órdenes ni Motos, aunque tenga el permiso", async () => {
     expect(await tabs(["workshop.receive", "sales.create"], { workshop_enabled: false })).toEqual(["Pedidos"]);
   });
 

@@ -92,12 +92,21 @@
   - 15 tests y 24 fallos a propósito:
     - uno sobrevivía porque sin kilometraje también saltaba la regla de bajarlo, y ahora el test pide el mensaje exacto;
     - un corte por tiempo dejó un archivo mutado, se notó por el test que falló y se restauró.
-- [ ] **T5** Frontend, recepción. Pantalla "Órdenes":
+- [x] **T5** Frontend, recepción. Pantalla "Órdenes":
   - recibir desde la ficha de la moto o buscándola;
   - lista por estado;
   - ficha con presupuesto, aprobación, hoja para imprimir, mandar a la caja, entregar y cancelar.
 
   (Reglas 1 a 4, 7 a 9)
+  - Pantalla `pages/WorkOrders.tsx` (pestaña "Órdenes", con `workshop.receive` y el módulo activo; recepción abre en ella):
+    - lista por estado (por defecto las abiertas) y búsqueda por número, placa o cliente entre las que trae;
+    - "Recibir moto" busca la moto como en Motos; si no está, se registra allá primero;
+    - la ficha asigna el mecánico, arma el presupuesto (repuestos al precio del catálogo, mano de obra con el precio de recepción), registra la aprobación, imprime, manda a la caja, entrega y cancela.
+  - La ficha de la moto lista sus órdenes y la recibe en el taller si no tiene una abierta (`components/ReceiveOrder.tsx`, compartido).
+  - La hoja (`components/WorkOrderPrint.tsx`) usa el formato de la de cotizaciones, con lo aprobado y lo por aprobar en tablas aparte y una línea para la firma.
+  - Qué botones ve recepción según el estado lo decide `workOrder.ts`; el servidor vuelve a comprobarlo todo.
+  - Sacar y regresar repuestos, el diagnóstico y "Lista" quedan para la pantalla del mecánico (T6).
+  - 25 tests nuevos y 36 fallos a propósito.
 - [ ] **T6** Frontend, mecánico. "Mis órdenes":
   - diagnóstico;
   - agregar repuestos y mano de obra;

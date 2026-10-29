@@ -462,6 +462,72 @@ export interface MotorcycleDetail extends Motorcycle {
   ownerships: { customer: Owner; started_at: string; ended_at: string | null }[];
   /** Las últimas 20 lecturas, la más reciente primero. */
   mileage_readings: { mileage: number; previous: number | null; note: string; recorded_at: string; recorded_by: string }[];
+  /** Sus órdenes de trabajo (spec 011), la más reciente primero. */
+  work_orders: WorkOrderSummary[];
+}
+
+// --- Órdenes de trabajo (spec 011) ---------------------------------------------
+
+export type WorkOrderStatus = "RECEIVED" | "AWAITING_APPROVAL" | "IN_REPAIR" | "READY" | "DELIVERED" | "CANCELLED";
+export type ApprovalChannel = "IN_PERSON" | "PHONE";
+
+export interface Person {
+  id: number;
+  username: string;
+  name: string;
+}
+
+export interface WorkOrderSummary {
+  id: number;
+  /** OT-000001 */
+  number: string;
+  status: WorkOrderStatus;
+  mileage_in: number;
+  request: string;
+  received_at: string;
+}
+
+export interface WorkOrderRow extends WorkOrderSummary {
+  motorcycle: { id: number; plate: string; vin: string; brand: string; model: string };
+  customer: { id: number; name: string; phone: string };
+  mechanic: Person | null;
+  updated_at: string;
+}
+
+export interface WorkOrderLine {
+  id: number;
+  product: number;
+  sku: string;
+  name: string;
+  is_service: boolean;
+  quantity: string;
+  unit_price: string;
+  total: string;
+  /** Lo agregado después de la última aprobación queda por aprobar: ni se cobra ni sale de la bodega. */
+  approved: boolean;
+  /** Ya salió de la bodega para la moto. */
+  taken: boolean;
+  /** Salió y volvió a la bodega. */
+  returned: boolean;
+  added_by: string;
+  created_at: string;
+}
+
+export interface WorkOrderDetail extends WorkOrderRow {
+  mileage_out: number | null;
+  condition: string;
+  diagnosis: string;
+  received_by: string;
+  lines: WorkOrderLine[];
+  /** Lo aprobado que se cobra (sin lo regresado). */
+  charged_total: string;
+  pending_total: string;
+  approvals: { approved_by: string; channel: ApprovalChannel; total: string; recorded_by: string; recorded_at: string }[];
+  events: { status: WorkOrderStatus; note: string; user: string; at: string }[];
+  /** El pedido que espera en la caja, si se mandó y no se ha cobrado. */
+  till_order: { id: number; code: string; total: string } | null;
+  /** La venta que la cobró, si está cobrada. */
+  sale: { id: number; number: string; total: string } | null;
 }
 
 export interface Business {

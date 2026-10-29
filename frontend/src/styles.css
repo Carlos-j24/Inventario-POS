@@ -109,6 +109,8 @@ tr.negative td { background: var(--danger-bg); }
 .badge { font-size: 0.75rem; padding: 2px 8px; border-radius: 99px; font-weight: 600; }
 .badge.warn { color: var(--warn); border: 1px solid var(--warn); }
 .badge.danger { color: var(--danger); border: 1px solid var(--danger); }
+.badge.ok { color: var(--ok); border: 1px solid var(--ok); }
+.cart tr.pending td { font-style: italic; color: var(--muted); }
 
 .summary { position: sticky; top: 16px; display: flex; flex-direction: column; gap: 12px; }
 .total-label { color: var(--muted); }

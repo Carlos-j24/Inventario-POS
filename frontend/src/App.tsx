@@ -20,12 +20,14 @@ import Roles from "./pages/Roles";
 import Sales from "./pages/Sales";
 import Stock from "./pages/Stock";
 import Users from "./pages/Users";
+import WorkOrders from "./pages/WorkOrders";
 import { useSync } from "./sync";
 
 // Cada pantalla aparece si el usuario tiene alguno de sus permisos; el backend vuelve a comprobarlo.
 // Las del taller, además, solo si la instalación tiene el módulo activo (spec 009).
 const PAGES: { id: string; label: string; permission: string | string[]; workshop?: true; Component: ComponentType }[] = [
   { id: "pos", label: "Caja", permission: "cash.operate", Component: Pos },
+  { id: "work-orders", label: "Órdenes", permission: "workshop.receive", workshop: true, Component: WorkOrders },
   { id: "motorcycles", label: "Motos", permission: "workshop.receive", workshop: true, Component: Motorcycles },
   { id: "orders", label: "Pedidos", permission: "sales.create", Component: Orders },
   { id: "quotes", label: "Cotizaciones", permission: ["sales.create", "sales.void", "reports.view"], Component: Quotes },
