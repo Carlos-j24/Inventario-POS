@@ -82,7 +82,27 @@
   - Cuatro motos pasaron por el taller meses atrás, en una de sus lecturas (`_past_visit`): la orden se recibe, se arregla, se cobra y se entrega con los mismos servicios, y después se le corren las fechas. Se cobran en el turno de hoy para no tocar los cierres de días pasados.
   - Quedan: el aceite de la Suzuki, vencido por fecha; el de la Pulsar, que vence por km estimados (unos 50 km al día); el de la Boxer, avisado por WhatsApp; el de la Honda, hecho con la orden de hoy, que crea el siguiente; y su kit, descartado.
   - La ferretería sigue sin planes. 3 tests nuevos y 14 fallos a propósito, todos detectados.
-- [ ] **T7** Prueba en el navegador y cierre:
+- [x] **T7** Prueba en el navegador y cierre:
   - el recorrido de los criterios de aceptación con la demo de taller;
   - la ferretería sin módulo de taller;
   - `docs/arquitectura.md`, `MEMORY.md` y la spec.
+
+  38 de 38 comprobaciones bien, con Chrome sin ventana sobre la demo del taller y la ferretería. No apareció ningún fallo de la app.
+  - **Plan**: el admin crea "Lubricación de cadena" (1.000 km o 30 días, con la grasa). Con 0 km y 0 días no deja guardar, ni la pantalla ni la API. Se usó otro plan porque el de aceite ya viene en la demo.
+  - **Lista de Diana**:
+    - los vencidos van primero, en rojo, y la Pulsar vence "en 5 días por km (aprox.)", con unos 50 km al día;
+    - el botón abre `https://wa.me/573001234567?text=…` con el cliente, la moto, el plan y el negocio;
+    - al avisar, queda con quién y cuándo, y sigue en la lista como avisado;
+    - con un teléfono fijo no hay botón;
+    - el ajuste a diciembre y el descarte con nota la sacan de la lista.
+  - **Próximo mantenimiento**:
+    - la Boxer se entrega con 15.420 km sin las bandas regresadas;
+    - queda el aceite para 90 días y 18.420 km, y también los frenos, por las pastillas;
+    - el aviso anterior se cierra como hecho con esa orden;
+    - la Yamaha, cobrada solo con grasa, no crea el del aceite.
+  - **Historial**: la ficha de la Boxer muestra la orden de hoy y la visita de hace 4 meses, cada una con lo cobrado, el mecánico y el total, sin las bandas. La Suzuki muestra su orden cancelada y el recordatorio descartado con su nota.
+  - **Permisos**:
+    - el mecánico no ve Mantenimientos (403 en la API);
+    - la caja no lo ve ni crea planes (403);
+    - en la ferretería no existe nada de esto (404).
+  - **Pendiente menor**: en la lista, la insignia "Pendiente" queda pegada al borde de la tabla a 1440 px de ancho.
