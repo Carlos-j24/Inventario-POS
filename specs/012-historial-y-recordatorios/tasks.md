@@ -105,4 +105,4 @@
     - el mecánico no ve Mantenimientos (403 en la API);
     - la caja no lo ve ni crea planes (403);
     - en la ferretería no existe nada de esto (404).
-  - **Pendiente menor**: en la lista, la insignia "Pendiente" queda pegada al borde de la tabla a 1440 px de ancho.
+  - **Pendiente menor, corregido (2026-10-30)**: en la lista, la insignia "Pendiente" quedaba pegada al borde de la tabla. La causa era que la moto, el dueño y el plan no se partían (`.sales-list`). Ahora se parten en esa tabla (`.maintenance-list`), y el estado y el teléfono quedan en una línea. Se midió a 1440 y 1024 px.

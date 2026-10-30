@@ -81,7 +81,7 @@ function DueList() {
           </label>
         </div>
         {error && <p className="error" role="alert">{error}</p>}
-        <table className="cart sales-list">
+        <table className="cart sales-list maintenance-list">
           <thead><tr><th>Moto</th><th>Dueño</th><th>Plan</th><th>Vence</th><th>Estado</th></tr></thead>
           <tbody>
             {(rows ?? []).map((r) => (
