@@ -118,6 +118,7 @@
   - La ficha de la moto trae `history` y `reminders`, que arma `history.py`.
 - Pantalla "Mantenimientos" (T4) en `frontend/src/pages/Maintenance.tsx`: "Por vencer" para recepción, con el enlace `wa.me` que arma `maintenance.ts` (nada se envía solo), y "Planes" para `catalog.edit`.
 - Historial (T5): la ficha de la moto muestra su historial y sus mantenimientos, y la de una orden entregada su próximo mantenimiento (`next_maintenance`). Las dos usan `ReminderList`.
+- Demo (T6): `seed_demo --taller` siembra tres planes y visitas de meses atrás (`_past_visit`, con los mismos servicios de la orden y las fechas corridas) que dejan un recordatorio en cada estado.
 
 ## Logo de cada instalación
 - El logo es del cliente y el repositorio es público y genérico: va en una carpeta de la instalación (`BRAND_DIR`; en Docker, `./brand` montada en `/app/brand`). `/brand/` está en `.gitignore`.

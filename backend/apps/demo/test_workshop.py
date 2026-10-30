@@ -15,7 +15,8 @@ from apps.inventory.models import PhysicalCount, StockLevel, StockMovement, Tran
 from apps.invoicing.models import Business
 from apps.reports.costs import inventory_report, margins_report
 from apps.sales.models import Order, Quote, Sale, SaleLine
-from apps.workshop.models import Motorcycle, WorkOrder
+from apps.workshop.maintenance import due_of, due_reminders
+from apps.workshop.models import MaintenancePlan, MaintenanceReminder, Motorcycle, WorkOrder
 
 from .seed import USERS, seed
 
@@ -148,7 +149,9 @@ def test_one_motorcycle_changed_owner():
 # --- órdenes de trabajo (spec 011, T7) ----------------------------------------------
 
 def orders():
-    return {o.motorcycle.plate or o.motorcycle.vin: o for o in WorkOrder.objects.select_related("motorcycle", "mechanic")}
+    """La orden de hoy de cada moto (las visitas de meses atrás son de la spec 012)."""
+    rows = WorkOrder.objects.select_related("motorcycle", "mechanic").order_by("received_at", "pk")
+    return {o.motorcycle.plate or o.motorcycle.vin: o for o in rows}
 
 
 def test_a_mechanic_and_an_order_in_every_status():
@@ -193,3 +196,69 @@ def test_the_cancelled_one_returned_its_part():
     line = suzuki.lines.get(product__sku="BUJ-C7")
     assert (line.movement.kind, line.returned_movement.kind) == ("WORKSHOP_OUT", "WORKSHOP_RETURN")
     assert suzuki.events.last().note == "El cliente se la llevó sin arreglar"
+
+
+# --- historial y recordatorios (spec 012, T6) ---------------------------------------
+
+def reminder(plate, plan, **filters):
+    return MaintenanceReminder.objects.select_related("source_order", "done_order").get(
+        motorcycle__plate=plate, plan__name=plan, **filters,
+    )
+
+
+def test_example_maintenance_plans():
+    plans = {p.name: (p.every_km, p.every_days, sorted(p.products.values_list("sku", flat=True)), p.is_active)
+             for p in MaintenancePlan.objects.all()}
+    assert plans == {
+        "Cambio de aceite": (3000, 90, ["ACE-10W40", "ACE-20W50"], True),
+        "Revisión de frenos": (5000, 180, ["BAN-TRA", "PAS-DEL"], True),
+        "Kit de arrastre": (15000, None, ["CAD-428", "KIT-BOX100"], True),
+    }
+
+
+def test_past_visits_are_delivered_orders_in_the_history():
+    past = WorkOrder.objects.filter(status="DELIVERED").exclude(pk=orders()["DEF56G"].pk).select_related("motorcycle")
+    assert {(o.motorcycle.plate, o.mileage_in, o.mileage_out, days_ago(o.received_at)) for o in past} == {
+        ("XYZ12A", 12500, 12500, 120), ("JKL90B", 48500, 48500, 100), ("ABC34D", 5600, 5600, 55), ("DEF56G", 20400, 20400, 90),
+    }
+    for order in past:
+        assert {e.status for e in order.events.all()} >= {"RECEIVED", "DELIVERED"}
+        assert all(days_ago(e.at) == days_ago(order.received_at) for e in order.events.all())
+        assert Sale.objects.get(order__work_order=order).status == "COMPLETED"
+        assert all(days_ago(r.created_at) == days_ago(order.received_at) for r in order.reminders_created.all())
+    assert days_ago(Motorcycle.objects.get(plate="ABC34D").created_at) == 55
+
+
+def test_a_reminder_in_every_state():
+    today = timezone.localdate()
+    late = reminder("JKL90B", "Cambio de aceite")  # vencido por fecha
+    due = due_of(late)
+    assert (late.status, late.due_date, late.due_mileage) == ("PENDING", today - timedelta(days=10), 51500)
+    assert (due.on, due.by_km) == (today - timedelta(days=10), False)
+
+    by_km = reminder("ABC34D", "Cambio de aceite")  # vence por km estimados (unos 50 km al día)
+    due = due_of(by_km)
+    assert (by_km.status, by_km.due_date, by_km.due_mileage) == ("PENDING", today + timedelta(days=35), 8600)
+    assert (due.on, due.by_km, due.estimated, due.usage) == (today + timedelta(days=5), True, True, Decimal(50))
+
+    notified = reminder("XYZ12A", "Cambio de aceite")
+    notice = notified.notices.get()
+    assert (notified.status, notice.channel, notice.user.username, days_ago(notice.at)) == (
+        "NOTIFIED", "WHATSAPP", "diana.recepcion", 28)
+    assert notified.due_date == today - timedelta(days=30)
+
+    done = reminder("DEF56G", "Cambio de aceite", status="DONE")
+    honda = orders()["DEF56G"]
+    assert (done.source_order.mileage_in, done.done_order) == (20400, honda)
+    following = reminder("DEF56G", "Cambio de aceite", status="PENDING")
+    assert (following.source_order, following.due_mileage, following.due_date) == (honda, 24052, today + timedelta(days=90))
+
+    dismissed = reminder("DEF56G", "Kit de arrastre")
+    assert (dismissed.status, dismissed.note, days_ago(dismissed.closed_at)) == (
+        "DISMISSED", "La mensajería le cambia el kit con su propio mecánico", 25)
+    assert dismissed.due_mileage == 35400 and dismissed.due_date is None
+
+    assert MaintenanceReminder.objects.count() == 6
+    assert [(r.motorcycle.plate, r.status) for r, _ in due_reminders(include_notified=True)] == [
+        ("XYZ12A", "NOTIFIED"), ("JKL90B", "PENDING"), ("ABC34D", "PENDING"),
+    ]

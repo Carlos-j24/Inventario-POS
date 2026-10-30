@@ -10,11 +10,18 @@ Lavadero (spec 010): lavados todos los días, alguno con un repuesto, y hoy uno 
 Órdenes de trabajo (spec 011, T7): un mecánico, la mano de obra de taller y una orden en cada estado,
 hechas con los mismos servicios que usa la app: una en reparación con un cambio sin aprobar, una lista
 en la caja sin cobrar, una entregada y cobrada, y una cancelada con su repuesto devuelto a la bodega.
+
+Mantenimientos (spec 012, T6): tres planes y visitas de meses atrás, entregadas con los mismos servicios,
+que dejan un recordatorio en cada estado: uno vencido por fecha, uno que vence por km estimados, uno
+avisado por WhatsApp, uno hecho con la orden de hoy y uno descartado. Esas visitas se cobran en el turno
+de hoy, para no tocar los cierres de los días pasados.
 """
 import random
 import uuid
 from datetime import timedelta
 from decimal import Decimal
+
+from django.utils import timezone
 
 from apps.cash.models import Shift
 from apps.cash.services import open_shift
@@ -29,8 +36,12 @@ from apps.sales.models import Quote, Sale
 from apps.sales.orders import create_order
 from apps.sales.quotes import convert_quote, create_quote, void_quote
 from apps.sales.services import catalog_price, create_sale, money
+from apps.workshop import maintenance
 from apps.workshop import work_orders as wo
-from apps.workshop.models import MileageReading, Motorcycle, Ownership, WorkOrder, WorkOrderEvent
+from apps.workshop.models import (
+    MaintenanceNotice, MaintenancePlan, MaintenanceReminder, MileageReading, Motorcycle, Ownership, WorkOrder,
+    WorkOrderEvent,
+)
 from apps.workshop.services import change_owner, register_motorcycle, update_mileage
 
 from .seed import USERS, Profile, _at, _sale
@@ -67,6 +78,12 @@ SERVICES = (
     ("MO-TALLER", "Mano de obra de taller", "Taller", 20000),
 )
 MECHANIC = ("jhon.mecanico", "Jhon", "Mecánico")
+# Planes de mantenimiento (spec 012): nombre, cada cuántos km, cada cuántos días y los productos que lo cumplen.
+PLANS = (
+    ("Cambio de aceite", 3000, 90, ("ACE-20W50", "ACE-10W40")),
+    ("Revisión de frenos", 5000, 180, ("PAS-DEL", "BAN-TRA")),
+    ("Kit de arrastre", 15000, None, ("KIT-BOX100", "CAD-428")),
+)
 
 # Clientes del taller (cédula o NIT, nombre, teléfono) y sus motos. Placas y chasis ficticios.
 CUSTOMERS = {
@@ -135,8 +152,11 @@ def _quotes(now, users, products, shift):
                note="El cliente decidió esperar")
 
 
-def _motorcycles(now, users):
-    """Motos de ejemplo con su historia: lecturas de meses atrás, una vendida a otro dueño y una sin placa."""
+def _motorcycles(now, users, products, shift):
+    """Motos de ejemplo con su historia: lecturas de meses atrás, una vendida a otro dueño y una sin placa.
+
+    Algunas pasaron por el taller en una de esas lecturas (spec 012): de ahí salen sus recordatorios.
+    """
     diana = users["diana.recepcion"][0]
     people = {
         key: Customer.objects.create(id_type=t, id_number=n, name=name, phone=phone, check_digit="")
@@ -144,24 +164,34 @@ def _motorcycles(now, users):
     }
     fleet = _fleet()
 
-    def moto(owner, readings, **data):
-        """Registra la moto con su primera lectura y las siguientes; cada lectura va (días atrás, km, nota)."""
+    def moto(owner, readings, visit=None, **data):
+        """Registra la moto con su primera lectura y las siguientes; cada lectura va (días atrás, km, nota).
+
+        `visit` es (días atrás, lo que pidió, diagnóstico, repuestos): ese día la entregaron del taller.
+        """
         (back, km, _), *later = readings
         m = register_motorcycle(user=diana, owner=owner, mileage=km, **data)
         _date(m, now - timedelta(days=back))
-        for back, km, note in later:
-            update_mileage(motorcycle=m, mileage=km, user=diana, note=note)
-            _last_reading(m, now - timedelta(days=back))
+        for back, km, note in [(back, None, ""), *later]:
+            if km is not None:
+                m = update_mileage(motorcycle=m, mileage=km, user=diana, note=note)
+                _last_reading(m, now - timedelta(days=back))
+            if visit and visit[0] == back:
+                _past_visit(m, now - timedelta(days=back), *visit[1:], users=users, products=products, shift=shift)
         return m
 
     moto(people["jorge"], [(120, 12500, ""), (35, 14100, ""), (3, 15200, "")], plate="XYZ12A", brand="Bajaj",
-         model="Boxer CT 100", year=2019, displacement_cc=100, color="Negro")
-    moto(people["jorge"], [(200, 48100, ""), (60, 48900, "")], plate="JKL90B", brand="Suzuki", model="GN 125",
-         year=2015, displacement_cc=125, color="Rojo", notes="La usa el hijo para ir a la universidad")
-    moto(people["ana"], [(1, 8300, "")], plate="ABC34D", brand="Bajaj", model="Pulsar NS 200", year=2022,
-         displacement_cc=200, color="Gris")
+         model="Boxer CT 100", year=2019, displacement_cc=100, color="Negro",
+         visit=(120, "Cambio de aceite", "Aceite negro", [("ACE-20W50", 1)]))
+    moto(people["jorge"], [(200, 48100, ""), (100, 48500, ""), (60, 48900, "")], plate="JKL90B", brand="Suzuki",
+         model="GN 125", year=2015, displacement_cc=125, color="Rojo", notes="La usa el hijo para ir a la universidad",
+         visit=(100, "Cambio de aceite", "Le tocaba", [("ACE-20W50", 1)]))
+    moto(people["ana"], [(55, 5600, ""), (20, 7400, ""), (1, 8300, "")], plate="ABC34D", brand="Bajaj",
+         model="Pulsar NS 200", year=2022, displacement_cc=200, color="Gris",
+         visit=(55, "Primer cambio de aceite sintético", "Sin novedades", [("ACE-10W40", 1)]))
     sold = moto(people["luis"], [(400, 9000, ""), (90, 20400, ""), (10, 21000, "")], plate="DEF56G", brand="Honda",
-                model="CB 125F", year=2021, displacement_cc=125, color="Azul")
+                model="CB 125F", year=2021, displacement_cc=125, color="Azul",
+                visit=(90, "Cambio de aceite y cadena", "Cadena estirada", [("ACE-20W50", 1), ("CAD-428", 1)]))
     change_owner(motorcycle=sold, new_owner=fleet, user=diana)  # Luis se la vendió a la mensajería
     Ownership.objects.filter(motorcycle=sold, ended_at__isnull=False).update(ended_at=now - timedelta(days=30))
     Ownership.objects.filter(motorcycle=sold, ended_at__isnull=True).update(started_at=now - timedelta(days=30))
@@ -252,47 +282,102 @@ def _today(rng, now, users, warehouses, registers, products):
     create_order(user=users["andres.ventas"][0], client_uuid=uuid.uuid4(), lines=[
         {"product": products["LLA-90-18"], "quantity": 1}, {"product": products["ACE-20W50"], "quantity": 2},
     ])
-    _motorcycles(now, users)
+    _plans(products)
+    _motorcycles(now, users, products, shift)
+    _maintenance(now, users)
     _work_orders(now, users, products, shift)
+
+
+def _plans(products):
+    for name, every_km, every_days, skus in PLANS:
+        plan = MaintenancePlan.objects.create(name=name, every_km=every_km, every_days=every_days)
+        plan.products.set(products[sku] for sku in skus)
+
+
+def _budget(order, users, products, diagnosis, parts, work_price):
+    """El mecánico diagnostica y agrega los repuestos; recepción agrega la mano de obra con su precio."""
+    diana, jhon = users["diana.recepcion"][0], users[MECHANIC[0]][0]
+    wo.diagnose(order=order, user=jhon, diagnosis=diagnosis)
+    for sku, qty in parts:
+        wo.add_line(order=order, user=jhon, product=products[sku], quantity=qty)
+    wo.add_line(order=order, user=diana, product=Product.objects.get(sku="MO-TALLER"), quantity=1,
+                unit_price=Decimal(work_price))
+
+
+def _repaired(order, users, approved_by, channel="PHONE"):
+    """Aprobada y con todos sus repuestos puestos."""
+    wo.approve(order=order, user=users["diana.recepcion"][0], approved_by=approved_by, channel=channel)
+    for line in order.lines.filter(is_service=False, movement__isnull=True):
+        wo.take_part(line=line, user=users[MECHANIC[0]][0])
+
+
+def _paid(order, users, shift):
+    """Lista, en la caja y cobrada en efectivo."""
+    wo.mark_ready(order=order, user=users[MECHANIC[0]][0])
+    till = wo.send_to_till(order=order, user=users["diana.recepcion"][0])
+    create_sale(user=users["laura.caja"][0], shift=shift, order=till, lines=None, client_uuid=uuid.uuid4(),
+                payments=[{"method": "CASH", "amount": till.total}])
+
+
+def _back(order, when):
+    """La orden y todos sus pasos quedan con la fecha en que llegó la moto."""
+    WorkOrder.objects.filter(pk=order.pk).update(received_at=when)
+    WorkOrderEvent.objects.filter(work_order=order).update(at=when)
+
+
+def _past_visit(motorcycle, when, request, diagnosis, parts, *, users, products, shift):
+    """Una visita de hace tiempo, entregada ese día: sus recordatorios vencen contando desde entonces."""
+    diana = users["diana.recepcion"][0]
+    order = wo.receive_order(user=diana, motorcycle=motorcycle, mileage=motorcycle.mileage, request=request,
+                             mechanic=users[MECHANIC[0]][0])
+    _budget(order, users, products, diagnosis, parts, 15000)
+    _repaired(order, users, motorcycle.owner.name)
+    _paid(order, users, shift)
+    wo.deliver(order=order, user=diana)
+    _back(order, when)
+    for reminder in order.reminders_created.select_related("plan"):
+        if reminder.due_date:
+            reminder.due_date = timezone.localdate(when) + timedelta(days=reminder.plan.every_days)
+        reminder.created_at = when
+        reminder.save(update_fields=["due_date", "created_at"])
+    return order
+
+
+def _maintenance(now, users):
+    """Recepción avisó por WhatsApp a Jorge del aceite de la Boxer, y la mensajería no quiere el aviso del kit."""
+    diana = users["diana.recepcion"][0]
+    boxer = MaintenanceReminder.objects.get(motorcycle__plate="XYZ12A", plan__name="Cambio de aceite")
+    maintenance.notify(reminder=boxer, user=diana, channel="WHATSAPP")
+    MaintenanceNotice.objects.filter(reminder=boxer).update(at=now - timedelta(days=28))
+    kit = MaintenanceReminder.objects.get(motorcycle__plate="DEF56G", plan__name="Kit de arrastre")
+    maintenance.dismiss(reminder=kit, user=diana, note="La mensajería le cambia el kit con su propio mecánico")
+    MaintenanceReminder.objects.filter(pk=kit.pk).update(closed_at=now - timedelta(days=25))
 
 
 def _work_orders(now, users, products, shift):
     """Una orden en cada estado, con la historia que tendría en la app (spec 011, regla 13)."""
-    diana, jhon, laura = users["diana.recepcion"][0], users[MECHANIC[0]][0], users["laura.caja"][0]
-    labor = Product.objects.get(sku="MO-TALLER")
+    diana, jhon = users["diana.recepcion"][0], users[MECHANIC[0]][0]
     motos = {m.plate or m.vin: m for m in Motorcycle.objects.all()}
 
     def receive(plate, mileage, request, condition="", mechanic=jhon, back=0):
         order = wo.receive_order(user=diana, motorcycle=motos[plate], mileage=mileage, request=request,
                                  condition=condition, mechanic=mechanic)
         if back:  # llegó hace unos días
-            when = now - timedelta(days=back)
-            WorkOrder.objects.filter(pk=order.pk).update(received_at=when)
-            WorkOrderEvent.objects.filter(work_order=order).update(at=when)
+            _back(order, now - timedelta(days=back))
             order.refresh_from_db()
         return order
 
     def budget(order, diagnosis, parts, work_price):
-        """El mecánico diagnostica y agrega los repuestos; recepción agrega la mano de obra con su precio."""
-        wo.diagnose(order=order, user=jhon, diagnosis=diagnosis)
-        for sku, qty in parts:
-            wo.add_line(order=order, user=jhon, product=products[sku], quantity=qty)
-        wo.add_line(order=order, user=diana, product=labor, quantity=1, unit_price=Decimal(work_price))
+        _budget(order, users, products, diagnosis, parts, work_price)
 
     def repaired(order, approved_by, channel="PHONE"):
-        """Aprobada y con todos sus repuestos puestos."""
-        wo.approve(order=order, user=diana, approved_by=approved_by, channel=channel)
-        for line in order.lines.filter(is_service=False, movement__isnull=True):
-            wo.take_part(line=line, user=jhon)
+        _repaired(order, users, approved_by, channel)
 
-    # Entregada y cobrada: la flota trajo la Honda hace dos días.
+    # Entregada y cobrada: la flota trajo la Honda hace dos días. Cumple el aceite de su visita anterior.
     honda = receive("DEF56G", 21050, "Mantenimiento de los 21.000 km", "Sin espejo izquierdo", back=2)
     budget(honda, "Cambio de aceite y bujía", [("ACE-20W50", 1), ("BUJ-C7", 1)], 25000)
     repaired(honda, "Jefe de flota de la mensajería")
-    wo.mark_ready(order=honda, user=jhon)
-    till = wo.send_to_till(order=honda, user=diana)
-    create_sale(user=laura, shift=shift, order=till, lines=None, client_uuid=uuid.uuid4(),
-                payments=[{"method": "CASH", "amount": till.total}])
+    _paid(honda, users, shift)
     wo.deliver(order=honda, user=diana, mileage=21052)
 
     # Cancelada: el repuesto ya había salido y volvió a la bodega.
