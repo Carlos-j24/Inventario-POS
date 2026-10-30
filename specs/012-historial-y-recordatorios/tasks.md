@@ -52,11 +52,24 @@
     - la fecha de entrega sale de su historia;
     - los recordatorios abiertos van primero.
   - 18 tests y 28 fallos a propósito. Tres sobrevivían porque DRF ya recorta, rechaza vacío y valida que el nombre no se repita: ese código se quitó. Dos por tests flojos (una orden abierta con algo aprobado, un recordatorio hecho), que se reforzaron.
-- [ ] **T4** Frontend, pantalla "Mantenimientos":
+- [x] **T4** Frontend, pantalla "Mantenimientos":
   - lista que vence, con el botón de WhatsApp (`wa.me` con el 57 y el mensaje), marcar avisado, ajustar y descartar;
   - pestaña "Planes" para quien maneja el catálogo.
 
   (Reglas 2, 7 a 9)
+  - Pantalla `pages/Maintenance.tsx`, en el menú después de Productos para que el jefe de bodega siga abriendo en sus pantallas:
+    - "Por vencer", con `workshop.receive`: la lista, el filtro por plan y los avisados a pedido. La ficha trae:
+      - el enlace a WhatsApp (`wa.me`, que se abre en otra pestaña);
+      - "Avisado por WhatsApp" y "Avisado por llamada";
+      - ajustar y descartar, con nota.
+    - "Planes", con `catalog.edit`: crear y cambiar planes con el buscador de productos.
+  - `maintenance.ts` arma:
+    - el número de WhatsApp (celular de Colombia con el 57; un fijo no tiene botón);
+    - el mensaje, con el nombre comercial del negocio;
+    - el texto de cuándo vence ("Venció hace 3 días", "Vence en 2 días por km (aprox.)");
+    - la validación del plan.
+  - La pestaña inicial se decide en cada render: la sesión puede cargar después de la pantalla.
+  - 20 tests nuevos y 37 fallos a propósito. Todos mueren.
 - [ ] **T5** Frontend, historial en la ficha de la moto, con sus recordatorios. La ficha de una orden entregada muestra el próximo mantenimiento que se le calculó. (Reglas 1 y 3)
 - [ ] **T6** `seed_demo --taller`: planes de ejemplo y un recordatorio en cada estado, uno de ellos vencido por km estimados. (Regla 11)
 - [ ] **T7** Prueba en el navegador y cierre:

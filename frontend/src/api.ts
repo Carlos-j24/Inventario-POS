@@ -468,6 +468,48 @@ export interface MotorcycleDetail extends Motorcycle {
   work_orders: WorkOrderSummary[];
 }
 
+// --- Mantenimientos (spec 012) -------------------------------------------------
+
+export interface MaintenancePlan {
+  id: number;
+  name: string;
+  every_km: number | null;
+  every_days: number | null;
+  /** Ids de los productos o servicios que lo cumplen. */
+  products: number[];
+  product_list: { id: number; sku: string; name: string }[];
+  is_active: boolean;
+}
+
+export type ReminderStatus = "PENDING" | "NOTIFIED" | "DONE" | "DISMISSED";
+export type NoticeChannel = "WHATSAPP" | "PHONE";
+
+/** Un recordatorio de mantenimiento; cuándo vence (`due_on`) solo en los abiertos. */
+export interface Reminder {
+  id: number;
+  plan: { id: number; name: string };
+  status: ReminderStatus;
+  due_date: string | null;
+  due_mileage: number | null;
+  due_on: string | null;
+  /** Vence primero por kilometraje. */
+  by_km: boolean;
+  /** Ese kilometraje es estimado con el uso ("aprox."), no leído. */
+  estimated: boolean;
+  daily_km: string | null;
+  note: string;
+  source_order: string;
+  done_order: string | null;
+  notices: { channel: NoticeChannel; user: string; at: string }[];
+  closed_at: string | null;
+}
+
+/** Una fila de la lista de mantenimientos: el recordatorio, la moto y su dueño actual. */
+export interface MaintenanceRow extends Reminder {
+  motorcycle: { id: number; plate: string; vin: string; brand: string; model: string; mileage: number; mileage_at: string | null };
+  owner: { id: number; name: string; phone: string };
+}
+
 // --- Órdenes de trabajo (spec 011) ---------------------------------------------
 
 export type WorkOrderStatus = "RECEIVED" | "AWAITING_APPROVAL" | "IN_REPAIR" | "READY" | "DELIVERED" | "CANCELLED";
