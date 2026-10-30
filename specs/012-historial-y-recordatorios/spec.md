@@ -1,6 +1,6 @@
 # Spec 012 — Historial y recordatorios de mantenimiento (módulo de taller, etapa 4)
 
-> Estado: **borrador (2026-10-29)**, para aprobar. Decisiones tomadas con Carlos el 2026-10-29. Tareas en tasks.md.
+> Estado: **aprobada (2026-10-29)** en el PR #90. Decisiones tomadas con Carlos el 2026-10-29. Tareas en tasks.md.
 
 ## Problema
 Con la spec 011, cada moto ya entra al taller con una orden de trabajo. Pero todavía faltan dos cosas:

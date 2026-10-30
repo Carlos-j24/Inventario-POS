@@ -1,6 +1,6 @@
 # Tareas — Spec 012
 
-> Spec en borrador (2026-10-29), para aprobar. Decisiones en spec.md.
+> Spec aprobada (PR #90, 2026-10-29). Decisiones en spec.md.
 
 - [ ] **T1** Backend, modelo:
   - `MaintenancePlan`: nombre, cada cuántos km y cuántos días (al menos uno, positivos), productos que lo cumplen y si está activo;
