@@ -9,6 +9,7 @@ import Counts from "./pages/Counts";
 import Transfers from "./pages/Transfers";
 import FiscalInbox from "./pages/FiscalInbox";
 import Login from "./pages/Login";
+import Maintenance from "./pages/Maintenance";
 import Motorcycles from "./pages/Motorcycles";
 import MyOrders from "./pages/MyOrders";
 import Orders from "./pages/Orders";
@@ -37,6 +38,8 @@ const PAGES: { id: string; label: string; permission: string | string[]; worksho
   { id: "receipts", label: "Entradas", permission: "inventory.receive", Component: Receipts },
   { id: "stock", label: "Existencias", permission: "inventory.view", Component: Stock },
   { id: "products", label: "Productos", permission: "catalog.edit", Component: Products },
+  // Después de Productos: quien maneja el catálogo sigue abriendo en sus pantallas de siempre.
+  { id: "maintenance", label: "Mantenimientos", permission: ["workshop.receive", "catalog.edit"], workshop: true, Component: Maintenance },
   { id: "counts", label: "Conteos", permission: ["inventory.count", "inventory.adjust"], Component: Counts },
   { id: "adjustments", label: "Ajustes", permission: ["inventory.receive", "inventory.count", "inventory.adjust"], Component: Adjustments },
   { id: "transfers", label: "Traslados", permission: "inventory.transfer", Component: Transfers },
