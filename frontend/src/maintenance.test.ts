@@ -1,7 +1,8 @@
 import { describe, expect, it } from "vitest";
 
 import {
-  daysUntil, dueLabel, emptyPlan, planForm, planInterval, planPayload, planProblem, whatsappLink, whatsappMessage, whatsappNumber,
+  daysUntil, dueLabel, emptyPlan, planForm, planInterval, planPayload, planProblem, reminderTarget, whatsappLink, whatsappMessage,
+  whatsappNumber,
 } from "./maintenance";
 
 const row = {
@@ -54,6 +55,14 @@ describe("cuándo vence", () => {
     expect(due("2026-11-01", true, true)).toBe("Vence en 2 días por km (aprox.)");
     expect(due("2026-10-29", true)).toBe("Venció hace 1 día por km");
     expect(due(null)).toBe("Sin fecha: se sabrá cuando la moto vuelva");
+  });
+});
+
+describe("para cuándo es", () => {
+  it("la fecha, los km o los dos", () => {
+    expect(reminderTarget({ due_date: "2027-01-28", due_mileage: 18420 })).toBe("el 28 de enero de 2027 o a los 18.420 km");
+    expect(reminderTarget({ due_date: null, due_mileage: 30000 })).toBe("a los 30.000 km");
+    expect(reminderTarget({ due_date: "2027-01-28", due_mileage: null })).toBe("el 28 de enero de 2027");
   });
 });
 

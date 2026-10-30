@@ -18,6 +18,7 @@ from apps.catalog.models import Product
 
 from . import work_orders as svc
 from .api import WorkshopEnabled, _call
+from .history import reminder_data
 from .models import Motorcycle, WorkOrder, WorkOrderApproval, WorkOrderEvent, WorkOrderLine
 
 CAN_WORK = [WorkshopEnabled, require_any(svc.RECEIVE, svc.REPAIR)]
@@ -94,10 +95,11 @@ class OrderDetailSerializer(OrderSerializer):
     pending_total = serializers.SerializerMethodField()
     till_order = serializers.SerializerMethodField()
     sale = serializers.SerializerMethodField()
+    next_maintenance = serializers.SerializerMethodField()
 
     class Meta(OrderSerializer.Meta):
         fields = [*OrderSerializer.Meta.fields, "mileage_out", "condition", "diagnosis", "received_by", "lines",
-                  "charged_total", "pending_total", "approvals", "events", "till_order", "sale"]
+                  "charged_total", "pending_total", "approvals", "events", "till_order", "sale", "next_maintenance"]
 
     def get_charged_total(self, order):
         return f"{svc.charged_total(order):.2f}"
@@ -112,6 +114,13 @@ class OrderDetailSerializer(OrderSerializer):
     def get_sale(self, order):
         sale = svc.paid_sale(order)
         return None if sale is None else {"id": sale.pk, "number": sale.number, "total": f"{sale.total:.2f}"}
+
+    def get_next_maintenance(self, order):
+        """Los recordatorios que creó al entregarse (spec 012, T5)."""
+        rows = order.reminders_created.select_related("plan", "source_order", "done_order", "motorcycle").prefetch_related(
+            "notices__user", "motorcycle__mileage_readings",
+        ).order_by("plan__name")
+        return [reminder_data(r) for r in rows]
 
 
 def orders():

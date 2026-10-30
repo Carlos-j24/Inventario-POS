@@ -22,7 +22,7 @@ const labor = (over: Partial<WorkOrderLine> = {}) =>
   line({ id: 12, product: 22, sku: "MO-GEN", name: "Mano de obra", is_service: true, unit_price: "25000.00", total: "25000.00", ...over });
 const detail = (over: Partial<WorkOrderDetail> = {}): WorkOrderDetail => ({
   ...row(), mileage_out: null, condition: "Rayón en el tanque", diagnosis: "", received_by: "diana", lines: [],
-  charged_total: "0.00", pending_total: "0.00", approvals: [], events: [], till_order: null, sale: null, ...over,
+  charged_total: "0.00", pending_total: "0.00", approvals: [], events: [], till_order: null, sale: null, next_maintenance: [], ...over,
 });
 const product = (over: Partial<Product>): Product => ({
   id: 21, sku: "ACE-20W50", name: "Aceite 20W50", category: "", base_unit: "UND", barcode: null, sale_price: "32000.00",

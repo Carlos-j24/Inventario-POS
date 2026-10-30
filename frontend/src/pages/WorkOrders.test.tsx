@@ -23,7 +23,7 @@ const labor = (over: Partial<WorkOrderLine> = {}) =>
 const detail = (over: Partial<WorkOrderDetail> = {}): WorkOrderDetail => ({
   ...row(), mileage_out: null, condition: "Rayón en el tanque, deja el casco", diagnosis: "", received_by: "diana",
   lines: [], charged_total: "0.00", pending_total: "0.00", approvals: [],
-  events: [{ status: "RECEIVED", note: "", user: "diana", at: "2026-10-28T15:00:00Z" }], till_order: null, sale: null, ...over,
+  events: [{ status: "RECEIVED", note: "", user: "diana", at: "2026-10-28T15:00:00Z" }], till_order: null, sale: null, next_maintenance: [], ...over,
 });
 const moto: Motorcycle = {
   id: 1, plate: "XYZ12A", vin: "", brand: "Bajaj", model: "Boxer CT 100", year: 2019, displacement_cc: 100, color: "", notes: "",
@@ -283,6 +283,21 @@ describe("pantalla Órdenes", () => {
     expect(within(card()).queryByRole("button", { name: "Entregar moto" })).not.toBeInTheDocument();
     expect(within(card()).queryByLabelText("Mecánico asignado")).not.toBeInTheDocument();
     expect(bodies(fetch, `POST ${URL}5/deliver/`)).toEqual([{ mileage: 15420, mileage_note: "Cambio de tablero" }]);
+  });
+
+  it("una orden entregada muestra el próximo mantenimiento que se le calculó (spec 012)", async () => {
+    await openCard(detail({ status: "DELIVERED", mileage_out: 15420, next_maintenance: [{
+      id: 1, plan: { id: 1, name: "Cambio de aceite" }, status: "PENDING", due_date: "2027-01-28", due_mileage: 18420, due_on: "2027-01-28",
+      by_km: false, estimated: false, daily_km: null, note: "", source_order: "OT-000005", done_order: null, notices: [], closed_at: null,
+    }] }));
+    expect(within(card()).getByRole("heading", { name: "Próximo mantenimiento" })).toBeInTheDocument();
+    expect(within(card()).getByRole("list", { name: "Próximo mantenimiento" })).toHaveTextContent(
+      "Cambio de aceite: el 28 de enero de 2027 o a los 18.420 km · Pendiente");
+  });
+
+  it("sin próximo mantenimiento no hay sección", async () => {
+    await openCard(detail({ status: "DELIVERED" }));
+    expect(within(card()).queryByRole("heading", { name: "Próximo mantenimiento" })).not.toBeInTheDocument();
   });
 
   it("entregar sin cambiar el kilometraje no lo manda", async () => {
