@@ -3,7 +3,10 @@ from django.contrib import admin
 from django.core.exceptions import ValidationError
 from django.utils import timezone
 
-from .models import MileageReading, Motorcycle, Ownership, WorkOrder, WorkOrderApproval, WorkOrderEvent, WorkOrderLine
+from .models import (
+    MaintenanceNotice, MaintenancePlan, MaintenanceReminder, MileageReading, Motorcycle, Ownership, WorkOrder, WorkOrderApproval,
+    WorkOrderEvent, WorkOrderLine,
+)
 from .services import check_owner
 
 
@@ -102,6 +105,42 @@ class WorkOrderAdmin(admin.ModelAdmin):
 
     def has_add_permission(self, request):
         return False  # se reciben desde la app (recepción), que actualiza el kilometraje de la moto
+
+    def has_change_permission(self, request, obj=None):
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        return False
+
+
+# --- Mantenimientos (spec 012): los planes son configuración; los recordatorios los llevan los servicios --
+
+@admin.register(MaintenancePlan)
+class MaintenancePlanAdmin(admin.ModelAdmin):
+    list_display = ("name", "every_km", "every_days", "is_active")
+    list_filter = ("is_active",)
+    search_fields = ("name",)
+    filter_horizontal = ("products",)
+
+    def has_delete_permission(self, request, obj=None):
+        return False  # tiene recordatorios: se desactiva, no se borra
+
+
+class MaintenanceNoticeInline(ReadOnlyInline):
+    model = MaintenanceNotice
+    fields = ("channel", "user", "at")
+    readonly_fields = ("at",)
+
+
+@admin.register(MaintenanceReminder)
+class MaintenanceReminderAdmin(admin.ModelAdmin):
+    list_display = ("motorcycle", "plan", "due_date", "due_mileage", "status")
+    list_filter = ("status", "plan")
+    search_fields = ("motorcycle__plate", "motorcycle__vin", "motorcycle__owner__name")
+    inlines = [MaintenanceNoticeInline]
+
+    def has_add_permission(self, request):
+        return False  # se crean al entregar una orden
 
     def has_change_permission(self, request, obj=None):
         return False

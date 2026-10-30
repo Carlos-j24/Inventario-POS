@@ -252,3 +252,126 @@ class WorkOrderEvent(models.Model):
 
     def __str__(self):
         return f"{self.work_order.number} → {self.get_status_display()}"
+
+
+# --- Mantenimientos (spec 012) ---------------------------------------------------------------------
+
+class MaintenancePlan(models.Model):
+    """Cada cuánto toca un mantenimiento, por km, por días o lo primero que llegue (spec 012, regla 2).
+
+    Lo cumplen sus productos: al entregar una orden que se cobró con alguno, se calcula el próximo.
+    """
+
+    name = models.CharField("nombre", max_length=80, unique=True, help_text="Por ejemplo, Cambio de aceite.")
+    every_km = models.PositiveIntegerField("cada cuántos km", null=True, blank=True)
+    every_days = models.PositiveIntegerField("cada cuántos días", null=True, blank=True)
+    products = models.ManyToManyField(
+        "catalog.Product", verbose_name="productos que lo cumplen", related_name="maintenance_plans",
+        help_text="Repuestos o servicios, p. ej. los aceites.",
+    )
+    is_active = models.BooleanField("activo", default=True, help_text="Inactivo no crea recordatorios nuevos.")
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["name"]
+        verbose_name = "plan de mantenimiento"
+        verbose_name_plural = "planes de mantenimiento"
+        constraints = [
+            models.CheckConstraint(
+                condition=Q(every_km__isnull=False) | Q(every_days__isnull=False),
+                name="maintenance_plan_has_an_interval",
+                violation_error_message="Di cada cuántos km, cada cuántos días o las dos cosas.",
+            ),
+            models.CheckConstraint(
+                condition=(Q(every_km__isnull=True) | Q(every_km__gt=0)) & (Q(every_days__isnull=True) | Q(every_days__gt=0)),
+                name="maintenance_plan_positive_interval",
+                violation_error_message="Los km y los días deben ser mayores que cero.",
+            ),
+        ]
+
+    def __str__(self):
+        return self.name
+
+
+class MaintenanceReminder(models.Model):
+    """El próximo mantenimiento de una moto según un plan (spec 012, reglas 3 y 6). Lo cambian los servicios."""
+
+    class Status(models.TextChoices):
+        PENDING = "PENDING", "Pendiente"
+        NOTIFIED = "NOTIFIED", "Avisado"
+        DONE = "DONE", "Hecho"
+        DISMISSED = "DISMISSED", "Descartado"
+
+    OPEN = (Status.PENDING, Status.NOTIFIED)
+
+    motorcycle = models.ForeignKey(Motorcycle, verbose_name="moto", on_delete=models.PROTECT, related_name="reminders")
+    plan = models.ForeignKey(MaintenancePlan, on_delete=models.PROTECT, related_name="reminders")
+    source_order = models.ForeignKey(
+        WorkOrder, verbose_name="orden que lo creó", on_delete=models.PROTECT, related_name="reminders_created",
+    )
+    done_order = models.ForeignKey(
+        WorkOrder, verbose_name="orden que lo cumplió", on_delete=models.PROTECT, related_name="reminders_done",
+        null=True, blank=True,
+    )
+    due_date = models.DateField("vence el", null=True, blank=True)
+    due_mileage = models.PositiveIntegerField("vence a los km", null=True, blank=True)
+    status = models.CharField("estado", max_length=10, choices=Status.choices, default=Status.PENDING)
+    note = models.CharField("nota", max_length=200, blank=True, help_text="Por qué se ajustó o se descartó.")
+    closed_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, verbose_name="cerró", on_delete=models.PROTECT, related_name="+", null=True, blank=True,
+    )
+    closed_at = models.DateTimeField("cerrado", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        ordering = ["-created_at", "-id"]
+        verbose_name = "recordatorio de mantenimiento"
+        verbose_name_plural = "recordatorios de mantenimiento"
+        constraints = [
+            models.UniqueConstraint(
+                fields=["motorcycle", "plan"], condition=Q(status__in=["PENDING", "NOTIFIED"]),
+                name="one_open_reminder_per_motorcycle_and_plan",
+                violation_error_message="La moto ya tiene un recordatorio abierto de ese plan.",
+            ),
+            models.CheckConstraint(
+                condition=Q(due_date__isnull=False) | Q(due_mileage__isnull=False),
+                name="maintenance_reminder_has_a_due",
+                violation_error_message="El recordatorio necesita una fecha o un kilometraje.",
+            ),
+            models.CheckConstraint(
+                condition=~Q(status="DONE") | Q(done_order__isnull=False),
+                name="maintenance_reminder_done_by_an_order",
+                violation_error_message="Un recordatorio hecho lo cumple una orden entregada.",
+            ),
+            models.CheckConstraint(
+                condition=Q(status__in=["PENDING", "NOTIFIED"]) | Q(closed_at__isnull=False),
+                name="maintenance_reminder_closed_with_date",
+                violation_error_message="Un recordatorio hecho o descartado lleva la fecha en que se cerró.",
+            ),
+        ]
+
+    def __str__(self):
+        return f"{self.motorcycle} · {self.plan}"
+
+
+class MaintenanceNotice(models.Model):
+    """Cada vez que recepción avisó al cliente (spec 012, regla 6). Se puede avisar más de una vez."""
+
+    class Channel(models.TextChoices):
+        WHATSAPP = "WHATSAPP", "WhatsApp"
+        PHONE = "PHONE", "Llamada"
+
+    reminder = models.ForeignKey(MaintenanceReminder, on_delete=models.CASCADE, related_name="notices")
+    channel = models.CharField("cómo", max_length=10, choices=Channel.choices)
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, verbose_name="avisó", on_delete=models.PROTECT, related_name="+")
+    at = models.DateTimeField("fecha", auto_now_add=True)
+
+    class Meta:
+        ordering = ["at", "id"]
+        verbose_name = "aviso de mantenimiento"
+        verbose_name_plural = "avisos de mantenimiento"
+
+    def __str__(self):
+        return f"{self.reminder} · {self.get_channel_display()}"
