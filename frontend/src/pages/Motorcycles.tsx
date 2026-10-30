@@ -1,8 +1,10 @@
 import { useCallback, useEffect, useState, type FormEvent } from "react";
 
-import { api, type Customer, type Motorcycle, type MotorcycleDetail, type WorkOrderDetail } from "../api";
+import { api, type Customer, type Motorcycle, type MotorcycleDetail, type OrderHistory, type WorkOrderDetail } from "../api";
 import CustomerPicker from "../components/CustomerPicker";
 import ReceiveOrder from "../components/ReceiveOrder";
+import ReminderList from "../components/ReminderList";
+import { formatMoney, formatQty, toCents } from "../money";
 import {
   BRANDS, describeMotorcycle, emptyForm, formatKm, formOf, formProblem, mileageNeedsNote, payload, type MotorcycleForm,
 } from "../motorcycle";
@@ -12,6 +14,7 @@ const URL = "/api/workshop/motorcycles/";
 /** Cierra con punto, sin repetirlo si el nombre ya termina en uno ("… S.A.S."). */
 const sentence = (text: string) => (text.endsWith(".") ? text : `${text}.`);
 const date = (iso: string) => new Date(iso).toLocaleDateString("es-CO", { day: "numeric", month: "short", year: "numeric" });
+const money = (value: string) => formatMoney(toCents(value));
 
 /** Spec 009, T3: recepción del taller busca, registra y lleva las motos con sus dueños. */
 export default function Motorcycles() {
@@ -199,13 +202,20 @@ function MotorcycleCard({ id, onChanged }: { id: number; onChanged: () => void }
         </ul>
       )}
 
-      <h3>Órdenes de trabajo</h3>
+      <h3>Historial</h3>
       <WorkOrdersOf moto={moto} onReceived={(order) => {
         setMessage(`Orden ${order.number} abierta: síguela en Órdenes.`);
         setError(null);
         api<MotorcycleDetail>(`${URL}${id}/`).then(setMoto).catch((e: Error) => setError(e.message));
         onChanged();
       }} />
+
+      <h3>Mantenimientos</h3>
+      {moto.reminders.length > 0 ? (
+        <ReminderList reminders={moto.reminders} label="Mantenimientos de la moto" />
+      ) : (
+        <p className="muted small">Sin mantenimientos programados: se calculan al entregar una orden.</p>
+      )}
 
       <h3>Dueño</h3>
       <OwnerChange current={moto.owner.id} onSave={(owner) => send("owner/", "POST", { owner: owner.id }, sentence(`Ahora es de ${owner.name}`))} />
@@ -223,17 +233,18 @@ function MotorcycleCard({ id, onChanged }: { id: number; onChanged: () => void }
   );
 }
 
-/** Spec 011, T5: las órdenes de la moto y, si no tiene una abierta, recibirla en el taller. */
+/**
+ * Spec 011, T5 y spec 012, T5: el historial de la moto (lo que se le hizo en cada orden entregada) y,
+ * si no tiene una orden abierta, recibirla en el taller.
+ */
 function WorkOrdersOf({ moto, onReceived }: { moto: MotorcycleDetail; onReceived: (order: WorkOrderDetail) => void }) {
   const [receiving, setReceiving] = useState(false);
   const open = moto.work_orders.find((o) => isOpen(o.status));
   return (
     <div className="action-form">
-      {moto.work_orders.length > 0 ? (
-        <ul className="plain-list small" aria-label="Órdenes de la moto">
-          {moto.work_orders.map((o) => (
-            <li key={o.id}>{o.number} · {date(o.received_at)} · {STATUS_LABELS[o.status]} · {formatKm(o.mileage_in)} <span className="muted">· {o.request}</span></li>
-          ))}
+      {moto.history.length > 0 ? (
+        <ul className="plain-list small history" aria-label="Historial de la moto">
+          {moto.history.map((o) => <HistoryItem key={o.id} order={o} />)}
         </ul>
       ) : (
         <p className="muted small">Todavía no ha entrado al taller.</p>
@@ -250,6 +261,31 @@ function WorkOrdersOf({ moto, onReceived }: { moto: MotorcycleDetail; onReceived
         moto.is_active && <div className="row"><button onClick={() => setReceiving(true)}>Recibir en el taller</button></div>
       )}
     </div>
+  );
+}
+
+function HistoryItem({ order }: { order: OrderHistory }) {
+  if (order.status !== "DELIVERED") {
+    return (
+      <li>
+        <strong>{order.number}</strong> · {STATUS_LABELS[order.status]} · recibida el {date(order.received_at)} con {formatKm(order.mileage_in)}
+        <div className="muted">Pide: {order.request}</div>
+      </li>
+    );
+  }
+  return (
+    <li>
+      <strong>{order.number}</strong> · Entregada el {date(order.delivered_at ?? order.received_at)} con {formatKm(order.mileage_out ?? order.mileage_in)}
+      {order.mechanic && <> · {order.mechanic}</>}
+      <div className="muted">Pide: {order.request}</div>
+      {order.diagnosis && <div className="muted">Diagnóstico: {order.diagnosis}</div>}
+      <ul className="plain-list" aria-label={`Lo que se le hizo en ${order.number}`}>
+        {order.lines.map((l, i) => (
+          <li key={i}>{formatQty(l.quantity)} × {l.name} <span className="muted">{l.is_service ? "mano de obra" : l.sku}</span> · {money(l.total)}</li>
+        ))}
+      </ul>
+      <div>Total: <strong>{money(order.total ?? "0")}</strong></div>
+    </li>
   );
 }
 

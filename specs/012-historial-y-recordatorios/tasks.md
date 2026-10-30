@@ -70,7 +70,13 @@
     - la validación del plan.
   - La pestaña inicial se decide en cada render: la sesión puede cargar después de la pantalla.
   - 20 tests nuevos y 37 fallos a propósito. Todos mueren.
-- [ ] **T5** Frontend, historial en la ficha de la moto, con sus recordatorios. La ficha de una orden entregada muestra el próximo mantenimiento que se le calculó. (Reglas 1 y 3)
+- [x] **T5** Frontend, historial en la ficha de la moto, con sus recordatorios. La ficha de una orden entregada muestra el próximo mantenimiento que se le calculó. (Reglas 1 y 3)
+  - La ficha de la moto (`Motorcycles.tsx`) tiene dos secciones:
+    - **Historial**: cada orden entregada con fecha, km de salida, mecánico, lo que pidió, el diagnóstico, lo que se le hizo y el total; las demás, con su estado;
+    - **Mantenimientos**: sus recordatorios con la fecha y/o los km, el estado, cuándo vence (solo los abiertos), con qué orden se hizo y su nota.
+  - La ficha de la orden (`WorkOrders.tsx`) muestra "Próximo mantenimiento" con los recordatorios que creó; la API agrega `next_maintenance`.
+  - `components/ReminderList.tsx` se usa en las dos fichas, y `maintenance.reminderTarget` arma el texto de la fecha y los km.
+  - 6 tests nuevos (1 del backend) y 18 fallos a propósito. Todos mueren.
 - [ ] **T6** `seed_demo --taller`: planes de ejemplo y un recordatorio en cada estado, uno de ellos vencido por km estimados. (Regla 11)
 - [ ] **T7** Prueba en el navegador y cierre:
   - el recorrido de los criterios de aceptación con la demo de taller;

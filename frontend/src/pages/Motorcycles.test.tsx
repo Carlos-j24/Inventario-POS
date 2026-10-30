@@ -2,7 +2,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
-import type { Customer, Motorcycle, MotorcycleDetail, Owner } from "../api";
+import type { Customer, Motorcycle, MotorcycleDetail, Owner, Reminder } from "../api";
 import Motorcycles from "./Motorcycles";
 
 const URL = "/api/workshop/motorcycles/";
@@ -21,7 +21,7 @@ const detail = (over: Partial<MotorcycleDetail> = {}): MotorcycleDetail => ({
     { customer: ana, started_at: "2024-03-10T15:00:00Z", ended_at: "2026-01-05T15:00:00Z" },
   ],
   mileage_readings: [{ mileage: 15200, previous: 9000, note: "", recorded_at: "2026-10-20T15:00:00Z", recorded_by: "recepcion" }],
-  work_orders: [],
+  work_orders: [], history: [], reminders: [],
   ...over,
 });
 const customer = (o: Owner): Customer => ({
@@ -273,13 +273,20 @@ describe("la ficha", () => {
   it("muestra sus órdenes y la recibe en el taller desde la ficha", async () => {
     const delivered = { id: 4, number: "OT-000004", status: "DELIVERED" as const, mileage_in: 9000, request: "Lavado", received_at: "2026-05-02T15:00:00Z" };
     const opened = { id: 5, number: "OT-000005", status: "RECEIVED" as const, mileage_in: 15400, request: "Cambio de aceite", received_at: "2026-10-28T15:00:00Z" };
+    const history = (o: typeof delivered | typeof opened) => ({
+      ...o, delivered_at: null, mileage_out: null, diagnosis: "", mechanic: null, lines: [], total: null,
+    });
     let received = false;
     const fetch = await openCard({
-      [`GET ${URL}1/`]: () => json(detail({ mileage: received ? 15400 : 15200, work_orders: received ? [opened, delivered] : [delivered] })),
+      [`GET ${URL}1/`]: () => json(detail({
+        mileage: received ? 15400 : 15200, work_orders: received ? [opened, delivered] : [delivered],
+        history: received ? [history(opened), { ...history(delivered), delivered_at: "2026-05-02T15:00:00Z", mileage_out: 9000, total: "12000.00" }]
+          : [{ ...history(delivered), delivered_at: "2026-05-02T15:00:00Z", mileage_out: 9000, total: "12000.00" }],
+      })),
       "GET /api/workshop/orders/mechanics/": () => json([{ id: 3, username: "carlos", name: "Carlos" }]),
       "POST /api/workshop/orders/": () => { received = true; return json({ ...opened, lines: [] }, 201); },
     });
-    expect(screen.getByRole("list", { name: "Órdenes de la moto" })).toHaveTextContent("OT-000004 · 2 de may de 2026 · Entregada · 9.000 km · Lavado");
+    expect(screen.getByRole("list", { name: "Historial de la moto" })).toHaveTextContent("OT-000004 · Entregada el 2 de may de 2026 con 9.000 km");
     await userEvent.click(screen.getByRole("button", { name: "Recibir en el taller" }));
     const form = screen.getByRole("form", { name: "Recibir moto" });
     expect(form).toHaveTextContent("Recibir XYZ12A · Bajaj Boxer CT 100");
@@ -291,13 +298,55 @@ describe("la ficha", () => {
     }]);
     expect(await screen.findByRole("status")).toHaveTextContent("Orden OT-000005 abierta: síguela en Órdenes.");
     expect(await screen.findByText("Tiene abierta la orden OT-000005: síguela en Órdenes.")).toBeInTheDocument();
+    expect(screen.getByRole("list", { name: "Historial de la moto" })).toHaveTextContent("OT-000005 · Recibida · recibida el 28 de oct de 2026 con 15.400 km");
     expect(screen.queryByRole("button", { name: "Recibir en el taller" })).not.toBeInTheDocument();
     expect(screen.queryByRole("form", { name: "Recibir moto" })).not.toBeInTheDocument();
+  });
+
+  it("el historial dice qué se le hizo en cada orden entregada, y sus mantenimientos (spec 012)", async () => {
+    const reminder = (over: Partial<Reminder>): Reminder => ({
+      id: 1, plan: { id: 1, name: "Cambio de aceite" }, status: "PENDING", due_date: "2027-01-28", due_mileage: 18420, due_on: "2027-01-28",
+      by_km: false, estimated: false, daily_km: null, note: "", source_order: "OT-000004", done_order: null, notices: [], closed_at: null, ...over,
+    });
+    await openCard({
+      [`GET ${URL}1/`]: () => json(detail({
+        history: [{
+          id: 4, number: "OT-000004", status: "DELIVERED", received_at: "2026-10-28T15:00:00Z", delivered_at: "2026-10-30T15:00:00Z",
+          mileage_in: 15400, mileage_out: 15420, request: "Cambio de aceite y revisar frenos", diagnosis: "Aceite vencido", mechanic: "Jhon",
+          lines: [
+            { sku: "ACE-20W50", name: "Aceite 20W50", is_service: false, quantity: "1.000", total: "32000.00" },
+            { sku: "MO-TALLER", name: "Mano de obra", is_service: true, quantity: "1.000", total: "25000.00" },
+          ],
+          total: "57000.00",
+        }],
+        reminders: [
+          reminder({}),
+          reminder({ id: 2, plan: { id: 2, name: "Revisión de frenos" }, status: "DONE", due_date: "2026-10-01", due_mileage: null,
+            due_on: null, done_order: "OT-000004", closed_at: "2026-10-30T15:00:00Z" }),
+          reminder({ id: 3, plan: { id: 3, name: "Kit de arrastre" }, status: "DISMISSED", due_date: null, due_mileage: 30000,
+            due_on: null, note: "Vendió el kit aparte", closed_at: "2026-10-30T15:00:00Z" }),
+        ],
+      })),
+    });
+    const item = within(screen.getByRole("list", { name: "Historial de la moto" })).getAllByRole("listitem")[0];
+    expect(item).toHaveTextContent("OT-000004 · Entregada el 30 de oct de 2026 con 15.420 km · Jhon");
+    expect(item).toHaveTextContent("Pide: Cambio de aceite y revisar frenos");
+    expect(item).toHaveTextContent("Diagnóstico: Aceite vencido");
+    const done = screen.getByRole("list", { name: "Lo que se le hizo en OT-000004" });
+    expect(done).toHaveTextContent(/1 × Aceite 20W50 ACE-20W50 · \$\s32\.000/);
+    expect(done).toHaveTextContent(/1 × Mano de obra mano de obra · \$\s25\.000/);
+    expect(item).toHaveTextContent(/Total: \$\s57\.000/);
+    const plans = screen.getByRole("list", { name: "Mantenimientos de la moto" });
+    expect(plans).toHaveTextContent("Cambio de aceite: el 28 de enero de 2027 o a los 18.420 km · Pendiente · Vence en");
+    expect(plans).toHaveTextContent("Revisión de frenos: el 1 de octubre de 2026 · Hecho · con la orden OT-000004");
+    expect(plans).not.toHaveTextContent("Hecho · Vence"); // cerrado: no dice cuándo vence
+    expect(plans).toHaveTextContent("Kit de arrastre: a los 30.000 km · Descartado · Vendió el kit aparte");
   });
 
   it("sin órdenes lo dice y cancelar cierra el formulario", async () => {
     await openCard();
     expect(screen.getByText("Todavía no ha entrado al taller.")).toBeInTheDocument();
+    expect(screen.getByText("Sin mantenimientos programados: se calculan al entregar una orden.")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: "Recibir en el taller" }));
     await userEvent.click(within(screen.getByRole("form", { name: "Recibir moto" })).getByRole("button", { name: "Cancelar" }));
     expect(screen.queryByRole("form", { name: "Recibir moto" })).not.toBeInTheDocument();

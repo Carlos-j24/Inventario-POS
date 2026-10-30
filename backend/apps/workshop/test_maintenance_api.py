@@ -172,3 +172,16 @@ def test_the_history_leaves_out_what_was_returned_and_open_reminders_go_first(
     assert [line["sku"] for line in data["history"][0]["lines"]] == ["ACE-20W50", "MO-TALLER"]  # sin las pastillas regresadas
     assert [(r["plan"]["name"], r["due_on"] is None) for r in data["reminders"]] == [("Cambio de aceite", False), ("Viejo", True)]
     assert (data["reminders"][1]["id"], data["reminders"][1]["done_order"]) == (closed.pk, order.number)
+
+
+# --- próximo mantenimiento en la ficha de la orden (T5) --------------------------------------
+
+def test_a_delivered_order_shows_its_next_maintenance(desk, paid, ready, clerk, oil_plan):
+    url = f"/api/workshop/orders/{ready.pk}/"
+    assert desk.get(url).data["next_maintenance"] == []  # lista, todavía sin entregar
+    MaintenancePlan.objects.create(name="Aceite de caja", every_km=6000).products.add(oil_plan.products.get())
+    deliver(ready, clerk, mileage=15420)
+    rows = desk.get(url).data["next_maintenance"]
+    assert [(r["plan"]["name"], r["status"], r["due_mileage"]) for r in rows] == [
+        ("Aceite de caja", Status.PENDING, 21420), ("Cambio de aceite", Status.PENDING, 18420)]  # por nombre
+    assert rows[1]["due_date"] == timezone.localdate() + timedelta(days=90)

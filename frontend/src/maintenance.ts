@@ -107,3 +107,14 @@ export function planPayload(form: PlanForm) {
     products: form.products.map((p) => p.id), is_active: form.isActive,
   };
 }
+
+const fullDate = (iso: string) =>
+  new Date(`${iso}T12:00:00`).toLocaleDateString("es-CO", { day: "numeric", month: "long", year: "numeric" });
+
+/** Para cuándo es: "el 28 de enero de 2027 o a los 18.420 km". */
+export function reminderTarget(reminder: Pick<Reminder, "due_date" | "due_mileage">): string {
+  return [
+    reminder.due_date ? `el ${fullDate(reminder.due_date)}` : null,
+    reminder.due_mileage != null ? `a los ${reminder.due_mileage.toLocaleString("es-CO")} km` : null,
+  ].filter(Boolean).join(" o ");
+}

@@ -7,6 +7,7 @@ import {
 } from "../api";
 import AddLine from "../components/AddWorkOrderLine";
 import ReceiveOrder, { ORDERS_URL as URL } from "../components/ReceiveOrder";
+import ReminderList from "../components/ReminderList";
 import WorkOrderPrint from "../components/WorkOrderPrint";
 import { formatMoney, formatQty, toCents } from "../money";
 import { describeMotorcycle, formatKm, normalizeCode } from "../motorcycle";
@@ -215,6 +216,13 @@ function OrderCard({ id, onChanged }: { id: number; onChanged: () => void }) {
       )}
       {order.status === "READY" && !order.sale && <p className="muted small">La moto se entrega cuando la caja cobre el pedido.</p>}
       {can.deliver && <Deliver mileageIn={order.mileage_in} onSave={(body) => send("deliver/", "POST", body, "Moto entregada.")} />}
+
+      {order.next_maintenance.length > 0 && (
+        <>
+          <h3>Próximo mantenimiento</h3>
+          <ReminderList reminders={order.next_maintenance} label="Próximo mantenimiento" />
+        </>
+      )}
 
       {can.cancel && <Cancel onSave={(reason) => send("cancel/", "POST", { reason }, "Orden cancelada: los repuestos que salieron volvieron a la bodega.")} />}
 

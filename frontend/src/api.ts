@@ -466,6 +466,27 @@ export interface MotorcycleDetail extends Motorcycle {
   mileage_readings: { mileage: number; previous: number | null; note: string; recorded_at: string; recorded_by: string }[];
   /** Sus órdenes de trabajo (spec 011), la más reciente primero. */
   work_orders: WorkOrderSummary[];
+  /** Spec 012: sus órdenes con lo que se les hizo (solo en las entregadas), la más reciente primero. */
+  history: OrderHistory[];
+  /** Spec 012: sus recordatorios de mantenimiento, los abiertos primero. */
+  reminders: Reminder[];
+}
+
+/** Una orden en el historial de la moto (spec 012, regla 1). */
+export interface OrderHistory {
+  id: number;
+  number: string;
+  status: WorkOrderStatus;
+  received_at: string;
+  delivered_at: string | null;
+  mileage_in: number;
+  mileage_out: number | null;
+  request: string;
+  diagnosis: string;
+  mechanic: string | null;
+  /** Lo que se cobró, sin lo regresado; vacío si no se ha entregado. */
+  lines: { sku: string; name: string; is_service: boolean; quantity: string; total: string }[];
+  total: string | null;
 }
 
 // --- Mantenimientos (spec 012) -------------------------------------------------
@@ -572,6 +593,8 @@ export interface WorkOrderDetail extends WorkOrderRow {
   till_order: { id: number; code: string; total: string } | null;
   /** La venta que la cobró, si está cobrada. */
   sale: { id: number; number: string; total: string } | null;
+  /** Spec 012: los recordatorios que creó al entregarse. */
+  next_maintenance: Reminder[];
 }
 
 export interface Business {
