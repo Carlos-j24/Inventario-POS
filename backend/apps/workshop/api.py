@@ -1,6 +1,8 @@
 """API de motos y dueños (spec 009, T2). Todo con el módulo de taller activo y workshop.receive.
 
-La ficha de la moto lista sus órdenes de trabajo (spec 011, regla 11). Las órdenes tienen su API en order_api.py.
+La ficha de la moto lista sus órdenes de trabajo (spec 011, regla 11) y, desde la spec 012, su historial
+(lo que se le hizo en cada orden entregada) y sus recordatorios de mantenimiento. Las órdenes tienen su
+API en order_api.py y los mantenimientos en maintenance_api.py.
 """
 from django.core.exceptions import ValidationError as DjangoValidationError
 from django.db import transaction
@@ -18,7 +20,7 @@ from apps.customers.queries import number_or_phone, only_digits, phone_digits
 from apps.customers.serializers import CustomerSerializer
 from apps.invoicing.models import Business
 
-from . import services
+from . import history, services
 from .models import MileageReading, Motorcycle, Ownership, WorkOrder
 from .rules import normalize_code
 
@@ -80,9 +82,17 @@ class MotorcycleDetailSerializer(MotorcycleSerializer):
     ownerships = OwnershipSerializer(many=True, read_only=True)
     mileage_readings = serializers.SerializerMethodField()
     work_orders = WorkOrderSummarySerializer(many=True, read_only=True)
+    history = serializers.SerializerMethodField()
+    reminders = serializers.SerializerMethodField()
 
     class Meta(MotorcycleSerializer.Meta):
-        fields = [*MotorcycleSerializer.Meta.fields, "ownerships", "mileage_readings", "work_orders"]
+        fields = [*MotorcycleSerializer.Meta.fields, "ownerships", "mileage_readings", "work_orders", "history", "reminders"]
+
+    def get_history(self, motorcycle):
+        return history.motorcycle_history(motorcycle)
+
+    def get_reminders(self, motorcycle):
+        return history.motorcycle_reminders(motorcycle)
 
     def get_mileage_readings(self, motorcycle):
         return ReadingSerializer(motorcycle.mileage_readings.all()[:READINGS_SHOWN], many=True).data
