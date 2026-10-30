@@ -77,7 +77,11 @@
   - La ficha de la orden (`WorkOrders.tsx`) muestra "Próximo mantenimiento" con los recordatorios que creó; la API agrega `next_maintenance`.
   - `components/ReminderList.tsx` se usa en las dos fichas, y `maintenance.reminderTarget` arma el texto de la fecha y los km.
   - 6 tests nuevos (1 del backend) y 18 fallos a propósito. Todos mueren.
-- [ ] **T6** `seed_demo --taller`: planes de ejemplo y un recordatorio en cada estado, uno de ellos vencido por km estimados. (Regla 11)
+- [x] **T6** `seed_demo --taller`: planes de ejemplo y un recordatorio en cada estado, uno de ellos vencido por km estimados. (Regla 11)
+  - Tres planes: cambio de aceite (3.000 km o 90 días), revisión de frenos (5.000 km o 180 días) y kit de arrastre (15.000 km).
+  - Cuatro motos pasaron por el taller meses atrás, en una de sus lecturas (`_past_visit`): la orden se recibe, se arregla, se cobra y se entrega con los mismos servicios, y después se le corren las fechas. Se cobran en el turno de hoy para no tocar los cierres de días pasados.
+  - Quedan: el aceite de la Suzuki, vencido por fecha; el de la Pulsar, que vence por km estimados (unos 50 km al día); el de la Boxer, avisado por WhatsApp; el de la Honda, hecho con la orden de hoy, que crea el siguiente; y su kit, descartado.
+  - La ferretería sigue sin planes. 3 tests nuevos y 14 fallos a propósito, todos detectados.
 - [ ] **T7** Prueba en el navegador y cierre:
   - el recorrido de los criterios de aceptación con la demo de taller;
   - la ferretería sin módulo de taller;
