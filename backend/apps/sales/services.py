@@ -80,10 +80,11 @@ def create_sale(*, user, shift, lines, payments, client_uuid, offline=False, occ
 
 
 def _order_lines(order, lines):
-    """Líneas a cobrar de un pedido: todas, o un subconjunto sin pasar de lo pedido."""
+    """Líneas a cobrar de un pedido: todas, o un subconjunto sin pasar de lo pedido.
+
+    El de una orden de taller (spec 011) se cobra completo: la caja puede mandar sus líneas, pero todas y enteras.
+    """
     by_id = {line.pk: line for line in order.lines.select_related("product", "unit", "work_order_line__movement")}
-    if lines is not None and order.work_order_id:
-        raise ValidationError("Una orden de taller se cobra completa.")
     if lines is None:
         chosen = [(line, line.quantity) for line in by_id.values()]
     else:
@@ -99,6 +100,8 @@ def _order_lines(order, lines):
             if used[line.pk] > line.quantity:
                 raise ValidationError(f"{line.product.sku}: se pidieron {line.quantity}; no se puede cobrar más.")
         chosen = [(by_id[pk], quantity) for pk, quantity in used.items()]
+        if order.work_order_id and used != {pk: line.quantity for pk, line in by_id.items()}:
+            raise ValidationError("Una orden de taller se cobra completa: no se le quitan líneas ni se bajan cantidades.")
     if not chosen:
         raise ValidationError("No hay nada que cobrar del pedido.")
     return [

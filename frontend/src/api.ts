@@ -177,6 +177,8 @@ export interface Order {
   created_at: string;
   sale_number: string | null;
   lines: OrderLine[];
+  /** La orden de taller que cobra (spec 011): se cobra completa, a nombre de su cliente. */
+  work_order?: { id: number; number: string; customer: string } | null;
   warnings?: StockWarning[];
 }
 

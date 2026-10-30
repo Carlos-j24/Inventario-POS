@@ -211,6 +211,19 @@ describe("Checkout de un pedido (spec 002)", () => {
     expect(props.onPaid).toHaveBeenCalled();
   });
 
+  it("una orden de taller va a nombre de su cliente si no se elige otro (spec 011)", async () => {
+    const fetch = mockFetch({ id: 1, number: "V-000011", total: "27000.00", payments: [] });
+    setup({ order: { ...order, work_order: { id: 5, number: "OT-000005", customer: "Jorge Ramírez" } }, lines: orderLines, totalCents: 2700000 });
+    expect(screen.getByText(/Cliente:/)).toHaveTextContent("Cliente: Jorge Ramírez (de la orden)");
+    await payExact();
+    expect(JSON.parse(fetch.mock.calls[0][1].body).customer).toBeUndefined(); // el servidor pone el de la orden
+  });
+
+  it("un pedido de mostrador sigue siendo de consumidor final", () => {
+    setup({ order, lines: orderLines, totalCents: 2700000 });
+    expect(screen.getByText(/Cliente:/)).toHaveTextContent("Cliente: Consumidor final");
+  });
+
   it("sin red no va a la cola: los pedidos se cobran con conexión", async () => {
     vi.stubGlobal("fetch", vi.fn().mockRejectedValue(new TypeError("Failed to fetch")));
     const props = setup({ order, lines: orderLines, totalCents: 2700000 });

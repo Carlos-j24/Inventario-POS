@@ -1,11 +1,15 @@
 import { linePriceCents, lineTotalCents, quantityError, type CartLine } from "../cart";
 import { formatMoney, formatQty } from "../money";
 
-/** Tabla editable del carrito (cantidad, unidad, quitar), compartida por la caja y los pedidos. */
-export default function CartTable({ lines, onChange, emptyText }: {
+/**
+ * Tabla editable del carrito (cantidad, unidad, quitar), compartida por la caja y los pedidos.
+ * `locked`: no se cambia nada (una orden de taller se cobra completa, spec 011).
+ */
+export default function CartTable({ lines, onChange, emptyText, locked = false }: {
   lines: CartLine[];
   onChange: (lines: CartLine[]) => void;
   emptyText: string;
+  locked?: boolean;
 }) {
   const update = (key: string, patch: Partial<CartLine>) =>
     onChange(lines.map((l) => (l.key === key ? { ...l, ...patch } : l)));
@@ -28,6 +32,7 @@ export default function CartTable({ lines, onChange, emptyText }: {
                   min="0"
                   step={l.product.allows_fractions ? "0.001" : "1"}
                   value={l.quantity}
+                  readOnly={locked}
                   onChange={(e) => update(l.key, { quantity: Number(e.target.value) })}
                   aria-label={`Cantidad de ${l.product.name}`}
                 />
@@ -49,9 +54,11 @@ export default function CartTable({ lines, onChange, emptyText }: {
               <td className="num">{formatMoney(linePriceCents(l))}</td>
               <td className="num">{formatMoney(lineTotalCents(l))}</td>
               <td>
-                <button className="link" onClick={() => onChange(lines.filter((x) => x.key !== l.key))} aria-label={`Quitar ${l.product.name}`}>
-                  ✕
-                </button>
+                {!locked && (
+                  <button className="link" onClick={() => onChange(lines.filter((x) => x.key !== l.key))} aria-label={`Quitar ${l.product.name}`}>
+                    ✕
+                  </button>
+                )}
               </td>
             </tr>
           );

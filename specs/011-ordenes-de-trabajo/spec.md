@@ -1,6 +1,6 @@
 # Spec 011 — Órdenes de trabajo (módulo de taller, etapa 3)
 
-> Estado: **aprobada (2026-10-28)** en el PR #81. Decisiones tomadas con Carlos el 2026-10-28. Tareas en tasks.md.
+> Estado: ✅ **completada (2026-10-29)**: aprobada en el PR #81, T1 a T8 en los PRs #82 a #89. Decisiones tomadas con Carlos el 2026-10-28. Tareas en tasks.md.
 
 ## Problema
 Arias recibe motos para mantenimiento y reparación. Hoy la app sabe de clientes y motos (spec 009) y cobra servicios como la mano de obra (spec 010), pero no hay **orden de trabajo**. Faltan entonces:
