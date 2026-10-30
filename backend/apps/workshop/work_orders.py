@@ -24,6 +24,7 @@ from apps.inventory.services import record_movement
 from apps.sales.models import Order, Sale, business_date
 from apps.sales.orders import create_order
 
+from . import maintenance
 from .models import WorkOrder, WorkOrderApproval, WorkOrderEvent, WorkOrderLine
 from .services import update_mileage
 
@@ -323,7 +324,10 @@ def send_to_till(*, order, user):
 
 @transaction.atomic
 def deliver(*, order, user, mileage=None, mileage_note=""):
-    """Entrega la moto cobrada. El kilometraje de salida actualiza el de la moto si cambió."""
+    """Entrega la moto cobrada. El kilometraje de salida actualiza el de la moto si cambió.
+
+    Calcula el próximo mantenimiento de los planes que cumplió la orden (spec 012).
+    """
     _require_reception(user)
     order = _lock(order)
     _require_status(order, (Status.READY,), "entregar")
@@ -335,6 +339,7 @@ def deliver(*, order, user, mileage=None, mileage_note=""):
     order.mileage_out = motorcycle.mileage
     order.save(update_fields=["mileage_out", "updated_at"])
     _set_status(order, Status.DELIVERED, user)
+    maintenance.on_delivered(order=order, user=user)  # el próximo mantenimiento (spec 012)
     return order
 
 

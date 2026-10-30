@@ -107,6 +107,11 @@
 - `MaintenanceReminder`: el próximo mantenimiento de una moto por plan, que vence por fecha y/o km. Su estado va de Pendiente a Avisado y luego a Hecho (lo cumple una orden entregada) o Descartado. Hay uno solo abierto por moto y plan.
 - `MaintenanceNotice`: cada aviso al cliente (WhatsApp o llamada), con quién y cuándo.
 - Las reglas también están en la base de datos (`workshop/0003_maintenance`). Los planes se editan en el admin; los recordatorios ahí son de solo lectura.
+- Servicios (T2) en `apps/workshop/maintenance.py`:
+  - la entrega (`work_orders.deliver`) llama a `on_delivered`, que cierra como hecho el recordatorio de cada plan cumplido y crea el siguiente (fecha + días, km de salida + km);
+  - entre visitas, `daily_usage` y `km_due_date` estiman cuándo la moto llega a los km;
+  - `due_reminders` da lo que vence en 7 días, con los vencidos primero;
+  - recepción avisa, ajusta y descarta.
 
 ## Logo de cada instalación
 - El logo es del cliente y el repositorio es público y genérico: va en una carpeta de la instalación (`BRAND_DIR`; en Docker, `./brand` montada en `/app/brand`). `/brand/` está en `.gitignore`.

@@ -20,13 +20,21 @@
   - Los planes sí se editan en el admin (son configuración), pero no se borran: se desactivan.
   - 9 tests y 17 fallos a propósito. Las restricciones se mutaron en la migración, porque los tests crean la base con ella.
     - Uno sobrevivía porque el test chocaba con la misma orden; ahora prueba con una visita posterior.
-- [ ] **T2** Backend, servicios (`workshop/maintenance.py`):
+- [x] **T2** Backend, servicios (`workshop/maintenance.py`):
   - al entregar una orden, cerrar el recordatorio anterior y crear el siguiente por cada plan que cumple;
   - uso diario estimado con las lecturas y fecha estimada por km (funciones puras);
   - qué vence (ventana de 7 días, vencidos primero, vence ya si una lectura pasó los km);
   - avisar, ajustar y descartar, con sus permisos y su historia.
 
   (Reglas 3 a 6 y 9)
+  - `work_orders.deliver` llama a `maintenance.on_delivered`. Cuenta lo cobrado: lo aprobado y no regresado, también la mano de obra si está en un plan.
+  - Si la orden se entrega otra vez después de anular su venta (spec 011), recalcula el mismo recordatorio en vez de cerrarlo y crear otro.
+  - Un plan inactivo cierra como hecho lo que tenía abierto, pero no crea el siguiente.
+  - Funciones puras:
+    - `daily_usage`: los últimos 12 meses y al menos 14 días entre la primera y la última lectura. Si el km bajó (tablero nuevo), cuenta desde esa lectura;
+    - `km_due_date`: redondea los días hacia arriba; si una lectura ya pasó los km, vence ese día.
+  - `due_of` dice cuándo vence, si es por km y si el km es estimado ("aprox."). `due_reminders` da la lista: 7 días de ventana, vencidos primero, filtro por plan y avisados a pedido.
+  - 17 tests y 34 fallos a propósito. Todos mueren.
 - [ ] **T3** API:
   - planes (`catalog.edit`);
   - lista de mantenimientos con filtros, y las acciones avisar, ajustar y descartar (`workshop.receive`);
