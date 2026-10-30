@@ -112,6 +112,10 @@
   - entre visitas, `daily_usage` y `km_due_date` estiman cuándo la moto llega a los km;
   - `due_reminders` da lo que vence en 7 días, con los vencidos primero;
   - recepción avisa, ajusta y descarta.
+- API (T3) en `apps/workshop/maintenance_api.py`:
+  - `plans/`: los ve recepción y los edita `catalog.edit`;
+  - `maintenance/`: la lista y las acciones, con `workshop.receive`.
+  - La ficha de la moto trae `history` y `reminders`, que arma `history.py`.
 
 ## Logo de cada instalación
 - El logo es del cliente y el repositorio es público y genérico: va en una carpeta de la instalación (`BRAND_DIR`; en Docker, `./brand` montada en `/app/brand`). `/brand/` está en `.gitignore`.

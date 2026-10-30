@@ -95,7 +95,7 @@ def due_reminders(*, today=None, plan=None, include_notified=False):
     today = today or timezone.localdate()
     statuses = [Status.PENDING, Status.NOTIFIED] if include_notified else [Status.PENDING]
     rows = MaintenanceReminder.objects.filter(status__in=statuses).select_related(
-        "plan", "motorcycle__owner",
+        "plan", "motorcycle__owner", "source_order", "done_order",
     ).prefetch_related("motorcycle__mileage_readings", "notices__user")
     if plan is not None:
         rows = rows.filter(plan=plan)

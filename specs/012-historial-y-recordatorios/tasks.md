@@ -35,13 +35,23 @@
     - `km_due_date`: redondea los días hacia arriba; si una lectura ya pasó los km, vence ese día.
   - `due_of` dice cuándo vence, si es por km y si el km es estimado ("aprox."). `due_reminders` da la lista: 7 días de ventana, vencidos primero, filtro por plan y avisados a pedido.
   - 17 tests y 34 fallos a propósito. Todos mueren.
-- [ ] **T3** API:
+- [x] **T3** API:
   - planes (`catalog.edit`);
   - lista de mantenimientos con filtros, y las acciones avisar, ajustar y descartar (`workshop.receive`);
   - historial en la ficha de la moto: órdenes con lo que se les hizo y sus recordatorios.
   - Todo con 404 si el módulo está apagado.
 
   (Reglas 1, 7 a 10)
+  - Rutas en `apps/workshop/maintenance_api.py`:
+    - `GET/POST plans/` y `GET/PATCH plans/<id>/`. Los ve recepción, pero solo los crea o cambia quien tiene `catalog.edit`. No se borran. Piden al menos un producto, un intervalo mayor que cero y un nombre que no se repita;
+    - `GET maintenance/`: lo que vence, los vencidos primero. Admite `?plan=` y, con `?notified=1`, también los avisados;
+    - `POST maintenance/<id>/notify|adjust|dismiss/` devuelve la fila.
+    - Cada fila trae la moto, el dueño actual con su teléfono, el plan, cuándo vence, si es por km aprox., el uso diario y los avisos.
+  - `history.py` arma el historial y los recordatorios de la ficha de la moto (`history` y `reminders`):
+    - lo hecho y el total solo en las entregadas, sin lo regresado;
+    - la fecha de entrega sale de su historia;
+    - los recordatorios abiertos van primero.
+  - 18 tests y 28 fallos a propósito. Tres sobrevivían porque DRF ya recorta, rechaza vacío y valida que el nombre no se repita: ese código se quitó. Dos por tests flojos (una orden abierta con algo aprobado, un recordatorio hecho), que se reforzaron.
 - [ ] **T4** Frontend, pantalla "Mantenimientos":
   - lista que vence, con el botón de WhatsApp (`wa.me` con el 57 y el mensaje), marcar avisado, ajustar y descartar;
   - pestaña "Planes" para quien maneja el catálogo.

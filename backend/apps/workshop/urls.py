@@ -1,6 +1,7 @@
 from django.urls import path
 
 from .api import MileageView, MotorcycleDetailView, MotorcycleListView, OwnerView
+from .maintenance_api import PlanDetailView, PlanListView, ReminderActionView, ReminderListView
 from .order_api import (
     LineActionView, LineDetailView, LineListView, MechanicListView, OrderActionView, OrderDetailView, OrderListView,
 )
@@ -17,4 +18,8 @@ urlpatterns = [
     path("orders/<int:pk>/lines/<int:line_id>/", LineDetailView.as_view(), name="work-order-line"),
     path("orders/<int:pk>/lines/<int:line_id>/<str:action>/", LineActionView.as_view(), name="work-order-line-action"),
     path("orders/<int:pk>/<str:action>/", OrderActionView.as_view(), name="work-order-action"),
+    path("plans/", PlanListView.as_view(), name="maintenance-plan-list"),
+    path("plans/<int:pk>/", PlanDetailView.as_view(), name="maintenance-plan-detail"),
+    path("maintenance/", ReminderListView.as_view(), name="maintenance-list"),
+    path("maintenance/<int:pk>/<str:action>/", ReminderActionView.as_view(), name="maintenance-action"),
 ]
