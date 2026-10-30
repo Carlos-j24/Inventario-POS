@@ -102,7 +102,7 @@
 - Pantalla "Mis órdenes" del mecánico (T6) en `frontend/src/pages/MyOrders.tsx`: sus órdenes abiertas, con diagnóstico, repuestos y mano de obra sin precios, sacar y regresar, pedir aprobación y marcar lista. `AddWorkOrderLine` es el buscador compartido con recepción.
 - Demo (T7): `seed_demo --taller` siembra un mecánico, la mano de obra de taller y una orden en cada estado.
 
-## Taller: historial y recordatorios (spec 012)
+## Taller: historial y recordatorios (spec 012, completa)
 - `MaintenancePlan`: cada cuántos km y/o días, con los productos que lo cumplen.
 - `MaintenanceReminder`: el próximo mantenimiento de una moto por plan, que vence por fecha y/o km. Su estado va de Pendiente a Avisado y luego a Hecho (lo cumple una orden entregada) o Descartado. Hay uno solo abierto por moto y plan.
 - `MaintenanceNotice`: cada aviso al cliente (WhatsApp o llamada), con quién y cuándo.
