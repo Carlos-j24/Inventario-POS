@@ -110,7 +110,7 @@ function OrderCard({ id, onChanged }: { id: number; onChanged: () => void }) {
                 <td>{l.name} <span className="muted small">{l.is_service ? "mano de obra" : l.sku}</span></td>
                 <td className="num">{formatQty(l.quantity)}</td>
                 <td>{lineState(l)}</td>
-                <td className="row">
+                <td><span className="row">
                   {canTake(order, l) && (
                     <button onClick={() => send(`lines/${l.id}/take/`, "POST", {}, `${l.name} salió de la bodega.`)}>Sacar</button>
                   )}
@@ -120,7 +120,7 @@ function OrderCard({ id, onChanged }: { id: number; onChanged: () => void }) {
                   {can.editLines && !l.taken && (
                     <button className="link" onClick={() => send(`lines/${l.id}/`, "DELETE", undefined, `${l.name} quitado.`)}>Quitar</button>
                   )}
-                </td>
+                </span></td>
               </tr>
             ))}
           </tbody>

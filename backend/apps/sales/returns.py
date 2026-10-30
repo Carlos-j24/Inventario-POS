@@ -67,7 +67,8 @@ def void_sale(*, sale, user, reason):
         sale.void_reason = reason
         sale.save(update_fields=["status", "voided_by", "voided_at", "void_reason"])
         work_order = Order.objects.filter(sale=sale, work_order__isnull=False).values_list("work_order", flat=True).first()
-        if work_order:  # sigue Lista y por cobrar otra vez: queda en su historia
+        if work_order:  # vuelve a Lista, por cobrar otra vez, aunque ya se hubiera entregado (spec 011, regla 10)
+            WorkOrder.objects.filter(pk=work_order).update(status=WorkOrder.Status.READY, mileage_out=None, updated_at=timezone.now())
             WorkOrderEvent.objects.create(
                 work_order_id=work_order, status=WorkOrder.Status.READY, user=user, note=f"Se anuló la venta {sale.number}"[:200],
             )

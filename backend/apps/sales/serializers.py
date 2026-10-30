@@ -197,12 +197,13 @@ class OrderSerializer(serializers.ModelSerializer):
     salesperson = serializers.SlugRelatedField(slug_field="username", read_only=True)
     sale_number = serializers.SerializerMethodField()
     lines = OrderLineSerializer(many=True, read_only=True)
+    work_order = serializers.SerializerMethodField()
 
     class Meta:
         model = Order
         fields = [
             "id", "code", "business_date", "client_uuid", "status", "salesperson", "total",
-            "created_at", "sale_number", "lines",
+            "created_at", "sale_number", "lines", "work_order",
         ]
 
     def get_status(self, obj):
@@ -210,6 +211,11 @@ class OrderSerializer(serializers.ModelSerializer):
 
     def get_sale_number(self, obj):
         return obj.sale.number if obj.sale_id else None
+
+    def get_work_order(self, obj):
+        """La orden de taller que cobra este pedido (spec 011): se cobra completa y su documento va a su cliente."""
+        order = obj.work_order
+        return None if order is None else {"id": order.pk, "number": order.number, "customer": order.customer.name}
 
 
 # --- Supervisor (spec 003) ------------------------------------------------------

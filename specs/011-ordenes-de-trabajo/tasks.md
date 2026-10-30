@@ -129,7 +129,24 @@
   - Los tests del demo cambian donde la T7 cambia los datos: otro pedido pendiente (el de la orden), la lectura de kilometraje al recibir y la mano de obra entre los servicios.
   - 4 tests nuevos.
   - Aparte, a pedido de Carlos: el logo de cada instalación (ver docs/arquitectura.md).
-- [ ] **T8** Prueba en el navegador y cierre:
+- [x] **T8** Prueba en el navegador y cierre:
   - el recorrido de los criterios de aceptación con la demo de taller;
   - la ferretería sin módulo de taller;
   - `docs/arquitectura.md`, `MEMORY.md` y la spec.
+  - Las dos demos sembradas con el comando real, cada una en su base, y recorridas en Chrome sin ventana, cada paso con su usuario (Diana, Jhon, Laura y admin). Resultado: 45 de 45 bien.
+  - El recorrido usó la Suzuki `JKL90B` de Jorge, porque la Boxer del demo ya tiene una orden abierta:
+    - Diana la recibió buscándola, con 49.100 km, lo que pide el cliente y el estado en que llega, y se la asignó a Jhon;
+    - Jhon diagnosticó, agregó aceite, pastillas y la mano de obra sin precio, y pidió la aprobación. No ve las órdenes de otros, no entra a Motos y no cambia precios (403);
+    - Diana puso $25.000 a la mano de obra, imprimió la hoja (con el logo y lo por aprobar) y registró que Jorge aprobó por llamada: $85.000;
+    - Jhon sacó los repuestos, que bajaron de la bodega principal con la referencia de la orden. Unas bandas agregadas después no se podían sacar (tampoco por la API) ni dejaban marcarla lista; las quitó y la marcó lista;
+    - Diana no pudo entregarla antes de cobrar y la mandó a la caja. Laura la cobró por el código a $85.000, sin bajar otra vez el inventario y sin revisión, y Diana la entregó con 49.110 km;
+    - cancelar la Boxer del demo devolvió su aceite y sus pastillas, y anular la venta de la Suzuki la dejó otra vez Lista sin mover el inventario.
+  - En la ferretería no hay Órdenes, Mis órdenes ni Motos, la API de órdenes da 404, no hay logo ni imagen rota y el ícono es el genérico.
+  - La prueba encontró dos fallos de la app, corregidos aquí con sus tests:
+    - la caja no podía cobrar una orden: siempre manda las líneas del pedido y el servidor rechazaba cualquier cobro con líneas. Los tests de la T3 cobraban sin líneas. Ahora se aceptan si van todas y enteras;
+    - anular la venta de una orden ya entregada la dejaba Entregada y sin venta, sin forma de volver a cobrarla. Ahora vuelve a Lista, como dice la regla 10, y se entrega otra vez después de cobrarla.
+  - Además, la caja dice que cobra una orden de taller y de quién, no deja bajar cantidades ni quitar líneas, y el cobro muestra al cliente de la orden en vez de "Consumidor final".
+    - Esto último lo cubre la prueba en el navegador: la caja completa no tiene test de componente, y un fallo a propósito ahí sobrevive a los tests unitarios.
+  - Queda una observación sin resolver: con la facturación electrónica apagada, el tiquete dice "Consumidor final", porque sin documento no se guarda el cliente.
+  - Los fallos de la primera corrida fueron del guion: el límite de 5 ingresos por minuto (`LOGIN_RATE`, que se subió solo para la prueba) y una mayúscula.
+  - 6 tests nuevos y 11 fallos a propósito: muere todo menos el de la caja completa.

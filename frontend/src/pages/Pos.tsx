@@ -207,10 +207,17 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
         )}
         {order ? (
           <div className="order-banner" role="status">
-            <span>
-              Cobrando el pedido <strong className="code-chip">{order.code}</strong> de {order.salesperson}. Puedes
-              bajar cantidades o quitar lo que el cliente no lleve.
-            </span>
+            {order.work_order ? (
+              <span>
+                Cobrando la orden de taller {order.work_order.number} de {order.work_order.customer} (pedido{" "}
+                <strong className="code-chip">{order.code}</strong>). Se cobra completa: es lo que aprobó el cliente.
+              </span>
+            ) : (
+              <span>
+                Cobrando el pedido <strong className="code-chip">{order.code}</strong> de {order.salesperson}. Puedes
+                bajar cantidades o quitar lo que el cliente no lleve.
+              </span>
+            )}
             <button className="link" onClick={dropOrder}>Quitar pedido</button>
           </div>
         ) : (
@@ -220,7 +227,7 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
           </>
         )}
         {notice && <p className="error">{notice}</p>}
-        <CartTable lines={lines} onChange={setLines} emptyText="Escanea o busca un producto para empezar." />
+        <CartTable lines={lines} onChange={setLines} locked={!!order?.work_order} emptyText="Escanea o busca un producto para empezar." />
       </section>
 
       <aside className="card summary">
@@ -229,7 +236,7 @@ function Selling({ register, shiftId, onShiftClosed }: { register: Register; shi
         <button className="primary big" disabled={!canCharge} onClick={() => setCheckout(true)}>
           Cobrar
         </button>
-        {lines.length > 0 && <button className="link" onClick={() => setLines([])}>Vaciar</button>}
+        {lines.length > 0 && !order?.work_order && <button className="link" onClick={() => setLines([])}>Vaciar</button>}
         {lastSale && (
           <div className="done" role="status">
             <strong>Venta {lastSale.number}</strong>
@@ -402,7 +409,12 @@ export function Checkout({
     <div className="overlay" role="dialog" aria-label="Cobrar">
       <form className="card modal" onSubmit={pay}>
         <h2>Cobrar {formatMoney(totalCents)}</h2>
-        <CustomerPicker value={customer} onChange={(c) => { setCustomer(c); if (!c) setInvoice(false); }} />
+        <CustomerPicker
+          value={customer}
+          onChange={(c) => { setCustomer(c); if (!c) setInvoice(false); }}
+          // El documento de una orden de taller va a su cliente si no se elige otro (lo decide el servidor).
+          emptyLabel={order?.work_order ? `${order.work_order.customer} (de la orden)` : undefined}
+        />
         {customer && (
           <label className="check">
             <input type="checkbox" checked={invoice} onChange={(e) => setInvoice(e.target.checked)} /> Pedir factura electrónica

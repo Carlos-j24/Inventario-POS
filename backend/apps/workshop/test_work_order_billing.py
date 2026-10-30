@@ -15,6 +15,7 @@ from apps.reports.costs import margins_report
 from apps.sales.models import Order, Sale, business_date
 from apps.sales.orders import cancel_order
 from apps.sales.returns import create_return, void_sale
+from apps.sales.serializers import OrderSerializer
 from apps.sales.services import create_sale
 
 from . import work_orders as svc
@@ -121,9 +122,22 @@ def test_the_margin_uses_the_cost_the_part_left_with(paid, oil):
 
 def test_a_work_order_is_charged_in_full(ready, clerk, cashier, shift):
     sales_order = svc.send_to_till(order=ready, user=clerk)
-    with pytest.raises(ValidationError, match="se cobra completa"):
-        create_sale(user=cashier, shift=shift, order=sales_order, payments=CASH, client_uuid=uuid.uuid4(),
-                    lines=[{"order_line": sales_order.lines.first(), "quantity": 1}])
+    full = [{"order_line": line, "quantity": line.quantity} for line in sales_order.lines.all()]
+    assert len(full) > 1
+    first = full[0]
+    for partial in (full[1:], [{**first, "quantity": first["quantity"] / 2}, *full[1:]]):
+        with pytest.raises(ValidationError, match="se cobra completa"):
+            create_sale(user=cashier, shift=shift, order=sales_order, payments=CASH, client_uuid=uuid.uuid4(), lines=partial)
+    # La caja manda las líneas del pedido: todas y enteras se cobran (lo encontró la prueba en el navegador, T8).
+    sale, _ = create_sale(user=cashier, shift=shift, order=sales_order, payments=CASH, client_uuid=uuid.uuid4(),
+                          lines=[{"order_line": item["order_line"].pk, "quantity": str(item["quantity"])} for item in full])
+    assert (sale.total, svc.paid_sale(ready)) == (D("57000.00"), sale)
+
+
+def test_the_till_knows_the_order_is_a_work_order(ready, clerk):
+    sales_order = svc.send_to_till(order=ready, user=clerk)
+    assert OrderSerializer(sales_order).data["work_order"] == {"id": ready.pk, "number": ready.number, "customer": ready.customer.name}
+    assert OrderSerializer().get_work_order(Order()) is None  # un pedido de mostrador
 
 
 @override_settings(INVOICING_ENABLED=True)
@@ -201,6 +215,20 @@ def test_voiding_the_sale_leaves_the_order_ready_to_charge_again(paid, ready, cl
     assert again.lines.get(product=oil).movement == paid.lines.get(product=oil).movement
     assert stock(oil) == 9
     svc.deliver(order=ready, user=clerk)
+
+
+def test_voiding_the_sale_of_a_delivered_order_brings_it_back_to_ready(paid, ready, clerk, cashier, shift, oil):
+    """Lo encontró la prueba en el navegador (T8): quedaba Entregada y sin venta, sin forma de cobrarla otra vez."""
+    svc.deliver(order=ready, user=clerk, mileage=15500)
+    void_sale(sale=paid, user=cashier, reason="Se cobró con el medio de pago equivocado")
+    ready.refresh_from_db()
+    assert (ready.status, ready.mileage_out) == (Status.READY, None)
+    assert events(ready)[-2:] == [(Status.DELIVERED, "diana", ""), (Status.READY, "laura", f"Se anuló la venta {paid.number}")]
+    assert stock(oil) == 9  # el aceite sigue puesto en la moto
+    charge(cashier, shift, svc.send_to_till(order=ready, user=clerk))
+    svc.deliver(order=ready, user=clerk)
+    ready.refresh_from_db()
+    assert (ready.status, ready.mileage_out) == (Status.DELIVERED, 15500)
 
 
 def test_a_returned_part_goes_back_to_the_warehouse_it_left(ready, clerk, cashier, make_user, main, oil):
