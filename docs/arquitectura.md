@@ -102,6 +102,12 @@
 - Pantalla "Mis órdenes" del mecánico (T6) en `frontend/src/pages/MyOrders.tsx`: sus órdenes abiertas, con diagnóstico, repuestos y mano de obra sin precios, sacar y regresar, pedir aprobación y marcar lista. `AddWorkOrderLine` es el buscador compartido con recepción.
 - Demo (T7): `seed_demo --taller` siembra un mecánico, la mano de obra de taller y una orden en cada estado.
 
+## Taller: historial y recordatorios (spec 012)
+- `MaintenancePlan`: cada cuántos km y/o días, con los productos que lo cumplen.
+- `MaintenanceReminder`: el próximo mantenimiento de una moto por plan, que vence por fecha y/o km. Su estado va de Pendiente a Avisado y luego a Hecho (lo cumple una orden entregada) o Descartado. Hay uno solo abierto por moto y plan.
+- `MaintenanceNotice`: cada aviso al cliente (WhatsApp o llamada), con quién y cuándo.
+- Las reglas también están en la base de datos (`workshop/0003_maintenance`). Los planes se editan en el admin; los recordatorios ahí son de solo lectura.
+
 ## Logo de cada instalación
 - El logo es del cliente y el repositorio es público y genérico: va en una carpeta de la instalación (`BRAND_DIR`; en Docker, `./brand` montada en `/app/brand`). `/brand/` está en `.gitignore`.
 - `config/brand.py` sirve `/brand/logo.png`, `icon-192.png` e `icon-512.png` (solo esos nombres, sin sesión: se ven en el ingreso) y el manifiesto `/brand/manifest.webmanifest` con esos íconos o, sin ellos, el genérico.

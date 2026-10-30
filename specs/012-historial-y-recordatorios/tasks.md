@@ -2,7 +2,7 @@
 
 > Spec aprobada (PR #90, 2026-10-29). Decisiones en spec.md.
 
-- [ ] **T1** Backend, modelo:
+- [x] **T1** Backend, modelo:
   - `MaintenancePlan`: nombre, cada cuántos km y cuántos días (al menos uno, positivos), productos que lo cumplen y si está activo;
   - `MaintenanceReminder`: moto, plan, la orden que lo creó y la que lo cumplió, fecha y km de vencimiento, estado (pendiente, avisado, hecho, descartado) y nota;
   - un solo recordatorio abierto (pendiente o avisado) por moto y plan;
@@ -10,6 +10,16 @@
   - Admin solo de lectura para recordatorios y avisos.
 
   (Reglas 2, 3 y 6)
+  - Migración `workshop/0003_maintenance`. La base de datos también exige las reglas:
+    - un plan tiene km, días o los dos, y mayores que cero;
+    - el nombre del plan no se repite;
+    - el recordatorio vence por fecha o por km;
+    - uno solo abierto por moto y plan;
+    - el hecho lleva la orden que lo cumplió;
+    - el cerrado lleva la fecha de cierre.
+  - Los planes sí se editan en el admin (son configuración), pero no se borran: se desactivan.
+  - 9 tests y 17 fallos a propósito. Las restricciones se mutaron en la migración, porque los tests crean la base con ella.
+    - Uno sobrevivía porque el test chocaba con la misma orden; ahora prueba con una visita posterior.
 - [ ] **T2** Backend, servicios (`workshop/maintenance.py`):
   - al entregar una orden, cerrar el recordatorio anterior y crear el siguiente por cada plan que cumple;
   - uso diario estimado con las lecturas y fecha estimada por km (funciones puras);
