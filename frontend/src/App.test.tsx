@@ -87,7 +87,7 @@ describe("módulo de taller (spec 009)", () => {
 describe("versión sencilla (spec 013)", () => {
   const owner = [
     "cash.operate", "workshop.receive", "workshop.repair", "sales.create", "sales.void", "inventory.receive", "inventory.view",
-    "inventory.count", "inventory.adjust", "inventory.transfer", "catalog.edit", "reports.view", "users.manage",
+    "inventory.count", "inventory.adjust", "inventory.transfer", "catalog.edit", "reports.view", "users.manage", "expenses.manage",
   ];
 
   async function nav(extra: Record<string, unknown>) {
@@ -99,18 +99,18 @@ describe("versión sencilla (spec 013)", () => {
 
   it("el dueño del taller ve solo lo que usa un taller pequeño", async () => {
     expect(await nav({ workshop_enabled: true, simple_mode: true })).toEqual([
-      "Caja", "Órdenes", "Motos", "Entradas", "Existencias", "Productos", "Mantenimientos", "Ventas", "Reportes", "Usuarios",
+      "Caja", "Órdenes", "Motos", "Entradas", "Existencias", "Productos", "Mantenimientos", "Ventas", "Gastos", "Reportes", "Usuarios",
     ]);
   });
 
   it("apagada, vuelven todas las pantallas", async () => {
     expect(await nav({ workshop_enabled: true, simple_mode: false })).toEqual([
       "Caja", "Órdenes", "Mis órdenes", "Motos", "Pedidos", "Cotizaciones", "Entradas", "Existencias", "Productos",
-      "Mantenimientos", "Conteos", "Ajustes", "Traslados", "Ventas", "Revisión", "Reportes", "DIAN", "Usuarios", "Roles",
+      "Mantenimientos", "Conteos", "Ajustes", "Traslados", "Ventas", "Gastos", "Revisión", "Reportes", "DIAN", "Usuarios", "Roles",
     ]);
   });
 
   it("una sesión guardada de antes, sin el dato, la toma como apagada", async () => {
-    expect(await nav({ workshop_enabled: true })).toHaveLength(19);
+    expect(await nav({ workshop_enabled: true })).toHaveLength(20);
   });
 });

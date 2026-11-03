@@ -879,3 +879,37 @@ export interface QuotesReport {
   /** Hay más de las que trae el detalle (los totales sí las cuentan todas). */
   truncated: boolean;
 }
+
+// --- Gastos (spec 013) ---
+
+export interface ExpenseCategory {
+  id: number;
+  name: string;
+  is_active: boolean;
+}
+
+export interface Expense {
+  id: number;
+  spent_on: string;
+  amount: string;
+  category: number;
+  category_name: string;
+  note: string;
+  /** La caja de cuyo cajón salió y si su turno sigue abierto; null si no salió de la caja. */
+  register: { name: string; shift_open: boolean } | null;
+  status: "ACTIVE" | "VOIDED";
+  created_by: string;
+  created_at: string;
+  void_reason: string;
+  voided_by: string | null;
+  voided_at: string | null;
+  events: { kind: "CREATED" | "CHANGED" | "VOIDED"; label: string; detail: string; user: string; at: string }[];
+}
+
+export interface ExpenseList {
+  from: string;
+  to: string;
+  /** Suma de los vigentes. */
+  total: string;
+  expenses: Expense[];
+}

@@ -40,6 +40,7 @@ INSTALLED_APPS = [
     "apps.customers",
     "apps.invoicing",
     "apps.workshop",
+    "apps.expenses",
     "apps.demo",
 ]
 
