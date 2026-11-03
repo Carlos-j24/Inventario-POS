@@ -27,28 +27,29 @@ import WorkOrders from "./pages/WorkOrders";
 import { useSync } from "./sync";
 
 // Cada pantalla aparece si el usuario tiene alguno de sus permisos; el backend vuelve a comprobarlo.
-// Las del taller, además, solo si la instalación tiene el módulo activo (spec 009).
-const PAGES: { id: string; label: string; permission: string | string[]; workshop?: true; Component: ComponentType }[] = [
+// Las del taller, además, solo si la instalación tiene el módulo activo (spec 009), y las marcadas `full`
+// solo fuera de la versión sencilla (spec 013): ocultarlas no quita permisos ni datos.
+const PAGES: { id: string; label: string; permission: string | string[]; workshop?: true; full?: true; Component: ComponentType }[] = [
   { id: "pos", label: "Caja", permission: "cash.operate", Component: Pos },
   { id: "work-orders", label: "Órdenes", permission: "workshop.receive", workshop: true, Component: WorkOrders },
-  { id: "my-orders", label: "Mis órdenes", permission: "workshop.repair", workshop: true, Component: MyOrders },
+  { id: "my-orders", label: "Mis órdenes", permission: "workshop.repair", workshop: true, full: true, Component: MyOrders },
   { id: "motorcycles", label: "Motos", permission: "workshop.receive", workshop: true, Component: Motorcycles },
-  { id: "orders", label: "Pedidos", permission: "sales.create", Component: Orders },
-  { id: "quotes", label: "Cotizaciones", permission: ["sales.create", "sales.void", "reports.view"], Component: Quotes },
+  { id: "orders", label: "Pedidos", permission: "sales.create", full: true, Component: Orders },
+  { id: "quotes", label: "Cotizaciones", permission: ["sales.create", "sales.void", "reports.view"], full: true, Component: Quotes },
   { id: "receipts", label: "Entradas", permission: "inventory.receive", Component: Receipts },
   { id: "stock", label: "Existencias", permission: "inventory.view", Component: Stock },
   { id: "products", label: "Productos", permission: "catalog.edit", Component: Products },
   // Después de Productos: quien maneja el catálogo sigue abriendo en sus pantallas de siempre.
   { id: "maintenance", label: "Mantenimientos", permission: ["workshop.receive", "catalog.edit"], workshop: true, Component: Maintenance },
-  { id: "counts", label: "Conteos", permission: ["inventory.count", "inventory.adjust"], Component: Counts },
-  { id: "adjustments", label: "Ajustes", permission: ["inventory.receive", "inventory.count", "inventory.adjust"], Component: Adjustments },
-  { id: "transfers", label: "Traslados", permission: "inventory.transfer", Component: Transfers },
+  { id: "counts", label: "Conteos", permission: ["inventory.count", "inventory.adjust"], full: true, Component: Counts },
+  { id: "adjustments", label: "Ajustes", permission: ["inventory.receive", "inventory.count", "inventory.adjust"], full: true, Component: Adjustments },
+  { id: "transfers", label: "Traslados", permission: "inventory.transfer", full: true, Component: Transfers },
   { id: "sales", label: "Ventas", permission: ["sales.void", "reports.view"], Component: Sales },
-  { id: "review", label: "Revisión", permission: "reports.view", Component: Review },
+  { id: "review", label: "Revisión", permission: "reports.view", full: true, Component: Review },
   { id: "reports", label: "Reportes", permission: "reports.view", Component: Reports },
-  { id: "fiscal", label: "DIAN", permission: "reports.view", Component: FiscalInbox },
+  { id: "fiscal", label: "DIAN", permission: "reports.view", full: true, Component: FiscalInbox },
   { id: "users", label: "Usuarios", permission: "users.manage", Component: Users },
-  { id: "roles", label: "Roles", permission: "users.manage", Component: Roles },
+  { id: "roles", label: "Roles", permission: "users.manage", full: true, Component: Roles },
 ];
 
 export default function App() {
@@ -60,7 +61,9 @@ export default function App() {
   // Contraseña temporal: hasta cambiarla no hay nada más (la API tampoco lo permite).
   if (user.must_change_password) return <ChangePassword forced />;
 
-  const pages = PAGES.filter((p) => (!p.workshop || user.workshop_enabled) && [p.permission].flat().some(can));
+  const pages = PAGES.filter(
+    (p) => (!p.workshop || user.workshop_enabled) && (!p.full || !user.simple_mode) && [p.permission].flat().some(can),
+  );
   const page = current === "password" ? null : pages.find((p) => p.id === current) ?? pages[0];
 
   return (

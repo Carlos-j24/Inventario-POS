@@ -67,6 +67,8 @@ export interface Me {
   must_change_password: boolean;
   /** Módulo de taller activo en esta instalación (spec 009). Falta en una sesión guardada de antes: apagado. */
   workshop_enabled?: boolean;
+  /** Versión sencilla para un negocio pequeño (spec 013): menos pantallas. Falta en una sesión guardada de antes: apagada. */
+  simple_mode?: boolean;
 }
 
 export interface ProductUnit {
@@ -658,6 +660,8 @@ export interface Presentation {
   in_use: boolean;
 }
 
+export type IncomeLine = "GOODS" | "WORKSHOP" | "WASH";
+
 export interface AdminProduct {
   id: number;
   sku: string;
@@ -674,6 +678,8 @@ export interface AdminProduct {
   is_active: boolean;
   /** Servicio (spec 010): sin stock mínimo, fracciones ni presentaciones. */
   is_service: boolean;
+  /** Línea de ingreso (spec 013): Repuestos lo que tiene inventario; Taller o Lavadero un servicio. */
+  income_line: IncomeLine;
   /** Lo creó alguien sin permiso de precios: inactivo hasta que le pongan precio. */
   price_pending: boolean;
   /** Tiene kardex: el SKU y la unidad base ya no cambian. */
