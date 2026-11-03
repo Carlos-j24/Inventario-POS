@@ -622,8 +622,10 @@ export interface TicketData {
   issued_at: string;
   register: string;
   cashier: string;
-  customer: { name: string; document: string } | null;
-  lines: { name: string; quantity: string; unit: string; unit_price: string; total: string }[];
+  /** El teléfono y la orden de taller los trae el servidor; el tiquete armado sin conexión no (spec 013). */
+  customer: { name: string; document: string; phone?: string } | null;
+  work_order?: { number: string; plate: string; motorcycle: string; mileage_in: number } | null;
+  lines: { name: string; sku?: string; quantity: string; unit: string; unit_price: string; total: string; tax_rate?: string }[];
   subtotal: string;
   tax: string;
   total: string;

@@ -132,3 +132,20 @@ describe("devolver", () => {
     expect(screen.getByRole("button", { name: "Registrar devolución" })).toBeDisabled();
   });
 });
+
+describe("comprobante (spec 013)", () => {
+  it("cualquier venta se imprime en hoja carta desde Ventas", async () => {
+    mockApi((url) => {
+      if (url === "/api/sales/8/") return json(sale);
+      if (url === "/api/invoicing/ticket/8/") return json({
+        business: null, title: "Comprobante de venta", code: null, status: null, sale_number: "V-000008", issued_at: sale.occurred_at,
+        register: "CAJA1", cashier: "laura", customer: null, lines: [], subtotal: "0", tax: "0", total: "68000.00", taxes: [],
+        payments: [], change: "0", cude: null, qr_svg: null, resolution: null, notes: [],
+      });
+      return undefined;
+    });
+    render(<SaleDetailView id={8} />);
+    await userEvent.click(await screen.findByRole("button", { name: "Imprimir comprobante" }));
+    expect(await screen.findByRole("article", { name: "Comprobante de venta" })).toHaveTextContent("V-000008");
+  });
+});

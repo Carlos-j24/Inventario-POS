@@ -142,7 +142,7 @@ def _create(user, shift, lines, payments, client_uuid, offline, occurred_at, ord
         warehouse = shift.register.warehouse
         sale = Sale.objects.create(
             client_uuid=client_uuid, shift=shift, warehouse=warehouse, seller=user, salesperson=salesperson,
-            offline=offline,
+            offline=offline, customer=customer,
             subtotal=0, tax=0, total=0, occurred_at=occurred_at,
         )
         review = late

@@ -218,6 +218,7 @@ button.danger-btn { background: var(--danger); color: #fff; border-color: var(--
 .quote-sheet th.num, .quote-sheet td.num { text-align: right; white-space: nowrap; }
 .quote-sheet-totals { display: flex; justify-content: space-between; align-items: flex-start; gap: 24px; }
 .quote-sheet-totals td, .quote-sheet-totals th { padding: 2px 8px; }
+.quote-sheet-totals th { text-align: left; }
 .quote-sheet-total td { font-weight: 700; font-size: 15px; border-top: 2px solid #000; }
 .quote-sheet-foot { margin-top: 20px; border-top: 1px solid #bbb; padding-top: 8px; font-size: 11px; }
 .quote-sheet-lines tr, .quote-sheet-totals, .quote-sheet-foot { break-inside: avoid; } /* al imprimir no se parte una fila ni los totales */

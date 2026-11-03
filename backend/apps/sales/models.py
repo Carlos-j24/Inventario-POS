@@ -28,6 +28,11 @@ class Sale(models.Model):
         settings.AUTH_USER_MODEL, on_delete=models.PROTECT, related_name="sales_made", verbose_name="vendió"
     )
     offline = models.BooleanField(default=False, help_text="Se hizo sin conexión y llegó al sincronizar.")
+    # A quién se le vendió, si lo eligieron en la caja o viene de una orden de taller: sin facturación
+    # electrónica no hay documento que lo guarde, y el comprobante en hoja carta lo muestra (spec 013).
+    customer = models.ForeignKey(
+        "customers.Customer", on_delete=models.PROTECT, related_name="sales", null=True, blank=True, verbose_name="cliente",
+    )
     needs_review = models.BooleanField(
         default=False,
         help_text="Dejó stock negativo, cobró un precio distinto al del catálogo o llegó con el turno cerrado.",

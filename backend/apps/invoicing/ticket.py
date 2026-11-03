@@ -47,6 +47,19 @@ def resolution_text(resolution):
     )
 
 
+def work_order_data(sale):
+    """La moto y la orden de taller que cobró la venta, para el comprobante en hoja carta (spec 013)."""
+    order = getattr(sale, "order", None)
+    work_order = order.work_order if order and order.work_order_id else None
+    if work_order is None:
+        return None
+    moto = work_order.motorcycle
+    return {
+        "number": work_order.number, "plate": moto.plate or moto.vin, "motorcycle": f"{moto.brand} {moto.model}".strip(),
+        "mileage_in": work_order.mileage_in,
+    }
+
+
 def ticket_for_sale(sale):
     """Datos del tiquete de una venta, con su documento POS o factura si lo tiene."""
     document = sale.fiscal_documents.filter(kind__in=TITLES).select_related("customer", "resolution").first()
@@ -72,7 +85,7 @@ def ticket_for_sale(sale):
             notes.append("Pendiente de validación por la DIAN.")
         else:
             notes.append("Rechazado por la DIAN: el supervisor debe revisarlo.")
-    customer = document.customer if document else None
+    customer = document.customer if document else sale.customer
     return {
         "business": business_data(),
         "title": title,
@@ -87,11 +100,14 @@ def ticket_for_sale(sale):
             "name": customer.name,
             "document": f"{customer.get_id_type_display()} {customer.id_number}"
             + (f"-{customer.check_digit}" if customer.check_digit else ""),
+            "phone": customer.phone,
         },
+        "work_order": work_order_data(sale),
         "lines": [
             {
-                "name": line.product.name, "quantity": str(line.quantity), "unit": line.unit.code,
+                "name": line.product.name, "sku": line.product.sku, "quantity": str(line.quantity), "unit": line.unit.code,
                 "unit_price": money(line.unit_price), "total": money(line.total),
+                "tax_rate": "excluido" if line.vat_excluded else f"{line.tax_rate.normalize():f}",
             }
             for line in lines
         ],
