@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import type { WorkOrderDetail, WorkOrderLine, WorkOrderStatus } from "./api";
 import {
-  STATUS_FILTERS, canReturn, canTake, emptyReceive, isEditable, isOpen, lineState, mechanicActions, readyProblem, receivePayload,
+  STATUS_FILTERS, canRemove, canReprice, canReturn, canTake, emptyReceive, isEditable, isOpen, lineState, mechanicActions, readyProblem, receivePayload,
   receiveProblem, receptionActions, unpricedLabor,
 } from "./workOrder";
 
@@ -34,18 +34,18 @@ describe("estados", () => {
 describe("lo que puede hacer recepción", () => {
   it("con la orden en reparación: asignar, editar y cancelar; aprobar solo si hay algo por aprobar", () => {
     expect(receptionActions(order("IN_REPAIR"))).toEqual({
-      assign: true, editLines: true, approve: false, sendToTill: false, deliver: false, cancel: true,
+      assign: true, editLines: true, approve: false, ready: false, sendToTill: false, deliver: false, cancel: true,
     });
     expect(receptionActions(order("IN_REPAIR", { lines: [line(), line({ id: 2, approved: false })] })).approve).toBe(true);
   });
 
   it("lista: a la caja una vez; se entrega y deja de cancelarse cuando está cobrada", () => {
     expect(receptionActions(order("READY"))).toEqual({
-      assign: true, editLines: false, approve: false, sendToTill: true, deliver: false, cancel: true,
+      assign: true, editLines: false, approve: false, ready: false, sendToTill: true, deliver: false, cancel: true,
     });
     expect(receptionActions(order("READY", { till_order: { id: 1, code: "1234", total: "1" } })).sendToTill).toBe(false);
     expect(receptionActions(order("READY", { sale }))).toEqual({
-      assign: true, editLines: false, approve: false, sendToTill: false, deliver: true, cancel: false,
+      assign: true, editLines: false, approve: false, ready: false, sendToTill: false, deliver: true, cancel: false,
     });
   });
 
@@ -133,5 +133,34 @@ describe("lo que puede hacer el mecánico", () => {
       .toBe("Bujía está aprobado pero no ha salido de la bodega: sácalo o quítalo.");
     expect(readyProblem(order("IN_REPAIR", { lines: [line({ taken: true, returned: true }), line({ id: 2, is_service: true })] }))).toBeNull();
     expect(readyProblem(order("IN_REPAIR", { lines: [] }))).toBeNull();
+    expect(readyProblem(order("IN_REPAIR", { lines: [line({ id: 2, name: "Mano de obra", is_service: true, unit_price: "0.00" })] })))
+      .toBe("Ponle precio a Mano de obra antes de marcarla lista.");
+  });
+});
+
+describe("versión sencilla (spec 013)", () => {
+  it("recepción la marca lista mientras está en reparación", () => {
+    expect(receptionActions(order("IN_REPAIR"), true).ready).toBe(true);
+    expect(receptionActions(order("RECEIVED"), true).ready).toBe(false);
+    expect(receptionActions(order("READY"), true).ready).toBe(false);
+    expect(receptionActions(order("IN_REPAIR")).ready).toBe(false);
+  });
+
+  it("quitar un repuesto que salió lo regresa; uno ya regresado no se quita", () => {
+    const taken = line({ taken: true });
+    expect(canRemove(order("IN_REPAIR"), taken, true)).toBe(true);
+    expect(canRemove(order("IN_REPAIR"), taken, false)).toBe(false);
+    expect(canRemove(order("IN_REPAIR"), line({ taken: true, returned: true }), true)).toBe(false);
+    expect(canRemove(order("IN_REPAIR"), line(), false)).toBe(true);
+    expect(canRemove(order("READY"), taken, true)).toBe(false);
+  });
+
+  it("la mano de obra cambia de precio aunque esté aprobada, hasta que la orden esté lista", () => {
+    const work = line({ is_service: true });
+    expect(canReprice(order("IN_REPAIR"), work, true)).toBe(true);
+    expect(canReprice(order("IN_REPAIR"), work, false)).toBe(false);
+    expect(canReprice(order("IN_REPAIR"), line({ is_service: true, approved: false }), false)).toBe(true);
+    expect(canReprice(order("READY"), work, true)).toBe(false);
+    expect(canReprice(order("IN_REPAIR"), line(), true)).toBe(false); // un repuesto va al precio del catálogo
   });
 });

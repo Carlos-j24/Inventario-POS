@@ -87,6 +87,11 @@ export function useAuth(): AuthState {
   return ctx;
 }
 
+/** Versión sencilla de la instalación (spec 013). Sin sesión cargada (o fuera del proveedor), apagada. */
+export function useSimpleMode(): boolean {
+  return useContext(AuthContext)?.user?.simple_mode ?? false;
+}
+
 /** can() para mostrar u ocultar acciones. Sin sesión cargada (o fuera del proveedor), nada está permitido. */
 export function useCan(): (permission: string) => boolean {
   return useContext(AuthContext)?.can ?? (() => false);
