@@ -11,6 +11,10 @@ Reglas:
 - Lista, recepción la manda a la caja como un pedido del día (spec 002) con lo aprobado a sus precios;
   la caja lo cobra sin sacar otra vez los repuestos. Solo cobrada se entrega (reglas 8 y 9).
 - Cada cambio de estado queda en WorkOrderEvent con quién y cuándo.
+- Versión sencilla (spec 013, regla 4): no hay aprobación del cliente. Lo agregado queda aprobado y el
+  repuesto sale de la bodega en el acto; la orden pasa a reparación con lo primero que se le agrega.
+  Quitar un repuesto que ya salió lo regresa a la bodega, y la mano de obra cambia de precio hasta que
+  la orden esté lista.
 """
 import uuid
 from decimal import Decimal
@@ -21,6 +25,7 @@ from django.utils import timezone
 
 from apps.inventory.models import StockMovement, Warehouse
 from apps.inventory.services import record_movement
+from apps.invoicing.models import Business
 from apps.sales.models import Order, Sale, business_date
 from apps.sales.orders import create_order
 
@@ -63,6 +68,11 @@ def _set_status(order, status, user, note=""):
     order.status = status
     order.save(update_fields=["status", "updated_at"])
     WorkOrderEvent.objects.create(work_order=order, status=status, user=user, note=note)
+
+
+def simple_mode():
+    """Sin aprobación del cliente (spec 013)."""
+    return Business.load().simple_mode
 
 
 def _check_mechanic(mechanic):
@@ -116,7 +126,7 @@ def diagnose(*, order, user, diagnosis):
 
 @transaction.atomic
 def add_line(*, order, user, product, quantity, unit_price=None):
-    """Agrega un repuesto (al precio del catálogo) o mano de obra. Queda por aprobar."""
+    """Agrega un repuesto (al precio del catálogo) o mano de obra. Queda por aprobar, salvo en la versión sencilla."""
     order = _lock(order)
     _require_worker(order, user)
     _require_status(order, EDITABLE, "agregar repuestos ni mano de obra")
@@ -133,9 +143,19 @@ def add_line(*, order, user, product, quantity, unit_price=None):
             raise ValidationError({"unit_price": "Los repuestos van al precio del catálogo."})
         _require_reception(user)  # el mecánico no pone precios
         price = _price(unit_price)
-    return WorkOrderLine.objects.create(
-        work_order=order, product=product, is_service=product.is_service, quantity=quantity, unit_price=price, added_by=user,
+    if not simple_mode():
+        return WorkOrderLine.objects.create(
+            work_order=order, product=product, is_service=product.is_service, quantity=quantity, unit_price=price, added_by=user,
+        )
+    line = WorkOrderLine.objects.create(
+        work_order=order, product=product, is_service=product.is_service, quantity=quantity, unit_price=price,
+        added_by=user, approved=True,
     )
+    if order.status == Status.RECEIVED:
+        _set_status(order, Status.IN_REPAIR, user)
+    if not product.is_service:
+        _take(line, order, user)
+    return line
 
 
 def _price(value):
@@ -158,7 +178,7 @@ def set_price(*, line, user, unit_price):
     _require_status(order, EDITABLE, "cambiar precios")
     if not line.is_service:
         raise ValidationError({"unit_price": "Los repuestos van al precio del catálogo."})
-    if line.approved:
+    if line.approved and not simple_mode():
         raise ValidationError({"unit_price": "El cliente ya aprobó ese precio: no cambia."})
     line.unit_price = _price(unit_price)
     line.save(update_fields=["unit_price"])
@@ -167,10 +187,18 @@ def set_price(*, line, user, unit_price):
 
 @transaction.atomic
 def remove_line(*, line, user):
-    """Quita algo que no salió de la bodega (por aprobar, o aprobado pero que al final no se usó)."""
+    """Quita algo que no salió de la bodega (por aprobar, o aprobado pero que al final no se usó).
+
+    En la versión sencilla, un repuesto que ya salió vuelve a la bodega y queda en la orden como regresado.
+    """
     line, order = _lock_line(line)
     _require_worker(order, user)
     _require_status(order, EDITABLE, "quitar repuestos ni mano de obra")
+    if line.movement_id and simple_mode():
+        if line.returned_movement_id:
+            raise ValidationError("Ese repuesto ya volvió a la bodega.")
+        _bring_back(line, order, user)
+        return
     if line.movement_id:
         raise ValidationError("Ese repuesto ya salió de la bodega: regrésalo en vez de quitarlo.")
     line.delete()
@@ -254,6 +282,10 @@ def take_part(*, line, user):
         raise ValidationError("El cliente todavía no aprueba ese repuesto.")
     if line.movement_id:
         raise ValidationError("Ese repuesto ya salió de la bodega.")
+    return _take(line, order, user)
+
+
+def _take(line, order, user):
     line.movement, _ = record_movement(
         kind=StockMovement.Kind.WORKSHOP_OUT, product=line.product, warehouse=_main_warehouse(), quantity=line.quantity,
         user=user, reference=f"Orden {order.number}",
@@ -296,6 +328,10 @@ def mark_ready(*, order, user):
     untaken = order.lines.filter(approved=True, is_service=False, movement__isnull=True).select_related("product").first()
     if untaken:
         raise ValidationError(f"{untaken.product.name} está aprobado pero no ha salido de la bodega: sácalo o quítalo.")
+    # Sin aprobación (versión sencilla) nadie le revisó el precio a la mano de obra.
+    free = charged_lines(order).filter(is_service=True, unit_price=0).select_related("product").first()
+    if free:
+        raise ValidationError(f"Ponle precio a {free.product.name} antes de marcarla lista.")
     _set_status(order, Status.READY, user)
     return order
 

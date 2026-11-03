@@ -28,13 +28,17 @@ export const isOpen = (status: WorkOrderStatus) => OPEN.includes(status);
 /** Aún se le agregan o quitan repuestos y mano de obra. */
 export const isEditable = (status: WorkOrderStatus) => EDITABLE.includes(status);
 
-/** Qué puede hacer recepción con la orden en su estado actual. */
-export function receptionActions(order: WorkOrderDetail) {
+/**
+ * Qué puede hacer recepción con la orden en su estado actual. En la versión sencilla (spec 013) no hay
+ * mecánico con su pantalla: recepción también la marca lista.
+ */
+export function receptionActions(order: WorkOrderDetail, simple = false) {
   const pending = order.lines.some((l) => !l.approved);
   return {
     assign: isOpen(order.status),
     editLines: isEditable(order.status),
     approve: isEditable(order.status) && pending,
+    ready: simple && order.status === "IN_REPAIR",
     sendToTill: order.status === "READY" && !order.till_order && !order.sale,
     deliver: order.status === "READY" && !!order.sale,
     cancel: isOpen(order.status) && !order.sale,
@@ -63,8 +67,22 @@ export const canReturn = (order: WorkOrderDetail, line: WorkOrderLine) =>
 export function readyProblem(order: WorkOrderDetail): string | null {
   if (order.lines.some((l) => !l.approved)) return "Hay cambios sin aprobar: que el cliente los apruebe o quítalos.";
   const untaken = order.lines.find((l) => !l.is_service && !l.taken);
-  return untaken ? `${untaken.name} está aprobado pero no ha salido de la bodega: sácalo o quítalo.` : null;
+  if (untaken) return `${untaken.name} está aprobado pero no ha salido de la bodega: sácalo o quítalo.`;
+  // Sin aprobación (versión sencilla) nadie le revisó el precio a la mano de obra.
+  const free = order.lines.find((l) => l.is_service && toCents(l.unit_price) === 0);
+  return free ? `Ponle precio a ${free.name} antes de marcarla lista.` : null;
 }
+
+/**
+ * Recepción quita la línea. Normalmente, solo lo que no ha salido de la bodega; en la versión sencilla
+ * el repuesto salió al agregarlo y quitarlo lo regresa (spec 013).
+ */
+export const canRemove = (order: WorkOrderDetail, line: WorkOrderLine, simple: boolean) =>
+  isEditable(order.status) && (simple ? !line.returned : !line.taken);
+
+/** El precio de la mano de obra cambia hasta que el cliente lo aprueba; sin aprobación, mientras se edita la orden. */
+export const canReprice = (order: WorkOrderDetail, line: WorkOrderLine, simple: boolean) =>
+  isEditable(order.status) && line.is_service && (simple || !line.approved);
 
 /** Dónde está la línea: por aprobar, aprobada, puesta en la moto o regresada a la bodega. */
 export function lineState(line: WorkOrderLine): string {

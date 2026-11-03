@@ -3,6 +3,7 @@ import userEvent from "@testing-library/user-event";
 import { afterEach, describe, expect, it, vi } from "vitest";
 
 import type { Business, Motorcycle, Product, WorkOrderDetail, WorkOrderLine, WorkOrderRow } from "../api";
+import { AuthProvider } from "../auth";
 import WorkOrders from "./WorkOrders";
 
 const URL = "/api/workshop/orders/";
@@ -242,6 +243,7 @@ describe("pantalla Órdenes", () => {
     expect(within(oil).queryByRole("button", { name: "Quitar" })).not.toBeInTheDocument(); // ya salió: se regresa, no se quita
     expect(within(card()).getByRole("row", { name: /Mano de obra/ })).toHaveTextContent("Aprobada");
     expect(within(card()).queryByLabelText("Precio de Mano de obra")).not.toBeInTheDocument(); // aprobado: el precio no cambia
+    expect(within(card()).queryByRole("button", { name: "Marcar lista" })).not.toBeInTheDocument(); // eso lo hace el mecánico
   });
 
   it("lista: la manda a la caja y no se entrega hasta que la cobren", async () => {
@@ -370,5 +372,59 @@ describe("pantalla Órdenes", () => {
     const sheet = screen.getByRole("article", { name: "Hoja de la orden de trabajo" });
     expect(sheet).toHaveTextContent("CANCELADA: esta orden ya no es válida.");
     expect(sheet).toHaveTextContent("Todavía sin repuestos ni mano de obra.");
+  });
+});
+
+describe("versión sencilla (spec 013)", () => {
+  const me = { id: 1, username: "diana", first_name: "", last_name: "", roles: [], permissions: ["workshop.receive"], must_change_password: false };
+
+  async function openSimple(order: WorkOrderDetail, routes: Record<string, Handler> = {}) {
+    const fetch = mockApi({
+      ...base, "GET /api/auth/csrf/": () => new Response(null, { status: 204 }),
+      "GET /api/auth/me/": () => json({ ...me, workshop_enabled: true, simple_mode: true }),
+      [`GET ${URL}5/`]: () => json(order), ...routes,
+    });
+    render(<AuthProvider><WorkOrders /></AuthProvider>);
+    await userEvent.click(await screen.findByRole("button", { name: "OT-000005" }));
+    await within(card()).findByRole("heading", { name: "Trabajo" });
+    return fetch;
+  }
+
+  it("sin aprobación: agrega, regresa un repuesto quitándolo, pone precio y la marca lista", async () => {
+    const oil = line({ approved: true, taken: true });
+    const order = detail({ status: "IN_REPAIR", lines: [oil, labor({ approved: true })], charged_total: "32000.00" });
+    const priced = detail({ ...order, lines: [oil, labor({ approved: true, unit_price: "20000.00", total: "20000.00" })], charged_total: "52000.00" });
+    const fetch = await openSimple(order, {
+      [`POST ${URL}5/lines/`]: () => json(order, 201),
+      [`DELETE ${URL}5/lines/11/`]: () => json(detail({ ...order, lines: [{ ...oil, returned: true }, labor({ approved: true })] })),
+      [`PATCH ${URL}5/lines/12/`]: () => json(priced),
+      [`POST ${URL}5/ready/`]: () => json({ ...priced, status: "READY" }),
+    });
+    expect(within(card()).queryByRole("button", { name: "Registrar aprobación" })).not.toBeInTheDocument();
+    const lines = within(card()).getByRole("table", { name: "Líneas del presupuesto" });
+    expect(lines).toHaveTextContent("Total$ 32.000");
+    const ready = within(card()).getByRole("button", { name: "Marcar lista" });
+    expect(ready).toBeDisabled();
+    expect(card()).toHaveTextContent("Ponle precio a Mano de obra antes de marcarla lista.");
+
+    await userEvent.type(within(card()).getByLabelText("Buscar producto"), "Aceite");
+    await userEvent.click(await within(card()).findByRole("button", { name: /Aceite 20W50/ }));
+    await userEvent.click(within(card()).getByRole("button", { name: "Agregar" }));
+    expect(await within(card()).findByRole("status")).toHaveTextContent(/^Aceite 20W50 agregado\.$/);
+
+    await userEvent.click(within(within(card()).getByRole("row", { name: /Aceite 20W50/ })).getByRole("button", { name: "Quitar" }));
+    expect(bodies(fetch, `DELETE ${URL}5/lines/11/`)).toEqual([undefined]);
+    expect(await within(card()).findByRole("status")).toHaveTextContent("Aceite 20W50 regresado a la bodega.");
+    expect(within(within(card()).getByRole("row", { name: /Aceite 20W50/ })).queryByRole("button", { name: "Quitar" })).not.toBeInTheDocument();
+
+    await userEvent.type(within(card()).getByLabelText("Precio de Mano de obra"), "20000");
+    await userEvent.click(within(card()).getByRole("button", { name: "Guardar" }));
+    expect(bodies(fetch, `PATCH ${URL}5/lines/12/`)).toEqual([{ unit_price: "20000" }]);
+    await vi.waitFor(() => expect(within(card()).getByRole("button", { name: "Marcar lista" })).toBeEnabled());
+    await userEvent.click(within(card()).getByRole("button", { name: "Marcar lista" }));
+    expect(bodies(fetch, `POST ${URL}5/ready/`)).toEqual([{}]);
+    expect(await within(card()).findByRole("status")).toHaveTextContent("Lista: mándala a la caja.");
+    expect(within(card()).queryByRole("button", { name: "Marcar lista" })).not.toBeInTheDocument();
+    expect(within(card()).getByRole("button", { name: /Mandar a la caja/ })).toBeInTheDocument();
   });
 });

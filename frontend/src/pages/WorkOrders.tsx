@@ -5,6 +5,7 @@ import {
   api, type ApprovalChannel, type Business, type Motorcycle, type Person, type WorkOrderDetail,
   type WorkOrderLine, type WorkOrderRow,
 } from "../api";
+import { useSimpleMode } from "../auth";
 import AddLine from "../components/AddWorkOrderLine";
 import ReceiveOrder, { ORDERS_URL as URL } from "../components/ReceiveOrder";
 import ReminderList from "../components/ReminderList";
@@ -12,7 +13,7 @@ import WorkOrderPrint from "../components/WorkOrderPrint";
 import { formatMoney, formatQty, toCents } from "../money";
 import { describeMotorcycle, formatKm, normalizeCode } from "../motorcycle";
 import {
-  CHANNEL_LABELS, STATUS_FILTERS, STATUS_LABELS, lineState, receptionActions, unpricedLabor,
+  CHANNEL_LABELS, STATUS_FILTERS, STATUS_LABELS, canRemove, canReprice, lineState, readyProblem, receptionActions, unpricedLabor,
 } from "../workOrder";
 
 const money = (value: string) => formatMoney(toCents(value));
@@ -136,6 +137,7 @@ function OrderCard({ id, onChanged }: { id: number; onChanged: () => void }) {
   const [error, setError] = useState<string | null>(null);
   const [message, setMessage] = useState<string | null>(null);
   const [printing, setPrinting] = useState(false);
+  const simple = useSimpleMode();
 
   useEffect(() => {
     api<WorkOrderDetail>(`${URL}${id}/`).then(setOrder).catch((e: Error) => setError(e.message));
@@ -157,7 +159,8 @@ function OrderCard({ id, onChanged }: { id: number; onChanged: () => void }) {
   }
 
   if (!order) return error ? <p className="error" role="alert">{error}</p> : <p className="muted">Cargando…</p>;
-  const can = receptionActions(order);
+  const can = receptionActions(order, simple);
+  const notReady = can.ready ? readyProblem(order) : null;
 
   return (
     <div className="action-form">
@@ -184,9 +187,19 @@ function OrderCard({ id, onChanged }: { id: number; onChanged: () => void }) {
         <p>{order.mechanic?.name ?? "Sin asignar"}</p>
       )}
 
-      <h3>Presupuesto</h3>
-      <Lines order={order} editable={can.editLines} send={send} />
-      {can.editLines && <AddLine canPrice onAdd={(body, name) => send("lines/", "POST", body, `${name} agregado: queda por aprobar.`)} />}
+      <h3>{simple ? "Trabajo" : "Presupuesto"}</h3>
+      <Lines order={order} simple={simple} send={send} />
+      {can.editLines && (
+        <AddLine canPrice onAdd={(body, name) => send("lines/", "POST", body, simple ? `${name} agregado.` : `${name} agregado: queda por aprobar.`)} />
+      )}
+      {can.ready && (
+        <>
+          <button className="primary" disabled={!!notReady} onClick={() => send("ready/", "POST", {}, "Lista: mándala a la caja.")}>
+            Marcar lista
+          </button>
+          {notReady && <p className="muted small">{notReady}</p>}
+        </>
+      )}
       <div className="row">
         <button type="button" onClick={() => setPrinting(true)}>Imprimir presupuesto</button>
       </div>
@@ -255,7 +268,7 @@ function Assign({ current, onSave }: { current: Person | null; onSave: (m: Perso
 
 type Send = (path: string, method: string, body: unknown, done: string) => Promise<boolean>;
 
-function Lines({ order, editable, send }: { order: WorkOrderDetail; editable: boolean; send: Send }) {
+function Lines({ order, simple, send }: { order: WorkOrderDetail; simple: boolean; send: Send }) {
   if (!order.lines.length) return <p className="muted small">Todavía sin repuestos ni mano de obra.</p>;
   return (
     <table className="cart" aria-label="Líneas del presupuesto">
@@ -266,20 +279,23 @@ function Lines({ order, editable, send }: { order: WorkOrderDetail; editable: bo
             <td>{l.name} <span className="muted small">{l.is_service ? "mano de obra" : l.sku}</span></td>
             <td className="num">{formatQty(l.quantity)}</td>
             <td className="num">
-              {editable && l.is_service && !l.approved ? <LaborPrice line={l} send={send} /> : money(l.unit_price)}
+              {canReprice(order, l, simple) ? <LaborPrice line={l} send={send} /> : money(l.unit_price)}
             </td>
             <td className="num">{money(l.total)}</td>
             <td>{lineState(l)}</td>
             <td>
-              {editable && !l.taken && (
-                <button className="link" onClick={() => send(`lines/${l.id}/`, "DELETE", undefined, `${l.name} quitado.`)}>Quitar</button>
+              {canRemove(order, l, simple) && (
+                <button className="link" onClick={() =>
+                  send(`lines/${l.id}/`, "DELETE", undefined, l.taken ? `${l.name} regresado a la bodega.` : `${l.name} quitado.`)}>
+                  Quitar
+                </button>
               )}
             </td>
           </tr>
         ))}
       </tbody>
       <tfoot>
-        <tr><td colSpan={3}>Aprobado</td><td className="num">{money(order.charged_total)}</td><td colSpan={2} /></tr>
+        <tr><td colSpan={3}>{simple ? "Total" : "Aprobado"}</td><td className="num">{money(order.charged_total)}</td><td colSpan={2} /></tr>
         {toCents(order.pending_total) > 0 && (
           <tr><td colSpan={3}>Por aprobar</td><td className="num">{money(order.pending_total)}</td><td colSpan={2} /></tr>
         )}
