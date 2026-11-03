@@ -24,10 +24,14 @@ class MeSerializer(serializers.ModelSerializer):
     roles = serializers.SlugRelatedField(slug_field="name", many=True, read_only=True)
     permissions = serializers.SerializerMethodField()
     workshop_enabled = serializers.SerializerMethodField()
+    simple_mode = serializers.SerializerMethodField()
 
     class Meta:
         model = User
-        fields = ["id", "username", "first_name", "last_name", "roles", "permissions", "must_change_password", "workshop_enabled"]
+        fields = [
+            "id", "username", "first_name", "last_name", "roles", "permissions", "must_change_password",
+            "workshop_enabled", "simple_mode",
+        ]
 
     def get_permissions(self, obj):
         return sorted(obj.permission_codes())
@@ -35,6 +39,10 @@ class MeSerializer(serializers.ModelSerializer):
     def get_workshop_enabled(self, obj):
         """Si la app muestra el taller (spec 009, regla 1)."""
         return Business.load().workshop_enabled
+
+    def get_simple_mode(self, obj):
+        """Si la app va en versión sencilla (spec 013, regla 1)."""
+        return Business.load().simple_mode
 
 
 class PermissionSerializer(serializers.ModelSerializer):

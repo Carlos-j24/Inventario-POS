@@ -18,7 +18,7 @@ from apps.sales.models import OrderLine, SaleLine
 from .models import Category, PriceChange, Product, ProductUnit
 
 PRICE_FIELDS = ("sale_price", "tax_rate", "vat_excluded")
-EDITABLE = ("sku", "name", "category", "base_unit", "barcode", "allows_fractions", "min_stock", "is_active", "is_service", *PRICE_FIELDS)
+EDITABLE = ("sku", "name", "category", "base_unit", "barcode", "allows_fractions", "min_stock", "is_active", "is_service", "income_line", *PRICE_FIELDS)
 
 
 def can_edit_prices(user):

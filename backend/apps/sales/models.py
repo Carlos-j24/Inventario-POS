@@ -75,6 +75,9 @@ class SaleLine(models.Model):
     is_service = models.BooleanField(
         default=False, help_text="Copiado del producto al vender (spec 010): un servicio no mueve inventario."
     )
+    # Copiada al vender (spec 013): el resumen no cambia si después se cambia el producto. La devolución
+    # la toma de su línea vendida, que nunca cambia.
+    income_line = models.CharField(max_length=10, choices=Product.IncomeLine.choices, default=Product.IncomeLine.GOODS)
     subtotal = models.DecimalField(**MONEY)
     tax = models.DecimalField(**MONEY)
     total = models.DecimalField(**MONEY)
