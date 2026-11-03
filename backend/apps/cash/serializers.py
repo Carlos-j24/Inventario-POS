@@ -48,5 +48,6 @@ class ShiftSerializer(serializers.ModelSerializer):
             "sales": data["sales"],
             "by_method": {k: str(v) for k, v in data["by_method"].items()},
             "refunds": {k: str(v) for k, v in data["refunds"].items()},
+            "expenses": str(data["expenses"]),
             "expected_cash": str(data["expected_cash"]),
         }

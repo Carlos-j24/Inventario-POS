@@ -6,6 +6,7 @@ import { promptInstall, useCanInstall } from "./install";
 import Adjustments from "./pages/Adjustments";
 import ChangePassword from "./pages/ChangePassword";
 import Counts from "./pages/Counts";
+import Expenses from "./pages/Expenses";
 import Transfers from "./pages/Transfers";
 import FiscalInbox from "./pages/FiscalInbox";
 import Login from "./pages/Login";
@@ -45,6 +46,7 @@ const PAGES: { id: string; label: string; permission: string | string[]; worksho
   { id: "adjustments", label: "Ajustes", permission: ["inventory.receive", "inventory.count", "inventory.adjust"], full: true, Component: Adjustments },
   { id: "transfers", label: "Traslados", permission: "inventory.transfer", full: true, Component: Transfers },
   { id: "sales", label: "Ventas", permission: ["sales.void", "reports.view"], Component: Sales },
+  { id: "expenses", label: "Gastos", permission: "expenses.manage", Component: Expenses },
   { id: "review", label: "Revisión", permission: "reports.view", full: true, Component: Review },
   { id: "reports", label: "Reportes", permission: "reports.view", Component: Reports },
   { id: "fiscal", label: "DIAN", permission: "reports.view", full: true, Component: FiscalInbox },

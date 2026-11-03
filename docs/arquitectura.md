@@ -126,6 +126,7 @@
 - Frontend: en `App.tsx` las pantallas `full` (Mis órdenes, Pedidos, Cotizaciones, Conteos, Ajustes, Traslados, Revisión, DIAN y Roles) se ocultan con `me.simple_mode`; Productos elige la línea de ingreso de un servicio (`productForm.income_line`).
 - Orden simplificada (`workshop/work_orders.py`, `simple_mode()`): lo agregado queda aprobado y el repuesto sale en el acto, la orden pasa sola a reparación, quitar un repuesto que salió lo regresa y la mano de obra cambia de precio hasta que la orden esté lista. Recepción la marca lista desde Órdenes.
 - Comprobante en hoja carta (`components/SalePrint.tsx`, desde el tiquete de la caja y desde Ventas): usa los datos de `/api/invoicing/ticket/<venta>/`, que ahora traen el cliente de `Sale.customer` cuando no hay documento electrónico, la orden de taller y el código y la tarifa de cada línea. Dice "Documento sin validez fiscal".
+- Gastos (`apps/expenses`, permiso `expenses.manage`): `Expense` con su rastro en `ExpenseEvent`; nunca se borra, se corrige o se anula. Uno "pagado de la caja" va ligado al turno abierto (`Expense.shift`) y `cash.shift_summary` lo resta del efectivo esperado; con el turno cerrado su valor ya no cambia. API `/api/expenses/` y pantalla `pages/Expenses.tsx`.
 - `SaleLine.income_line` se copia del producto al vender, así el resumen no cambia si después se recategoriza el producto; la devolución la toma de su línea vendida. La migración puso los servicios que ya había en Taller, o en Lavadero si su categoría dice "lavad", y copió eso a sus líneas vendidas.
 
 ## Logo de cada instalación
