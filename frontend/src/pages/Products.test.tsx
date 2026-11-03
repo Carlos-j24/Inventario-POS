@@ -11,14 +11,14 @@ const json = (body: unknown, status = 200) => new Response(JSON.stringify(body),
 const hammer: AdminProduct = {
   id: 2, sku: "MAR-16", name: "Martillo 16 oz", category: 3, category_name: "Herramientas", base_unit: "und",
   barcode: null, sale_price: "28000.00", tax_rate: "19", vat_excluded: false, allows_fractions: false,
-  min_stock: "5.000", is_active: true, is_service: false, price_pending: false, has_movements: true, units: [],
+  min_stock: "5.000", is_active: true, is_service: false, income_line: "GOODS", price_pending: false, has_movements: true, units: [],
 };
 const cable: AdminProduct = {
   ...hammer, id: 1, sku: "CAB-12", name: "Cable THHN calibre 12", category_name: "Eléctricos", category: 4, base_unit: "m",
   sale_price: "3200.00", allows_fractions: true, has_movements: false,
   units: [{ id: 7, unit: "rollo", factor: "100.000", barcode: "ROLLO-12", is_active: true, in_use: true }],
 };
-const wash: AdminProduct = { ...hammer, id: 11, sku: "LAV-150", name: "Lavado moto hasta 150 cc", category_name: "Lavadero", sale_price: "12000.00", min_stock: "0.000", is_service: true, has_movements: false };
+const wash: AdminProduct = { ...hammer, id: 11, sku: "LAV-150", name: "Lavado moto hasta 150 cc", category_name: "Lavadero", sale_price: "12000.00", min_stock: "0.000", is_service: true, income_line: "WASH", has_movements: false };
 const pending: AdminProduct = { ...hammer, id: 9, sku: "DES-PH2", name: "Destornillador PH2", sale_price: "0.00", price_pending: true, is_active: false, has_movements: false };
 
 type Call = { method: string; url: string; body: unknown };
@@ -132,6 +132,23 @@ describe("pantalla Productos", () => {
     expect(screen.queryByRole("region", { name: "Presentaciones" })).not.toBeInTheDocument();
   });
 
+  it("un servicio elige su línea de ingreso, Taller o Lavadero; un producto no la tiene (spec 013)", async () => {
+    const calls = mockApi(owner, {
+      "GET /api/catalog/admin/products/": () => json([cable, hammer, wash]),
+      "PATCH /api/catalog/admin/products/11/": (body) => json({ ...wash, ...(body as object) }),
+    });
+    renderPage();
+    await userEvent.click(await screen.findByRole("button", { name: "MAR-16" }));
+    expect(within(screen.getByRole("form", { name: "Producto" })).queryByLabelText("Línea de ingreso")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "LAV-150" }));
+    const form = screen.getByRole("form", { name: "Producto" });
+    const line = within(form).getByLabelText("Línea de ingreso");
+    expect(line).toHaveValue("WASH");
+    await userEvent.selectOptions(line, "Taller");
+    await userEvent.click(within(form).getByRole("button", { name: "Guardar cambios" }));
+    await vi.waitFor(() => expect(calls.find((c) => c.method === "PATCH")!.body).toEqual({ income_line: "WORKSHOP" }));
+  });
+
   it("un producto sin movimientos pasa a servicio; uno con movimientos no", async () => {
     const calls = mockApi(owner, {
       "PATCH /api/catalog/admin/products/1/": (body) => json({ ...cable, ...(body as object) }),
@@ -149,7 +166,7 @@ describe("pantalla Productos", () => {
     await userEvent.click(within(form).getByLabelText(/Es un servicio/));
     expect(within(form).queryByLabelText(/Stock mínimo/)).not.toBeInTheDocument();
     await userEvent.click(within(form).getByRole("button", { name: "Guardar cambios" }));
-    await vi.waitFor(() => expect(calls.find((c) => c.method === "PATCH")!.body).toEqual({ is_service: true, allows_fractions: false, min_stock: "0" }));
+    await vi.waitFor(() => expect(calls.find((c) => c.method === "PATCH")!.body).toEqual({ is_service: true, allows_fractions: false, min_stock: "0", income_line: "WORKSHOP" }));
   });
 
   it("muestra el error del servidor", async () => {

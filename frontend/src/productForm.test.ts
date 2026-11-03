@@ -6,7 +6,7 @@ import { EMPTY_FORM, priceToCents, productPayload, toForm } from "./productForm"
 const hammer: AdminProduct = {
   id: 2, sku: "MAR-16", name: "Martillo 16 oz", category: 3, category_name: "Herramientas", base_unit: "und",
   barcode: null, sale_price: "28000.00", tax_rate: "19", vat_excluded: false, allows_fractions: false,
-  min_stock: "5.000", is_active: true, is_service: false, price_pending: false, has_movements: true, units: [],
+  min_stock: "5.000", is_active: true, is_service: false, income_line: "GOODS", price_pending: false, has_movements: true, units: [],
 };
 
 describe("priceToCents", () => {
@@ -77,9 +77,28 @@ describe("productPayload", () => {
   it("marcar un producto como servicio manda la casilla y lo que deja de aplicar", () => {
     const fresh = { ...hammer, has_movements: false };
     expect(toForm(fresh).is_service).toBe(false);
-    expect(productPayload({ ...toForm(fresh), is_service: true }, fresh, true)).toEqual({ body: { is_service: true, min_stock: "0" } });
-    const wash = { ...hammer, is_service: true, min_stock: "0.000" };
+    expect(productPayload({ ...toForm(fresh), is_service: true }, fresh, true)).toEqual({
+      body: { is_service: true, min_stock: "0", income_line: "WORKSHOP" },
+    });
+    const wash = { ...hammer, is_service: true, income_line: "WASH" as const, min_stock: "0.000" };
     expect(toForm(wash).is_service).toBe(true);
     expect(productPayload({ ...toForm(wash), name: "Lavado" }, wash, true)).toEqual({ body: { name: "Lavado" } });
+  });
+
+  it("línea de ingreso (spec 013): un servicio nuevo es Taller salvo que elijan Lavadero", () => {
+    expect(EMPTY_FORM.income_line).toBe("WORKSHOP");
+    const form = { ...EMPTY_FORM, sku: "LAV-150", name: "Lavado moto", category: "3", price: "12000", is_service: true };
+    expect(productPayload(form, null, true)).toMatchObject({ body: { income_line: "WORKSHOP" } });
+    expect(productPayload({ ...form, income_line: "WASH" }, null, true)).toMatchObject({ body: { income_line: "WASH" } });
+  });
+
+  it("línea de ingreso: se manda solo si cambió, y nunca para lo que tiene inventario", () => {
+    const wash = { ...hammer, is_service: true, income_line: "WASH" as const, min_stock: "0.000" };
+    expect(toForm(wash).income_line).toBe("WASH");
+    expect(productPayload({ ...toForm(wash), income_line: "WORKSHOP" }, wash, true)).toEqual({ body: { income_line: "WORKSHOP" } });
+    expect(toForm(hammer).income_line).toBe("WORKSHOP"); // lo que quedaría si lo marcan como servicio
+    expect(productPayload({ ...toForm(hammer), income_line: "WASH" }, hammer, true)).toEqual({ body: {} });
+    const payload = productPayload({ ...EMPTY_FORM, sku: "MAR-1", name: "Martillo", category: "3", price: "100" }, null, true);
+    expect(payload).not.toHaveProperty("body.income_line");
   });
 });

@@ -225,6 +225,15 @@ function ProductEditor({ product, categories, units, onCategoriesChanged, onSave
           Es un servicio (lavado, mano de obra): se cobra sin mover inventario
         </label>
         {locked && !form.is_service && <p className="muted small">Tiene movimientos de inventario: no puede pasar a servicio.</p>}
+        {form.is_service && (
+          <label>
+            Línea de ingreso
+            <select value={form.income_line} onChange={(e) => set("income_line", e.target.value as ProductForm["income_line"])}>
+              <option value="WORKSHOP">Taller</option>
+              <option value="WASH">Lavadero</option>
+            </select>
+          </label>
+        )}
         {!form.is_service && (
           <div className="row">
             <label>Stock mínimo ({form.base_unit})<input value={form.min_stock} onChange={(e) => set("min_stock", e.target.value)} inputMode="decimal" /></label>
