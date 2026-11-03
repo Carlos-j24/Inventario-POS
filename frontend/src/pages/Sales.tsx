@@ -3,6 +3,7 @@ import { useCallback, useEffect, useState, type FormEvent } from "react";
 import { api, type PaymentMethod, type Register, type SaleDetail, type SaleListItem } from "../api";
 import { useCan } from "../auth";
 import SaleActions from "../components/SaleActions";
+import { SalePrintDialog } from "../components/SalePrint";
 import { formatMoney, formatQty, toCents } from "../money";
 
 const METHOD_LABEL: Record<PaymentMethod, string> = { CASH: "Efectivo", CARD: "Tarjeta", TRANSFER: "Transferencia" };
@@ -161,6 +162,7 @@ export function SaleDetailView({ id, canAct = false, onChanged }: {
   const [sale, setSale] = useState<SaleDetail | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [version, setVersion] = useState(0);
+  const [printing, setPrinting] = useState(false);
 
   useEffect(() => {
     setSale(null);
@@ -244,6 +246,10 @@ export function SaleDetailView({ id, canAct = false, onChanged }: {
           </ul>
         </>
       )}
+      <div className="row">
+        <button type="button" onClick={() => setPrinting(true)}>Imprimir comprobante</button>
+      </div>
+      {printing && <SalePrintDialog saleId={sale.id} onClose={() => setPrinting(false)} />}
       {canAct && (
         <SaleActions key={`${sale.id}-${version}`} sale={sale} onDone={() => { setVersion((v) => v + 1); onChanged?.(); }} />
       )}

@@ -268,3 +268,14 @@ def test_a_paid_order_is_not_cancelled(paid, ready, clerk, oil):
     ready.refresh_from_db()
     assert ready.status == Status.READY
     assert stock(oil) == 9
+
+
+def test_the_letter_sheet_of_the_sale_shows_the_motorcycle_and_the_order(paid, ready, moto):
+    """Comprobante en hoja carta (spec 013, T4): la venta de una orden lleva la moto, la orden y su cliente."""
+    from apps.invoicing.ticket import ticket_for_sale
+
+    assert paid.customer == ready.customer
+    t = ticket_for_sale(paid)
+    assert t["work_order"] == {"number": ready.number, "plate": "XYZ12A", "motorcycle": "Bajaj Boxer CT 100", "mileage_in": 15400}
+    assert t["customer"]["name"] == "Jorge Ramírez" and t["customer"]["phone"] == "3001234567"
+    assert {(line["sku"], line["tax_rate"]) for line in t["lines"]} == {("ACE-20W50", "19"), ("MO-TALLER", "19")}

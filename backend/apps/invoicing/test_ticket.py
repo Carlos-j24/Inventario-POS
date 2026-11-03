@@ -42,11 +42,22 @@ def test_without_invoicing_the_ticket_says_it_has_no_fiscal_document(cashier, sh
     t = ticket_for_sale(sell(cashier, shift, hammer))
     assert (t["title"], t["code"], t["status"], t["qr_svg"], t["resolution"], t["document_id"]) == ("Comprobante de venta", None, None, None, None, None)
     assert "no está activa" in t["notes"][0]
-    assert t["lines"] == [{"name": "Martillo 16 oz", "quantity": "2.000", "unit": "und", "unit_price": "28000.00", "total": "56000.00"}]
+    assert t["lines"] == [{"name": "Martillo 16 oz", "sku": "MAR-16", "quantity": "2.000", "unit": "und", "unit_price": "28000.00",
+                           "total": "56000.00", "tax_rate": "19"}]
     assert (t["subtotal"], t["tax"], t["total"]) == ("47058.82", "8941.18", "56000.00")
     assert t["taxes"] == [{"rate": "19", "base": "47058.82", "tax": "8941.18"}]
     assert (t["payments"], t["change"]) == ([{"label": "Efectivo", "amount": "60000.00"}], "4000.00")
-    assert (t["register"], t["cashier"], t["customer"]) == ("CAJA1", "caja1", None)
+    assert (t["register"], t["cashier"], t["customer"], t["work_order"]) == ("CAJA1", "caja1", None, None)
+
+
+def test_without_invoicing_the_sale_keeps_its_customer_for_the_letter_sheet(cashier, shift, hammer, client_co):
+    """Sin facturación no hay documento: la venta guarda el cliente para el comprobante en hoja carta (spec 013)."""
+    client_co.phone = "3101234567"
+    client_co.save()
+    sale = sell(cashier, shift, hammer, customer=client_co)
+    assert (sale.customer, sale.fiscal_documents.exists()) == (client_co, False)
+    t = ticket_for_sale(sale)
+    assert t["customer"] == {"name": "Constructora SAS", "document": "NIT 800197268-4", "phone": "3101234567"}
 
 
 @pytest.mark.usefixtures("invoicing_on")
@@ -69,7 +80,7 @@ def test_invoice_ticket_shows_the_customer(cashier, shift, hammer, client_co, se
     sale = sell(cashier, shift, hammer, customer=client_co, invoice=True)
     t = ticket_for_sale(sale)
     assert (t["title"], t["code"]) == ("Factura electrónica de venta", "FE11")
-    assert t["customer"] == {"name": "Constructora SAS", "document": "NIT 800197268-4"}
+    assert t["customer"] == {"name": "Constructora SAS", "document": "NIT 800197268-4", "phone": ""}
     settings.INVOICING_SIMULATED_MODE = "reject"
     send_document(sale.fiscal_documents.get())
     assert "Rechazado" in ticket_for_sale(sale)["notes"][0]

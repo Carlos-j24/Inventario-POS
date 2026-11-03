@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 
 import { api, type TicketData } from "../api";
+import { SalePrintDialog } from "./SalePrint";
 import Ticket from "./Ticket";
 
 /**
@@ -11,6 +12,7 @@ import Ticket from "./Ticket";
 export default function TicketDialog({ saleId, data, onClose }: { saleId?: number; data?: TicketData; onClose: () => void }) {
   const [ticket, setTicket] = useState<TicketData | null>(data ?? null);
   const [error, setError] = useState<string | null>(null);
+  const [sheet, setSheet] = useState(false);
 
   useEffect(() => {
     if (saleId == null) return;
@@ -36,9 +38,12 @@ export default function TicketDialog({ saleId, data, onClose }: { saleId?: numbe
         {ticket && <Ticket data={ticket} />}
         <div className="row no-print">
           <button className="primary" onClick={() => window.print()} disabled={!ticket}>Imprimir</button>
+          {/* La hoja carta la arma el servidor: una venta guardada sin conexión no la tiene todavía (spec 013). */}
+          {saleId != null && <button onClick={() => setSheet(true)}>Hoja carta</button>}
           <button onClick={onClose}>Cerrar</button>
         </div>
       </div>
+      {sheet && saleId != null && <SalePrintDialog saleId={saleId} onClose={() => setSheet(false)} />}
     </div>
   );
 }
