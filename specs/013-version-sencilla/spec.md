@@ -1,6 +1,6 @@
 # Spec 013 — Versión sencilla (taller pequeño)
 
-> Estado: 📝 **propuesta (2026-11-03)**, pendiente de aprobación. Decisiones tomadas con Carlos el 2026-11-03. Tareas en tasks.md.
+> Estado: ✅ **aprobada (2026-11-03)** en el PR #99. Decisiones tomadas con Carlos el 2026-11-03. Tareas en tasks.md.
 
 ## Problema
 Arias pidió (2026-11-03) que la app sea **lo más sencilla posible**: el taller es pequeño y necesita
@@ -33,7 +33,7 @@ Una **versión sencilla** que cada instalación activa con una casilla. Muestra 
    - las líneas con cantidad, precio y total, el IVA y el total;
    - la forma de pago y quién cobró.
 
-   No es factura electrónica: lleva la leyenda "Documento sin validez fiscal" (ver pregunta abierta 1). Usa la misma maqueta de impresión de las cotizaciones (`QuotePrint`).
+   No es factura electrónica: se titula "Comprobante de venta" y lleva la leyenda "Documento sin validez fiscal" (decisión 6). Usa la misma maqueta de impresión de las cotizaciones (`QuotePrint`).
 6. **Línea de ingreso** de cada producto: Repuestos, Taller o Lavadero.
    - Un producto con inventario siempre es Repuestos.
    - Un servicio (spec 010) es Taller o Lavadero; se elige en Productos y por defecto es Taller.
@@ -44,7 +44,7 @@ Una **versión sencilla** que cada instalación activa con una casilla. Muestra 
    - una nota opcional;
    - quién lo anotó.
 
-   Se corrige o se anula dejando rastro, nunca se borra. Solo el dinero que sale de la caja en efectivo se resta del arqueo (ver pregunta abierta 2).
+   Se corrige o se anula dejando rastro, nunca se borra. Un gasto marcado "Pagado de la caja" se anota como salida de efectivo del turno abierto y se resta del arqueo (decisión 7). Los gastos los maneja quien tiene el permiso nuevo `expenses.manage`, que de entrada solo tiene el Administrador (decisión 8).
 8. **Resumen** (pestaña nueva y primera en Reportes) por **día, semana o mes**, con el selector de periodo de siempre. Muestra:
    - **Ingresos** por línea (Repuestos, Taller, Lavadero) y en total, ya restadas las devoluciones;
    - **Costo de los repuestos** vendidos (costo promedio, spec 004);
@@ -62,11 +62,9 @@ Una **versión sencilla** que cada instalación activa con una casilla. Muestra 
 3. **Factura impresa en hoja carta con logo, sin DIAN.** _Descartado:_ solo la tirilla, o volver a meter la factura electrónica.
 4. **La ganancia resta los gastos**: hace falta la pantalla de Gastos. _Descartado:_ solo venta menos costo.
 5. **Una casilla por instalación, no otro programa**: se mantiene un solo software (decisión del 2026-10-27), y el taller puede pasar a la versión completa el día que crezca.
-
-## Preguntas abiertas (antes de la T4 y la T5)
-1. **¿Cómo se titula el documento impreso?** Si el taller está obligado a facturar electrónicamente, un papel que diga "Factura de venta" sin la DIAN puede traerle problemas. Propuesta: "Comprobante de venta" con "Documento sin validez fiscal", confirmado con el contador del taller.
-2. **Gastos y caja**: ¿un gasto pagado con plata del cajón se descuenta del arqueo del turno? Propuesta: sí, con la casilla "Pagado de la caja", que lo anota como salida de efectivo del turno abierto.
-3. **Permiso para Gastos**: ¿se crea `expenses.manage` (cambia el modelo de permisos) o se reutiliza `reports.costs`? Propuesta: el permiso nuevo, solo para el Administrador.
+6. **El impreso se titula "Comprobante de venta"** y dice "Documento sin validez fiscal": sin la DIAN, un papel que diga "Factura de venta" puede traerle problemas al taller. Carlos lo confirma con el contador del taller antes de la puesta en marcha.
+7. **Un gasto pagado de la caja sale del arqueo**: la casilla "Pagado de la caja" lo anota como salida de efectivo del turno abierto, así el cajón cuadra.
+8. **Permiso nuevo `expenses.manage`** para Gastos, solo para el Administrador al principio. _Descartado:_ reutilizar `reports.costs`, que es para ver costos y no para anotar dinero.
 
 ## Fuera de alcance
 - Factura electrónica DIAN (spec 005), que sigue en el código pero oculta.
