@@ -120,6 +120,11 @@
 - Historial (T5): la ficha de la moto muestra su historial y sus mantenimientos, y la de una orden entregada su próximo mantenimiento (`next_maintenance`). Las dos usan `ReminderList`.
 - Demo (T6): `seed_demo --taller` siembra tres planes y visitas de meses atrás (`_past_visit`, con los mismos servicios de la orden y las fechas corridas) que dejan un recordatorio en cada estado.
 
+## Versión sencilla (spec 013, en curso)
+- `Business.simple_mode` ("Versión sencilla" en los datos del negocio, apagada por defecto) llega a la app en `/api/auth/me/` como `simple_mode`. Es para un taller pequeño: oculta pantallas y salta la aprobación de las órdenes (T2 y T3); apagada, todo vuelve como estaba.
+- `Product.income_line`: Repuestos (`GOODS`), Taller (`WORKSHOP`) o Lavadero (`WASH`). Lo que tiene inventario siempre es Repuestos y un servicio es Taller o Lavadero (por defecto Taller): `Product._fit_income_line` lo ajusta en `save()` y en `clean()` (el admin valida las restricciones antes de guardar), y la restricción `income_line_matches_kind` lo exige en la base de datos. Se edita en la API de productos.
+- `SaleLine.income_line` se copia del producto al vender, así el resumen no cambia si después se recategoriza el producto; la devolución la toma de su línea vendida. La migración puso los servicios que ya había en Taller, o en Lavadero si su categoría dice "lavad", y copió eso a sus líneas vendidas.
+
 ## Logo de cada instalación
 - El logo es del cliente y el repositorio es público y genérico: va en una carpeta de la instalación (`BRAND_DIR`; en Docker, `./brand` montada en `/app/brand`). `/brand/` está en `.gitignore`.
 - `config/brand.py` sirve `/brand/logo.png`, `icon-192.png` e `icon-512.png` (solo esos nombres, sin sesión: se ven en el ingreso) y el manifiesto `/brand/manifest.webmanifest` con esos íconos o, sin ellos, el genérico.

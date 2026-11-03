@@ -230,6 +230,12 @@ class Business(models.Model):
         "módulo de taller", default=False,
         help_text="Motos, dueños y órdenes de trabajo (spec 009). Apagado, la app no muestra nada del taller.",
     )
+    simple_mode = models.BooleanField(
+        "versión sencilla", default=False,
+        help_text="Para un negocio pequeño (spec 013): oculta Pedidos, Cotizaciones, Conteos, Ajustes, Traslados, "
+                  "Revisión, Roles, DIAN y Mis órdenes, y las órdenes de taller no esperan la aprobación del cliente. "
+                  "Apagada, todo vuelve como estaba.",
+    )
 
     class Meta:
         verbose_name = "datos del negocio"

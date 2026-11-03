@@ -40,6 +40,13 @@ class Product(models.Model):
         REDUCED = "5", "5 %"
         GENERAL = "19", "19 %"
 
+    class IncomeLine(models.TextChoices):
+        """De qué parte del negocio sale el ingreso (spec 013, regla 6)."""
+
+        GOODS = "GOODS", "Repuestos"
+        WORKSHOP = "WORKSHOP", "Taller"
+        WASH = "WASH", "Lavadero"
+
     sku = models.CharField(max_length=40, unique=True)
     name = models.CharField(max_length=160)
     category = models.ForeignKey(Category, on_delete=models.PROTECT, related_name="products")
@@ -66,6 +73,11 @@ class Product(models.Model):
         "es un servicio", default=False,
         help_text="Se cobra en la caja sin mover inventario: sin existencias, costo, stock mínimo ni presentaciones.",
     )
+    # Un producto con inventario siempre es Repuestos; un servicio, Taller o Lavadero (spec 013).
+    income_line = models.CharField(
+        "línea de ingreso", max_length=10, choices=IncomeLine.choices, default=IncomeLine.GOODS,
+        help_text="Repuestos para lo que tiene inventario; Taller o Lavadero para un servicio (por defecto, Taller).",
+    )
 
     class Meta:
         ordering = ["name"]
@@ -81,12 +93,30 @@ class Product(models.Model):
                 name="service_without_stock_rules",
                 violation_error_message="Un servicio se vende por unidad entera y no lleva stock mínimo.",
             ),
+            models.CheckConstraint(
+                condition=models.Q(is_service=False, income_line="GOODS")
+                | models.Q(is_service=True, income_line__in=["WORKSHOP", "WASH"]),
+                name="income_line_matches_kind",
+                violation_error_message="Un producto con inventario es Repuestos; un servicio es Taller o Lavadero.",
+            ),
         ]
 
     def __str__(self):
         return f"{self.sku} · {self.name}"
 
+    def save(self, *args, **kwargs):
+        self._fit_income_line()
+        super().save(*args, **kwargs)
+
+    def _fit_income_line(self):
+        """Repuestos si tiene inventario; un servicio que llega como Repuestos pasa a Taller (spec 013, regla 6)."""
+        if not self.is_service:
+            self.income_line = self.IncomeLine.GOODS
+        elif self.income_line == self.IncomeLine.GOODS:
+            self.income_line = self.IncomeLine.WORKSHOP
+
     def clean(self):
+        self._fit_income_line()  # antes de validar las restricciones de la base de datos (pasa en el admin)
         if self.is_service:
             errors = {}
             if self.allows_fractions:
