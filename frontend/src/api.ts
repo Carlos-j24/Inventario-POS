@@ -335,6 +335,34 @@ export interface MarginRow {
   cost_estimated: boolean;
 }
 
+/** Ingresos por línea (spec 013), con lo cobrado: IVA incluido y ya restadas las devoluciones. */
+export interface SummaryIncome {
+  GOODS: string;
+  WORKSHOP: string;
+  WASH: string;
+  total: string;
+}
+
+/** Cifras de un período del resumen. Costo y ganancias vienen null sin reports.costs. */
+export interface SummaryFigures {
+  income: SummaryIncome;
+  expenses: string;
+  cost: string | null;
+  gross_profit: string | null;
+  net_profit: string | null;
+}
+
+export type SummaryGroup = "day" | "week" | "month";
+
+export interface SummaryReport {
+  from: string;
+  to: string;
+  by: SummaryGroup;
+  with_costs: boolean;
+  totals: SummaryFigures & { expenses_by_category: { category: string; amount: string }[] };
+  rows: (SummaryFigures & { period: string })[];
+}
+
 export interface MarginsReport {
   from: string;
   to: string;

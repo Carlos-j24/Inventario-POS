@@ -63,15 +63,16 @@ export function matchPreset(period: Period, today: string, chosen: Preset | null
 
 /** URL de un reporte. El inventario es una foto de hoy: no lleva período. */
 /** Reportes que no se filtran por caja: el inventario es una foto y las cotizaciones no pasan por caja. */
-export const NO_REGISTER = ["inventory", "quotes"];
+export const NO_REGISTER = ["inventory", "quotes", "summary"]; // el resumen es de todo el negocio (spec 013)
 
-export function reportUrl(name: string, period: Period, register = ""): string {
+export function reportUrl(name: string, period: Period, register = "", by = ""): string {
   const q = new URLSearchParams();
   if (name !== "inventory") {
     q.set("from", period.from);
     q.set("to", period.to);
   }
   if (register && !NO_REGISTER.includes(name)) q.set("register", register);
+  if (by && name === "summary") q.set("by", by); // sin él, el servidor agrupa según el largo del período
   const s = q.toString();
   return `/api/reports/${name}/${s ? `?${s}` : ""}`;
 }
@@ -81,6 +82,16 @@ const dayFormat = new Intl.DateTimeFormat("es-CO", { weekday: "short", day: "num
 /** "2026-10-15" → "jue, 15 oct" (sin correrse de día por la zona horaria). */
 export function formatDay(iso: string): string {
   return dayFormat.format(parse(iso));
+}
+
+const weekFormat = new Intl.DateTimeFormat("es-CO", { day: "numeric", month: "short", timeZone: "UTC" });
+const monthFormat = new Intl.DateTimeFormat("es-CO", { month: "long", year: "numeric", timeZone: "UTC" });
+
+/** Nombre de un período del resumen (spec 013): el día, "Semana del 28 sept" (empieza el lunes) o "octubre de 2026". */
+export function formatPeriod(iso: string, by: "day" | "week" | "month"): string {
+  if (by === "week") return `Semana del ${weekFormat.format(parse(iso))}`;
+  if (by === "month") return monthFormat.format(parse(iso));
+  return formatDay(iso);
 }
 
 /** "18.5" → "18,5 %"; sin base → "—". */

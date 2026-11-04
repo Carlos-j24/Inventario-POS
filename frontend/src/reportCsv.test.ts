@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { inventory, margins, products, quotes, sales, shifts } from "./pages/reportFixtures";
+import { inventory, margins, products, quotes, sales, shifts, summary, summaryNoCosts } from "./pages/reportFixtures";
 import { csvDateTime, reportCsv } from "./reportCsv";
 
 const week = { from: "2026-10-12", to: "2026-10-17" };
@@ -89,5 +89,23 @@ describe("reportCsv", () => {
 describe("csvDateTime", () => {
   it("usa la hora de Bogotá, sin importar la zona del equipo", () => {
     expect(csvDateTime("2026-10-17T03:30:00Z")).toBe("2026-10-16 22:30");
+  });
+});
+
+describe("reportCsv del resumen (spec 013)", () => {
+  it("lleva cada período, el total y los gastos por categoría", () => {
+    const { filename, content } = reportCsv("summary", summary, { from: "2026-10-01", to: "2026-10-05" }, "2026-10-05");
+    expect(filename).toBe("reporte-resumen_2026-10-01_2026-10-05.csv");
+    const l = lines(content);
+    expect(l).toContain("Período;Repuestos;Taller;Lavadero;Ingresos;Costo;Ganancia bruta;Gastos;Ganancia neta");
+    expect(l.some((x) => /^jue.*1.*oct.*;40000,00;20000,00;24000,00;84000,00;28000,00;56000,00;15000,00;41000,00$/.test(x))).toBe(true);
+    expect(l).toContain("Total;80000,00;20000,00;24000,00;124000,00;56000,00;68000,00;515000,00;-447000,00");
+    expect(l).toContain("Arriendo;500000,00");
+  });
+
+  it("sin permiso de costos no salen el costo ni la ganancia", () => {
+    const l = lines(reportCsv("summary", summaryNoCosts, { from: "2026-10-01", to: "2026-10-05" }, "2026-10-05").content);
+    expect(l).toContain("Período;Repuestos;Taller;Lavadero;Ingresos;Gastos");
+    expect(l).toContain("Total;80000,00;20000,00;24000,00;124000,00;515000,00");
   });
 });

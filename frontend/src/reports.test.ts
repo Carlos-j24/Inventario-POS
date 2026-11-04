@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { formatDay, formatPct, matchPreset, presetPeriod, reportUrl } from "./reports";
+import { formatDay, formatPct, formatPeriod, matchPreset, presetPeriod, reportUrl } from "./reports";
 
 describe("presetPeriod", () => {
   const friday = "2026-10-16";
@@ -73,5 +73,20 @@ describe("formatos", () => {
     expect(formatPct("18.5")).toBe("18,5 %");
     expect(formatPct("-3.0")).toBe("-3,0 %");
     expect(formatPct(null)).toBe("—");
+  });
+});
+
+describe("resumen (spec 013)", () => {
+  it("la URL lleva cómo agrupar solo en el resumen, y sin caja", () => {
+    const period = { from: "2026-10-01", to: "2026-10-31" };
+    expect(reportUrl("summary", period, "2", "week")).toBe("/api/reports/summary/?from=2026-10-01&to=2026-10-31&by=week");
+    expect(reportUrl("summary", period)).toBe("/api/reports/summary/?from=2026-10-01&to=2026-10-31");
+    expect(reportUrl("sales", period, "", "week")).toBe("/api/reports/sales/?from=2026-10-01&to=2026-10-31");
+  });
+
+  it("nombra el día, la semana (desde su lunes) y el mes", () => {
+    expect(formatPeriod("2026-10-01", "day")).toMatch(/1 (de )?oct/);
+    expect(formatPeriod("2026-09-28", "week")).toMatch(/^Semana del 28 (de )?sept?/);
+    expect(formatPeriod("2026-10-01", "month")).toBe("octubre de 2026");
   });
 });
