@@ -12,18 +12,21 @@ import {
   type ReportRow,
   type SalesReport,
   type ShiftsReport,
+  type SummaryGroup,
+  type SummaryReport,
 } from "../api";
-import { useCan } from "../auth";
+import { useCan, useSimpleMode } from "../auth";
 import { downloadCsv } from "../csv";
 import { formatMoney, formatQty, toCents } from "../money";
 import { reportCsv } from "../reportCsv";
-import { formatDay, formatPct, matchPreset, NO_REGISTER, PRESETS, presetPeriod, reportUrl, type Period, type Preset } from "../reports";
+import { formatDay, formatPct, formatPeriod, matchPreset, NO_REGISTER, PRESETS, presetPeriod, reportUrl, type Period, type Preset } from "../reports";
 import { todayIso } from "./Sales";
 
 const money = (value: string) => formatMoney(toCents(value));
 
 // Márgenes e inventario valorizado muestran costos: solo con reports.costs (spec 004, decisión 4).
 const TABS: { id: string; label: string; costs?: boolean }[] = [
+  { id: "summary", label: "Resumen" }, // spec 013: el costo y la ganancia los manda el servidor según reports.costs
   { id: "sales", label: "Ventas" },
   { id: "products", label: "Productos" },
   { id: "shifts", label: "Arqueos" },
@@ -45,12 +48,17 @@ export default function Reports() {
   const [period, setPeriod] = useState<Period>({ from: today, to: today });
   const [register, setRegister] = useState("");
   const [registers, setRegisters] = useState<Register[]>([]);
-  const [tab, setTab] = useState("sales");
+  // La versión sencilla abre en el resumen de ingresos, gastos y ganancia (spec 013). Hasta que el usuario
+  // elija una pestaña, sigue a la sesión, que puede cargar después de la primera pintada.
+  const simple = useSimpleMode();
+  const [chosenTab, setTab] = useState<string | null>(null);
+  const tab = chosenTab ?? (simple ? "summary" : "sales");
+  const [by, setBy] = useState<SummaryGroup | "">("");
   const [loaded, setLoaded] = useState<{ url: string; data: unknown } | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const tabs = TABS.filter((t) => !t.costs || can("reports.costs"));
-  const url = reportUrl(tab, period, register);
+  const url = reportUrl(tab, period, register, by);
   const [chosen, setChosen] = useState<Preset | null>(null);
   const preset = matchPreset(period, today, chosen);
 
@@ -101,6 +109,14 @@ export default function Reports() {
             {registers.map((r) => <option key={r.id} value={r.id}>{r.name}</option>)}
           </select>
         )}
+        {tab === "summary" && (
+          <select value={by} onChange={(e) => setBy(e.target.value as SummaryGroup | "")} aria-label="Agrupar por">
+            <option value="">Agrupar según el período</option>
+            <option value="day">Por día</option>
+            <option value="week">Por semana</option>
+            <option value="month">Por mes</option>
+          </select>
+        )}
       </div>
       <nav className="report-tabs" aria-label="Reportes">
         {tabs.map((t) => (
@@ -123,6 +139,7 @@ export default function Reports() {
       {!error && !data && <p className="muted">Cargando…</p>}
       {!error && data != null && (
         <>
+          {tab === "summary" && <SummaryView report={data as SummaryReport} />}
           {tab === "sales" && <SalesView report={data as SalesReport} />}
           {tab === "products" && <ProductsView report={data as ProductsReport} />}
           {tab === "shifts" && <ShiftsView report={data as ShiftsReport} />}
@@ -171,6 +188,61 @@ function Table({ title, head, children, empty }: { title: string; head: ReactNod
 function signed(value: string) {
   const cents = toCents(value);
   return <span className={cents < 0 ? "error" : cents > 0 ? "change" : undefined}>{formatMoney(cents)}</span>;
+}
+
+// --- resumen (spec 013) ------------------------------------------------------
+
+const GROUP_TITLES: Record<SummaryGroup, string> = { day: "Por día", week: "Por semana", month: "Por mes" };
+
+function SummaryView({ report }: { report: SummaryReport }) {
+  const t = report.totals;
+  const costs = report.with_costs;
+  const items: [string, ReactNode][] = [
+    ["Repuestos", money(t.income.GOODS)],
+    ["Taller", money(t.income.WORKSHOP)],
+    ["Lavadero", money(t.income.WASH)],
+    ["Ingresos", <strong key="i">{money(t.income.total)}</strong>],
+  ];
+  if (costs) items.push(["Costo de los repuestos", money(t.cost!)], ["Ganancia bruta", signed(t.gross_profit!)]);
+  items.push(["Gastos", money(t.expenses)]);
+  if (costs) items.push(["Ganancia neta", <strong key="n">{signed(t.net_profit!)}</strong>]);
+  return (
+    <>
+      <Kpis items={items} />
+      <p className="muted small">
+        Lo cobrado, con IVA incluido y ya restadas las devoluciones. Taller y lavadero no tienen costo cargado.
+        {!costs && " El costo y la ganancia los ve quien tiene el permiso de costos."}
+      </p>
+      <Table
+        title={GROUP_TITLES[report.by]}
+        head={
+          <tr>
+            <th>Período</th><th className="num">Repuestos</th><th className="num">Taller</th><th className="num">Lavadero</th>
+            <th className="num">Ingresos</th>{costs && <><th className="num">Costo</th><th className="num">Ganancia bruta</th></>}
+            <th className="num">Gastos</th>{costs && <th className="num">Ganancia neta</th>}
+          </tr>
+        }
+      >
+        {report.rows.map((r) => (
+          <tr key={r.period}>
+            <td>{formatPeriod(r.period, report.by)}</td>
+            <td className="num">{money(r.income.GOODS)}</td>
+            <td className="num">{money(r.income.WORKSHOP)}</td>
+            <td className="num">{money(r.income.WASH)}</td>
+            <td className="num"><strong>{money(r.income.total)}</strong></td>
+            {costs && <><td className="num">{money(r.cost!)}</td><td className="num">{signed(r.gross_profit!)}</td></>}
+            <td className="num">{money(r.expenses)}</td>
+            {costs && <td className="num"><strong>{signed(r.net_profit!)}</strong></td>}
+          </tr>
+        ))}
+      </Table>
+      <Table title="Gastos por categoría" empty="Sin gastos en el período." head={<tr><th>Categoría</th><th className="num">Valor</th></tr>}>
+        {t.expenses_by_category.map((c) => (
+          <tr key={c.category}><td>{c.category}</td><td className="num">{money(c.amount)}</td></tr>
+        ))}
+      </Table>
+    </>
+  );
 }
 
 // --- ventas -----------------------------------------------------------------

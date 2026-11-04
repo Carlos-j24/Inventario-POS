@@ -4,7 +4,7 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 
 import { AuthProvider } from "../auth";
 import { presetPeriod } from "../reports";
-import { inventory, margins, products, quotes, sales, shifts } from "./reportFixtures";
+import { inventory, margins, products, quotes, sales, shifts, summary, summaryNoCosts } from "./reportFixtures";
 import Reports from "./Reports";
 import { todayIso } from "./Sales";
 
@@ -187,5 +187,49 @@ describe("pantalla Reportes", () => {
     mockApi({ ...base, "/api/reports/sales/": () => json({ period: "El período puede tener como máximo un año." }, 400) });
     render(<Reports />);
     expect(await screen.findByRole("alert")).toHaveTextContent("máximo un año");
+  });
+});
+
+describe("resumen (spec 013)", () => {
+  const me = { id: 1, username: "dueno", first_name: "", last_name: "", roles: [], must_change_password: false };
+
+  function openAs(permissions: string[], simple: boolean, report = summary) {
+    const fetch = mockApi({
+      ...base, "/api/reports/summary/": () => json(report),
+      "/api/auth/csrf/": () => new Response(null, { status: 204 }),
+      "/api/auth/me/": () => json({ ...me, permissions, simple_mode: simple, workshop_enabled: true }),
+    });
+    render(<AuthProvider><Reports /></AuthProvider>);
+    return fetch;
+  }
+
+  it("en la versión sencilla abre en el resumen: ingresos por línea, costo, gastos y ganancia", async () => {
+    const fetch = openAs(["reports.view", "reports.costs"], true);
+    const kpi = (await screen.findByText("Ganancia neta", { selector: "dt" })).parentElement!;
+    expect(kpi).toHaveTextContent(/-\s?\$\s?447\.000/);
+    expect(screen.getByRole("button", { name: "Resumen" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByText("Repuestos", { selector: "dt" }).parentElement).toHaveTextContent(/80\.000/);
+    expect(screen.getByText("Lavadero", { selector: "dt" }).parentElement).toHaveTextContent(/24\.000/);
+    expect(screen.getByText("Costo de los repuestos", { selector: "dt" }).parentElement).toHaveTextContent(/56\.000/);
+    expect(screen.getByText("Gastos", { selector: "dt" }).parentElement).toHaveTextContent(/515\.000/);
+    const days = screen.getByRole("table", { name: "Por día" });
+    expect(within(days).getByRole("row", { name: /1 (de )?oct/ })).toHaveTextContent(/40\.000.*20\.000.*24\.000.*84\.000.*28\.000.*56\.000.*15\.000.*41\.000/);
+    expect(screen.getByRole("table", { name: "Gastos por categoría" })).toHaveTextContent(/Arriendo.*500\.000.*Insumos.*15\.000/);
+    expect(screen.getByLabelText("Caja")).toBeDisabled(); // es de todo el negocio
+    await userEvent.selectOptions(screen.getByLabelText("Agrupar por"), "Por semana");
+    expect(urls(fetch)).toContain(`/api/reports/summary/?from=${today}&to=${today}&by=week`);
+  });
+
+  it("sin permiso de costos no hay costo ni ganancia; fuera de la versión sencilla abre en Ventas", async () => {
+    openAs(["reports.view"], false, summaryNoCosts);
+    expect(await screen.findByText("Venta neta")).toBeInTheDocument();
+    expect(screen.queryByLabelText("Agrupar por")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Resumen" }));
+    expect(await screen.findByText("Ingresos", { selector: "dt" })).toBeInTheDocument();
+    expect(screen.queryByText("Ganancia neta")).not.toBeInTheDocument();
+    expect(screen.queryByText("Costo de los repuestos")).not.toBeInTheDocument();
+    expect(screen.getByText(/El costo y la ganancia los ve quien tiene el permiso de costos/)).toBeInTheDocument();
+    const head = within(screen.getByRole("table", { name: "Por día" })).getAllByRole("columnheader").map((h) => h.textContent);
+    expect(head).toEqual(["Período", "Repuestos", "Taller", "Lavadero", "Ingresos", "Gastos"]);
   });
 });

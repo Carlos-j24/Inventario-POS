@@ -8,9 +8,10 @@ import type {
   ReportRow,
   SalesReport,
   ShiftsReport,
+  SummaryReport,
 } from "./api";
 import { num, toCsv, type Cell, type Section } from "./csv";
-import type { Period } from "./reports";
+import { formatPeriod, type Period } from "./reports";
 
 const yesNo = (value: boolean) => (value ? "Sí" : "No");
 
@@ -150,6 +151,20 @@ function inventoryCsv(r: InventoryReport): Section[] {
   }];
 }
 
+function summaryCsv(r: SummaryReport): Section[] {
+  // Sin reports.costs no hay costo ni ganancia: esas columnas no salen (spec 013).
+  const head = ["Período", "Repuestos", "Taller", "Lavadero", "Ingresos", ...(r.with_costs ? ["Costo", "Ganancia bruta"] : []),
+    "Gastos", ...(r.with_costs ? ["Ganancia neta"] : [])];
+  const row = (name: string, f: SummaryReport["totals"] | SummaryReport["rows"][number]): Cell[] => [
+    name, num(f.income.GOODS), num(f.income.WORKSHOP), num(f.income.WASH), num(f.income.total),
+    ...(r.with_costs ? [num(f.cost!), num(f.gross_profit!)] : []), num(f.expenses), ...(r.with_costs ? [num(f.net_profit!)] : []),
+  ];
+  return [
+    { title: "Resumen", head, rows: [...r.rows.map((p) => row(formatPeriod(p.period, r.by), p)), row("Total", r.totals)] },
+    { title: "Gastos por categoría", head: ["Categoría", "Valor"], rows: r.totals.expenses_by_category.map((c) => [c.category, num(c.amount)]) },
+  ];
+}
+
 function marginsCsv(r: MarginsReport): Section[] {
   const t = r.totals;
   return [{
@@ -167,6 +182,7 @@ function marginsCsv(r: MarginsReport): Section[] {
 }
 
 const BUILDERS: Record<string, { name: string; build: (data: never) => Section[] }> = {
+  summary: { name: "resumen", build: summaryCsv },
   sales: { name: "ventas", build: salesCsv },
   products: { name: "productos", build: productsCsv },
   shifts: { name: "arqueos", build: shiftsCsv },

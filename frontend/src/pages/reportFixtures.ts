@@ -1,5 +1,5 @@
 // Reportes de ejemplo (cifras de la base de demostración) para los tests de la pantalla y del CSV.
-import type { InventoryReport, MarginsReport, ProductsReport, QuotesReport, SalesReport, ShiftsReport } from "../api";
+import type { InventoryReport, MarginsReport, ProductsReport, QuotesReport, SalesReport, ShiftsReport, SummaryReport } from "../api";
 
 const row = (sales_count: number, total: string, returns: string, net: string) => ({ sales_count, total, returns, net });
 
@@ -70,4 +70,27 @@ export const quotes: QuotesReport = {
     { id: 1, number: "COT-000001", created_at: "2026-10-22T14:30:00Z", customer: "Don Jorge", created_by: "andres", status: "CONVERTED", status_label: "Convertida", total: "56000.00", converted: "56000.00" },
   ],
   truncated: false,
+};
+
+/** El ejemplo de la spec 013: un día con repuestos, taller y lavadero, y otro con el arriendo. */
+export const summary: SummaryReport = {
+  from: "2026-10-01", to: "2026-10-05", by: "day", with_costs: true,
+  totals: {
+    income: { GOODS: "80000.00", WORKSHOP: "20000.00", WASH: "24000.00", total: "124000.00" },
+    cost: "56000.00", gross_profit: "68000.00", expenses: "515000.00", net_profit: "-447000.00",
+    expenses_by_category: [{ category: "Arriendo", amount: "500000.00" }, { category: "Insumos", amount: "15000.00" }],
+  },
+  rows: [
+    { period: "2026-10-01", income: { GOODS: "40000.00", WORKSHOP: "20000.00", WASH: "24000.00", total: "84000.00" },
+      cost: "28000.00", gross_profit: "56000.00", expenses: "15000.00", net_profit: "41000.00" },
+    { period: "2026-10-05", income: { GOODS: "40000.00", WORKSHOP: "0.00", WASH: "0.00", total: "40000.00" },
+      cost: "28000.00", gross_profit: "12000.00", expenses: "500000.00", net_profit: "-488000.00" },
+  ],
+};
+
+/** Lo mismo para quien no tiene reports.costs: sin costo ni ganancia. */
+export const summaryNoCosts: SummaryReport = {
+  ...summary, with_costs: false,
+  totals: { ...summary.totals, cost: null, gross_profit: null, net_profit: null },
+  rows: summary.rows.map((r) => ({ ...r, cost: null, gross_profit: null, net_profit: null })),
 };

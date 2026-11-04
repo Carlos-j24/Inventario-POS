@@ -1,3 +1,4 @@
+from rest_framework.exceptions import ValidationError
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -8,6 +9,7 @@ from .period import parse_period
 from .quotes import quotes_report
 from .services import products_report, sales_report
 from .shifts import shifts_report
+from .summary import GROUPS, summary_report
 
 
 class SalesReportView(APIView):
@@ -72,3 +74,18 @@ class QuotesReportView(APIView):
     def get(self, request):
         start, end = parse_period(request.query_params)
         return Response(quotes_report(start, end, salesperson=request.query_params.get("salesperson")))
+
+
+class SummaryReportView(APIView):
+    """Resumen del período (spec 013): ingresos por línea, gastos y, con reports.costs, costo y ganancia
+    (?from, ?to, ?by=day|week|month)."""
+
+    permission_classes = [require("reports.view")]
+
+    def get(self, request):
+        start, end = parse_period(request.query_params)
+        by = request.query_params.get("by") or None
+        if by is not None and by not in GROUPS:
+            raise ValidationError({"by": "Agrupa por day, week o month."})
+        with_costs = request.user.has_app_permission("reports.costs")
+        return Response(summary_report(start, end, by=by, with_costs=with_costs))
