@@ -17,6 +17,10 @@ from apps.reports.costs import inventory_report, margins_report
 from apps.sales.models import Order, Quote, Sale, SaleLine
 from apps.workshop.maintenance import due_of, due_reminders
 from apps.workshop.models import MaintenancePlan, MaintenanceReminder, Motorcycle, WorkOrder
+from apps.cash.models import Shift
+from apps.cash.services import shift_summary
+from apps.expenses.models import Expense
+from apps.reports.summary import summary_report
 
 from .seed import USERS, seed
 
@@ -262,3 +266,45 @@ def test_a_reminder_in_every_state():
     assert [(r.motorcycle.plate, r.status) for r, _ in due_reminders(include_notified=True)] == [
         ("XYZ12A", "NOTIFIED"), ("JKL90B", "PENDING"), ("ABC34D", "PENDING"),
     ]
+
+
+# --- versión sencilla (spec 013, T7) ------------------------------------------------
+
+def test_the_workshop_runs_the_simple_version():
+    assert Business.load().simple_mode is True
+
+
+def test_washes_are_wash_and_labor_is_workshop():
+    lines = dict(Product.objects.filter(is_service=True).values_list("sku", "income_line"))
+    assert lines == {"LAV-150": "WASH", "LAV-AC": "WASH", "LAV-MOT": "WASH", "MO-TALLER": "WORKSHOP"}
+    sold = set(SaleLine.objects.filter(product__sku__startswith="LAV-").values_list("income_line", flat=True))
+    assert sold == {"WASH"}
+    assert set(SaleLine.objects.filter(product__sku="MO-TALLER").values_list("income_line", flat=True)) == {"WORKSHOP"}
+
+
+def test_a_month_of_expenses_one_voided_and_one_from_the_till():
+    today = timezone.localdate()
+    active = Expense.objects.filter(status="ACTIVE")
+    assert active.count() == 10
+    assert active.aggregate(t=Sum("amount"))["t"] == Decimal("3413000")
+    assert min(e.spent_on for e in active) == today - timedelta(days=27)
+    voided = Expense.objects.get(status="VOIDED")
+    assert (voided.void_reason, voided.amount) == ("Anotado dos veces", Decimal("45000"))
+    till = Expense.objects.get(shift__isnull=False)
+    assert (till.spent_on, till.amount, till.note, till.shift.register.code, till.shift.status) == (
+        today, Decimal("18000"), "Shampoo para motos", "CAJA1", Shift.Status.OPEN)
+    assert shift_summary(till.shift)["expenses"] == Decimal("18000")
+    assert Expense.objects.filter(shift__status=Shift.Status.CLOSED).count() == 0  # los cierres pasados no se tocan
+
+
+def test_the_summary_of_the_month_has_every_line_and_the_profit():
+    today = timezone.localdate()
+    data = summary_report(today - timedelta(days=29), today, with_costs=True)
+    income = data["totals"]["income"]
+    assert all(Decimal(income[k]) > 0 for k in ("GOODS", "WORKSHOP", "WASH"))
+    assert data["totals"]["expenses"] == "3413000.00"
+    assert data["by"] == "day"
+    assert {c["category"] for c in data["totals"]["expenses_by_category"]} == {
+        "Arriendo", "Sueldos", "Servicios públicos", "Insumos", "Otros"}
+    net = Decimal(income["total"]) - Decimal(data["totals"]["cost"]) - Decimal("3413000")
+    assert Decimal(data["totals"]["net_profit"]) == net

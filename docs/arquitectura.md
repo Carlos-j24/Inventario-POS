@@ -120,7 +120,7 @@
 - Historial (T5): la ficha de la moto muestra su historial y sus mantenimientos, y la de una orden entregada su próximo mantenimiento (`next_maintenance`). Las dos usan `ReminderList`.
 - Demo (T6): `seed_demo --taller` siembra tres planes y visitas de meses atrás (`_past_visit`, con los mismos servicios de la orden y las fechas corridas) que dejan un recordatorio en cada estado.
 
-## Versión sencilla (spec 013, en curso)
+## Versión sencilla (spec 013, completa)
 - `Business.simple_mode` ("Versión sencilla" en los datos del negocio, apagada por defecto) llega a la app en `/api/auth/me/` como `simple_mode`. Es para un taller pequeño: oculta pantallas y salta la aprobación de las órdenes (T2 y T3); apagada, todo vuelve como estaba.
 - `Product.income_line`: Repuestos (`GOODS`), Taller (`WORKSHOP`) o Lavadero (`WASH`). Lo que tiene inventario siempre es Repuestos y un servicio es Taller o Lavadero (por defecto Taller): `Product._fit_income_line` lo ajusta en `save()` y en `clean()` (el admin valida las restricciones antes de guardar), y la restricción `income_line_matches_kind` lo exige en la base de datos. Se edita en la API de productos.
 - Frontend: en `App.tsx` las pantallas `full` (Mis órdenes, Pedidos, Cotizaciones, Conteos, Ajustes, Traslados, Revisión, DIAN y Roles) se ocultan con `me.simple_mode`; Productos elige la línea de ingreso de un servicio (`productForm.income_line`).
@@ -128,6 +128,7 @@
 - Comprobante en hoja carta (`components/SalePrint.tsx`, desde el tiquete de la caja y desde Ventas): usa los datos de `/api/invoicing/ticket/<venta>/`, que ahora traen el cliente de `Sale.customer` cuando no hay documento electrónico, la orden de taller y el código y la tarifa de cada línea. Dice "Documento sin validez fiscal".
 - Gastos (`apps/expenses`, permiso `expenses.manage`): `Expense` con su rastro en `ExpenseEvent`; nunca se borra, se corrige o se anula. Uno "pagado de la caja" va ligado al turno abierto (`Expense.shift`) y `cash.shift_summary` lo resta del efectivo esperado; con el turno cerrado su valor ya no cambia. API `/api/expenses/` y pantalla `pages/Expenses.tsx`.
 - Resumen (`reports/summary.py`, `/api/reports/summary/`, pestaña "Resumen"): ingresos por línea de ingreso con IVA incluido y devoluciones restadas el día en que se hacen, costo de los repuestos, gastos vigentes y ganancia bruta y neta por día, semana o mes; costo y ganancia solo con `reports.costs`.
+- Demo: `seed_demo --taller` activa la casilla al final, con lavados en Lavadero, un mes de gastos y uno de hoy pagado de la caja.
 - `SaleLine.income_line` se copia del producto al vender, así el resumen no cambia si después se recategoriza el producto; la devolución la toma de su línea vendida. La migración puso los servicios que ya había en Taller, o en Lavadero si su categoría dice "lavad", y copió eso a sus líneas vendidas.
 
 ## Logo de cada instalación

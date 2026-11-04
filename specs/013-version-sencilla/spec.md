@@ -1,6 +1,6 @@
 # Spec 013 — Versión sencilla (taller pequeño)
 
-> Estado: ✅ **aprobada (2026-11-03)** en el PR #99. Decisiones tomadas con Carlos el 2026-11-03. Tareas en tasks.md.
+> Estado: ✅ **completada (2026-11-03)**: aprobada en el PR #99, T1 a T7 en los PRs #100 a #106. Decisiones tomadas con Carlos el 2026-11-03. Tareas en tasks.md.
 
 ## Problema
 Arias pidió (2026-11-03) que la app sea **lo más sencilla posible**: el taller es pequeño y necesita
