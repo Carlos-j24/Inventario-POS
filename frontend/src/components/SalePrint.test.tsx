@@ -39,8 +39,9 @@ describe("comprobante en hoja carta (spec 013)", () => {
     render(<SalePrint data={sale} />);
     const sheet = screen.getByRole("article", { name: "Comprobante de venta" });
     expect(within(sheet).getByRole("img", { name: "Logo del negocio" })).toBeInTheDocument();
+    expect(within(sheet).getByRole("heading", { level: 1 })).toHaveTextContent(/^Moto Repuestos y Lavadero Arias$/);
     expect(sheet).toHaveTextContent("Moto Repuestos y Lavadero AriasNIT 900123456-7Cra 1, FlorenciaTel. 3100000000");
-    expect(sheet).toHaveTextContent("Comprobante de ventaV-000121");
+    expect(sheet).toHaveTextContent("VentaV-000121");
     expect(within(sheet).getByRole("note")).toHaveTextContent("Documento sin validez fiscal");
     expect(sheet).toHaveTextContent("ClienteJorge RamírezCédula de ciudadanía 79123456Tel. 3001234567");
     expect(sheet).toHaveTextContent("MotoJKL90B · Suzuki GN 125Orden OT-000011 · llegó con 49.100 km");
@@ -62,6 +63,14 @@ describe("comprobante en hoja carta (spec 013)", () => {
     expect(sheet).not.toHaveTextContent("Orden OT-");
     expect(sheet).not.toHaveTextContent("Vueltas");
     expect(sheet).toHaveTextContent("Documento electrónico de esta venta: Documento equivalente electrónico POS CJ11.");
+  });
+
+  it("el título es el nombre comercial si lo hay, y sin datos del negocio dice Comprobante de venta", () => {
+    const { unmount } = render(<SalePrint data={{ ...sale, business: { ...sale.business!, trade_name: "Motos Arias" } }} />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/^Motos Arias$/);
+    unmount();
+    render(<SalePrint data={{ ...sale, business: null }} />);
+    expect(screen.getByRole("heading", { level: 1 })).toHaveTextContent(/^Comprobante de venta$/);
   });
 
   it("el diálogo pide la venta, imprime y se cierra", async () => {

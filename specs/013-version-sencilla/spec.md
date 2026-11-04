@@ -33,7 +33,7 @@ Una **versión sencilla** que cada instalación activa con una casilla. Muestra 
    - las líneas con cantidad, precio y total, el IVA y el total;
    - la forma de pago y quién cobró.
 
-   No es factura electrónica: se titula "Comprobante de venta" y lleva la leyenda "Documento sin validez fiscal" (decisión 6). Usa la misma maqueta de impresión de las cotizaciones (`QuotePrint`).
+   No es factura electrónica: el título es el nombre del negocio junto al logo (decisión 9) y lleva la leyenda "Documento sin validez fiscal" (decisión 6). Usa la misma maqueta de impresión de las cotizaciones (`QuotePrint`).
 6. **Línea de ingreso** de cada producto: Repuestos, Taller o Lavadero.
    - Un producto con inventario siempre es Repuestos.
    - Un servicio (spec 010) es Taller o Lavadero; se elige en Productos y por defecto es Taller.
@@ -65,6 +65,10 @@ Una **versión sencilla** que cada instalación activa con una casilla. Muestra 
 6. **El impreso se titula "Comprobante de venta"** y dice "Documento sin validez fiscal": sin la DIAN, un papel que diga "Factura de venta" puede traerle problemas al taller. Carlos lo confirma con el contador del taller antes de la puesta en marcha.
 7. **Un gasto pagado de la caja sale del arqueo**: la casilla "Pagado de la caja" lo anota como salida de efectivo del turno abierto, así el cajón cuadra.
 8. **Permiso nuevo `expenses.manage`** para Gastos, solo para el Administrador al principio. _Descartado:_ reutilizar `reports.costs`, que es para ver costos y no para anotar dinero.
+
+## Decisiones (2026-11-04, con Carlos, después de cerrar la spec)
+9. **El título del comprobante es el nombre del taller, junto al logo** (más grande que antes); el número de la venta queda a la derecha como "Venta V-…". Sigue diciendo "Documento sin validez fiscal" arriba y abajo. Reemplaza el título "Comprobante de venta" de la decisión 6, que solo queda si no hay datos del negocio.
+10. **La ganancia va con IVA incluido**: ingresos tal como se cobraron, menos el costo y los gastos. Queda como se hizo en T6, y la pantalla lo dice ("con IVA incluido"). _Descartado:_ restar el IVA de los ingresos.
 
 ## Fuera de alcance
 - Factura electrónica DIAN (spec 005), que sigue en el código pero oculta.
