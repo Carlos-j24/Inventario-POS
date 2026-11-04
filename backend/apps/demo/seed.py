@@ -124,12 +124,15 @@ def _catalog(product_rows=PRODUCTS, pending=PENDING):
 
 
 def _services(rows):
-    """Servicios (spec 010): no tienen existencias, así que no entran a las ventas al azar de la historia."""
+    """Servicios (spec 010): no tienen existencias, así que no entran a las ventas al azar de la historia.
+
+    El quinto dato, si está, es la línea de ingreso (spec 013); sin él, el servicio queda en Taller.
+    """
     unit = Unit.objects.get(code="und")
-    for sku, name, category, price in rows:
+    for sku, name, category, price, *line in rows:
         Product.objects.create(
             sku=sku, name=name, category=Category.objects.get_or_create(name=category)[0], base_unit=unit,
-            sale_price=Decimal(price), is_service=True,
+            sale_price=Decimal(price), is_service=True, **({"income_line": line[0]} if line else {}),
         )
 
 
@@ -341,7 +344,7 @@ class Profile:
     business: Callable
     today: Callable  # (rng, now, users, warehouses, registers, products)
     users: tuple = field(default=tuple(USERS))
-    services: tuple = ()  # (sku, nombre, categoría, precio): spec 010
+    services: tuple = ()  # (sku, nombre, categoría, precio[, línea de ingreso]): specs 010 y 013
     daily: Callable | None = None  # ver _history
 
 

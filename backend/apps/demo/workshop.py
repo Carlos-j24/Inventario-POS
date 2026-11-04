@@ -15,6 +15,11 @@ Mantenimientos (spec 012, T6): tres planes y visitas de meses atrás, entregadas
 que dejan un recordatorio en cada estado: uno vencido por fecha, uno que vence por km estimados, uno
 avisado por WhatsApp, uno hecho con la orden de hoy y uno descartado. Esas visitas se cobran en el turno
 de hoy, para no tocar los cierres de los días pasados.
+
+Versión sencilla (spec 013, T7): lavados en la línea Lavadero y mano de obra en Taller, un mes de gastos
+(arriendo, quincenas, servicios, insumos y uno anulado) y hoy uno pagado de la caja. La casilla se activa
+al final, después de armar las órdenes con su aprobación: así quedan también órdenes como las de antes de
+activarla.
 """
 import random
 import uuid
@@ -28,6 +33,8 @@ from apps.cash.services import open_shift
 from apps.catalog.models import Product, Unit
 from apps.customers.models import Customer
 from apps.customers.rules import check_digit
+from apps.expenses.models import ExpenseCategory
+from apps.expenses.services import create_expense, void_expense
 from apps.inventory.adjustments import approve_adjustment, create_adjustment
 from apps.inventory.counts import approve_count, open_count, record_line, submit_count
 from apps.inventory.transfers import create_transfer
@@ -71,11 +78,23 @@ PRODUCTS = (
 PENDING = {"sku": "DIR-LED", "name": "Direccional LED universal", "category": "Eléctricos", "unit": "und", "fractions": False, "minimum": 10}
 RESTOCK = (("KIT-BOX100", 10, 69000), ("LLA-90-18", 12, 104000))
 SERVICES = (
-    ("LAV-150", "Lavado moto hasta 150 cc", "Lavadero", 12000),
-    ("LAV-AC", "Lavado moto alto cilindraje", "Lavadero", 18000),
-    ("LAV-MOT", "Lavado de motor y desengrase", "Lavadero", 15000),
+    ("LAV-150", "Lavado moto hasta 150 cc", "Lavadero", 12000, "WASH"),
+    ("LAV-AC", "Lavado moto alto cilindraje", "Lavadero", 18000, "WASH"),
+    ("LAV-MOT", "Lavado de motor y desengrase", "Lavadero", 15000, "WASH"),
     # Precio de referencia: recepción pone el de cada trabajo (spec 011).
-    ("MO-TALLER", "Mano de obra de taller", "Taller", 20000),
+    ("MO-TALLER", "Mano de obra de taller", "Taller", 20000, "WORKSHOP"),
+)
+# Gastos del último mes (spec 013): días atrás, categoría, valor y nota.
+EXPENSES = (
+    (27, "Insumos", 45000, "Jabón y desengrasante para el lavadero"),
+    (25, "Arriendo", 1200000, "Arriendo del local"),
+    (20, "Sueldos", 900000, "Quincena de Jhon"),
+    (20, "Insumos", 45000, "Jabón y desengrasante para el lavadero"),
+    (18, "Servicios públicos", 185000, "Luz y agua"),
+    (13, "Insumos", 45000, "Jabón y desengrasante para el lavadero"),
+    (10, "Otros", 30000, "Bolsas y papelería"),
+    (6, "Insumos", 45000, "Jabón y desengrasante para el lavadero"),
+    (5, "Sueldos", 900000, "Quincena de Jhon"),
 )
 MECHANIC = ("jhon.mecanico", "Jhon", "Mecánico")
 # Planes de mantenimiento (spec 012): nombre, cada cuántos km, cada cuántos días y los productos que lo cumplen.
@@ -286,6 +305,24 @@ def _today(rng, now, users, warehouses, registers, products):
     _motorcycles(now, users, products, shift)
     _maintenance(now, users)
     _work_orders(now, users, products, shift)
+    _expenses(now, users, registers)
+    business = Business.load()
+    business.simple_mode = True  # spec 013: al final, para armar las órdenes con su aprobación
+    business.save(update_fields=["simple_mode"])
+
+
+def _expenses(now, users, registers):
+    """Un mes de gastos, uno anulado por repetido y hoy uno pagado de la caja (spec 013)."""
+    admin = users["admin.demo"][0]
+    categories = {c.name: c for c in ExpenseCategory.objects.all()}
+    for back, category, amount, note in EXPENSES:
+        create_expense(user=admin, spent_on=(now - timedelta(days=back)).date(), amount=Decimal(amount),
+                       category=categories[category], note=note)
+    twice = create_expense(user=admin, spent_on=(now - timedelta(days=6)).date(), amount=Decimal(45000),
+                           category=categories["Insumos"], note="Jabón y desengrasante para el lavadero")
+    void_expense(user=admin, expense=twice, reason="Anotado dos veces")
+    create_expense(user=admin, spent_on=now.date(), amount=Decimal(18000), category=categories["Insumos"],
+                   note="Shampoo para motos", register=registers["CAJA1"])
 
 
 def _plans(products):
