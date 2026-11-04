@@ -13,7 +13,8 @@ const km = (value: number) => `${value.toLocaleString("es-CO")} km`;
 
 /**
  * Comprobante de venta en hoja carta (spec 013, T4), con la misma maqueta de la cotización. No es la
- * factura electrónica: lo dice arriba y abajo (decisión 6).
+ * factura electrónica: lo dice arriba y abajo (decisión 6). El título es el nombre del negocio, junto al logo
+ * (pedido de Arias, 2026-11-04); sin datos del negocio queda "Comprobante de venta".
  */
 export default function SalePrint({ data }: { data: TicketData }) {
   const b = data.business;
@@ -21,11 +22,11 @@ export default function SalePrint({ data }: { data: TicketData }) {
     <article className="quote-sheet" aria-label="Comprobante de venta">
       <style>{"@media print { @page { size: letter portrait; margin: 14mm; } }"}</style>
       <header className="quote-sheet-head">
-        <BrandLogo className="quote-sheet-logo" alt="Logo del negocio" />
+        <BrandLogo className="quote-sheet-logo sale-sheet-logo" alt="Logo del negocio" />
         <div className="quote-sheet-from">
+          <h1 className="sale-sheet-title">{b ? b.trade_name || b.name : "Comprobante de venta"}</h1>
           {b && (
             <>
-              <strong className="quote-sheet-business">{b.trade_name || b.name}</strong>
               {b.trade_name && <div>{b.name}</div>}
               {b.nit && <div>NIT {b.nit}</div>}
               {(b.address || b.city) && <div>{[b.address, b.city].filter(Boolean).join(", ")}</div>}
@@ -34,7 +35,7 @@ export default function SalePrint({ data }: { data: TicketData }) {
           )}
         </div>
         <div className="quote-sheet-number">
-          <div>Comprobante de venta</div>
+          <div>Venta</div>
           <strong>{data.sale_number}</strong>
           <div>{day(data.issued_at)}, {hour(data.issued_at)}</div>
         </div>
